@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/livefir/livetemplate"
+	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
 	"todos/db"
 )

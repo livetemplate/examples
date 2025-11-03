@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/livefir/livetemplate"
+	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 

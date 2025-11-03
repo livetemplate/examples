@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/livefir/livetemplate"
+	"github.com/livetemplate/livetemplate"
 	lvttest "github.com/livetemplate/lvt/testing"
 )
 

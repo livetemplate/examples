@@ -18,7 +18,7 @@ module my-example
 
 go 1.25
 
-require github.com/livefir/livetemplate v0.1.0
+require github.com/livetemplate/livetemplate v0.1.0
 
 // If using E2E tests:
 // require github.com/livetemplate/lvt v0.1.0
@@ -33,7 +33,7 @@ import (
     "log"
     "net/http"
 
-    lt "github.com/livefir/livetemplate"
+    lt "github.com/livetemplate/livetemplate"
 )
 
 func main() {

@@ -186,7 +186,7 @@ For local development, examples can serve the client library locally using `gith
 
 ## Dependencies
 
-- **Core Library**: `github.com/livefir/livetemplate v0.1.0`
+- **Core Library**: `github.com/livetemplate/livetemplate v0.1.0`
 - **LVT Testing** (for examples with E2E tests): `github.com/livetemplate/lvt v0.1.0`
 - **Client Library**: `@livetemplate/client@0.1.0` (via CDN)
 

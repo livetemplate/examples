@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/livefir/livetemplate"
+	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
 	"github.com/livetemplate/livetemplate/internal/observe"
 )
