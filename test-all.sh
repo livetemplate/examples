@@ -87,7 +87,13 @@ test_example() {
 
     # Run tests
     echo "  → Running tests..."
-    if go test -v -race -timeout=5m ./... 2>&1 | sed 's/^/    /'; then
+    # Use set -o pipefail to catch failures in pipeline
+    set +e  # Temporarily disable exit on error
+    (set -o pipefail; go test -v -race -timeout=5m ./... 2>&1 | sed 's/^/    /')
+    local test_exit=$?
+    set -e  # Re-enable exit on error
+
+    if [ $test_exit -eq 0 ]; then
         echo -e "${GREEN}✓ All tests passed${NC}"
         cd - > /dev/null
         PASSED+=("$example")
