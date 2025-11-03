@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/livetemplate/livetemplate v0.1.1
-	github.com/livetemplate/lvt v0.0.0-20251103064207-89cb00dd733d
+	github.com/livetemplate/lvt v0.0.0-20251103193522-944fc72d14fa
 )
 
 require (

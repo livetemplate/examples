@@ -7,7 +7,7 @@ require (
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/livetemplate/livetemplate v0.1.1
-	github.com/livetemplate/lvt v0.0.0-20251103064207-89cb00dd733d
+	github.com/livetemplate/lvt v0.0.0-20251103193522-944fc72d14fa
 	modernc.org/sqlite v1.39.1
 )
 
