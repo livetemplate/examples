@@ -109,6 +109,53 @@ Add your example to the main `README.md` with:
 - Use standard library when possible
 - Document any required dependencies
 
+## Local Development with Core Library
+
+If you need to test your example against unreleased core library or LVT changes, you have two options:
+
+### Recommended: Go Workspace (Automatic)
+
+The **easiest way** - Go automatically uses local modules without any `go.mod` changes:
+
+```bash
+# From parent directory containing all repos
+cd ..
+./setup-workspace.sh
+
+# Now test examples with local core library and LVT
+cd examples
+./test-all.sh  # Uses local livetemplate + lvt
+
+# Or test individual example
+cd counter
+go test -v  # Automatically uses ../livetemplate and ../lvt
+```
+
+The workspace setup is done once and affects all repositories. See the [core library CONTRIBUTING.md](https://github.com/livetemplate/livetemplate/blob/main/CONTRIBUTING.md#testing-core-changes-with-lvtexamples) for details.
+
+### Alternative: Manual Replace Directives
+
+If you prefer manual control:
+
+```bash
+# Enable local development mode for all examples
+./scripts/setup-local-dev.sh
+
+# Test with local libraries
+./test-all.sh
+
+# Revert to published versions
+./scripts/setup-local-dev.sh --undo
+```
+
+**Directory structure for both methods:**
+```
+parent/
+├── livetemplate/  (core library)
+├── lvt/           (CLI tool)
+└── examples/      (this repo)
+```
+
 ## Testing Your Example
 
 ```bash
@@ -118,6 +165,10 @@ go run main.go
 
 # Run E2E tests
 go test -v
+
+# Test all examples together
+cd ..
+./test-all.sh
 ```
 
 ## Submitting Your Example
