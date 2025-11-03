@@ -344,9 +344,12 @@ func TestChatE2E(t *testing.T) {
 			t.Errorf("Final HTML contains template expressions")
 		}
 
-		// Verify message is present
-		if !strings.Contains(finalHTML, "Hello, world!") {
-			t.Errorf("Final HTML should contain sent message")
+		// Verify messages are present (from Send_Message test)
+		if !strings.Contains(finalHTML, "First message") {
+			t.Errorf("Final HTML should contain 'First message'")
+		}
+		if !strings.Contains(finalHTML, "Third message") {
+			t.Errorf("Final HTML should contain 'Third message'")
 		}
 
 		t.Logf("✅ WebSocket updates working correctly")
