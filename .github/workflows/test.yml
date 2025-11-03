@@ -7,7 +7,26 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  test-all:
+    name: Test All Examples
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Run test script
+      run: ./test-all.sh --skip-disabled
+      env:
+        CGO_ENABLED: 1
+
+  # Matrix testing for individual examples (parallel)
+  test-individual:
     name: Test ${{ matrix.example }}
     runs-on: ubuntu-latest
 
@@ -20,10 +39,6 @@ jobs:
           - todos
           - graceful-shutdown
           - testing/01_basic
-          # Disabled examples that require internal/observe package
-          # - observability
-          # - production/single-host
-          # - trace-correlation
 
     steps:
     - name: Checkout code

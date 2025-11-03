@@ -163,12 +163,31 @@ go run main.go
 
 ## Testing Examples
 
+### Test All Examples
+
+Run all working examples at once:
+
+```bash
+./test-all.sh
+```
+
+This script will:
+- Test all 5 working examples (counter, chat, todos, graceful-shutdown, testing)
+- Skip disabled examples by default (use without `--skip-disabled` to attempt them)
+- Show a summary of passed/failed/skipped tests
+
+### Test Individual Example
+
 Examples include E2E tests using Chromedp:
 
 ```bash
 cd <example-directory>
 go test -v
 ```
+
+### CI/CD
+
+The test script is also used in GitHub Actions. See `.github/workflows/test.yml` for CI configuration.
 
 ## Using the Client Library
 
