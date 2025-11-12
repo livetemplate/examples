@@ -22,26 +22,8 @@ func (s *PageState) Change(ctx *livetemplate.ActionContext) error {
 }
 
 func main() {
-	// Create template
-	tmpl := livetemplate.New("welcome")
-
-	// Parse template inline
-	if _, err := tmpl.Parse(`
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<title>{{.Title}}</title>
-		</head>
-		<body>
-			<h1>{{.Title}}</h1>
-			<p>{{.Message}}</p>
-			<p>Count: {{.Count}}</p>
-			<script src="/livetemplate-client.js"></script>
-		</body>
-		</html>
-	`); err != nil {
-		log.Fatal(err)
-	}
+	// Create template (will auto-discover welcome.tmpl)
+	tmpl := livetemplate.Must(livetemplate.New("welcome"))
 
 	// Create state
 	state := &PageState{

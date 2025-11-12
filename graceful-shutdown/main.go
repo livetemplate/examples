@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Create template with environment-based configuration
-	tmpl := livetemplate.New("counter", envConfig.ToOptions()...)
+	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
 
 	// Get the LiveHandler for shutdown control
 	handler := tmpl.Handle(state)
