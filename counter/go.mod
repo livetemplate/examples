@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/gorilla/websocket v1.5.3
-	github.com/livetemplate/livetemplate v0.1.1
+	github.com/livetemplate/livetemplate v0.3.0
 	github.com/livetemplate/lvt v0.0.0-20251103195948-fbcd6dfae2d0
 )
 
@@ -33,4 +33,3 @@ require (
 	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 )
-

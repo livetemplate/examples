@@ -6,7 +6,7 @@ require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/livetemplate/livetemplate v0.1.1
+	github.com/livetemplate/livetemplate v0.3.0
 	github.com/livetemplate/lvt v0.0.0-20251103195948-fbcd6dfae2d0
 	modernc.org/sqlite v1.39.1
 )
@@ -37,6 +37,7 @@ require (
 	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	modernc.org/libc v1.66.10 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect

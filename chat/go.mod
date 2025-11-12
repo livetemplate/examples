@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/chromedp/chromedp v0.14.2
-	github.com/livetemplate/livetemplate v0.1.1
+	github.com/livetemplate/livetemplate v0.3.0
 )
 
 require (
@@ -30,6 +30,7 @@ require (
 	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 )
 
 // TODO: Add github.com/livetemplate/lvt v0.1.0 after it's tagged
