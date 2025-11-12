@@ -34,4 +34,3 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 )
 
-replace github.com/livetemplate/livetemplate => /Users/adnaan/code/livetemplate/livetemplate
