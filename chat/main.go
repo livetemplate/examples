@@ -148,7 +148,7 @@ func main() {
 	// Uses default AnonymousAuthenticator - each browser gets its own session (via cookie)
 	// Tabs in same browser share state
 	// Configure via LVT_* environment variables (e.g., LVT_DEV_MODE=true)
-	tmpl := livetemplate.New("chat", envConfig.ToOptions()...)
+	tmpl := livetemplate.Must(livetemplate.New("chat", envConfig.ToOptions())...)
 
 	// Mount handler
 	http.Handle("/", tmpl.Handle(state))

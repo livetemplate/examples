@@ -23,7 +23,7 @@ func (s *PageState) Change(ctx *livetemplate.ActionContext) error {
 
 func main() {
 	// Create template
-	tmpl := livetemplate.New("welcome")
+	tmpl := livetemplate.Must(livetemplate.New("welcome"))
 
 	// Parse template inline
 	if _, err := tmpl.Parse(`
