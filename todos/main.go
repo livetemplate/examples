@@ -374,7 +374,7 @@ func main() {
 
 	// Create template with environment-based configuration
 	// Configuration is loaded from LVT_* environment variables
-	tmpl := livetemplate.Must(livetemplate.New("todos", envConfig.ToOptions())...)
+	tmpl := livetemplate.Must(livetemplate.New("todos", envConfig.ToOptions()...))
 
 	// Mount handler - auto-handles initial page, WebSocket, and HTTP actions
 	http.Handle("/", tmpl.Handle(state))

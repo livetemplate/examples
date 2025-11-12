@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// Create template
-	tmpl := livetemplate.Must(livetemplate.New("app", envConfig.ToOptions())...)
+	tmpl := livetemplate.Must(livetemplate.New("app", envConfig.ToOptions()...))
 	liveHandler := tmpl.Handle(state)
 
 	// Setup HTTP routes with trace middleware
