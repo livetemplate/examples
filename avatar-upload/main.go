@@ -30,7 +30,7 @@ func (s *ProfileStore) AllowUploads() map[string]livetemplate.UploadConfig {
 			Accept:      []string{"image/jpeg", "image/png", "image/gif"},
 			MaxFileSize: 5 * 1024 * 1024, // 5MB
 			MaxEntries:  1,                // Single file
-			AutoUpload:  false,            // Manual upload on form submit
+			AutoUpload:  false,            // Upload on form submit
 			ChunkSize:   256 * 1024,       // 256KB chunks
 		},
 	}
@@ -81,10 +81,20 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
+// Change implements the Store interface
+func (s *ProfileStore) Change(ctx *livetemplate.ActionContext) error {
+	switch ctx.Action {
+	case "UpdateProfile":
+		return s.UpdateProfile(ctx.Ctx, ctx.Data)
+	default:
+		return fmt.Errorf("unknown action: %s", ctx.Action)
+	}
+}
+
 // UpdateProfile handles profile update form submission
-func (s *ProfileStore) UpdateProfile(ctx context.Context, data livetemplate.ActionData) error {
-	name, _ := data.String("name")
-	email, _ := data.String("email")
+func (s *ProfileStore) UpdateProfile(ctx context.Context, data *livetemplate.ActionData) error {
+	name, _ := data.GetStringOk("name")
+	email, _ := data.GetStringOk("email")
 
 	s.Name = name
 	s.Email = email
@@ -102,9 +112,9 @@ func main() {
 
 	// Create LiveTemplate instance
 	lt := livetemplate.Must(livetemplate.New("avatar-upload",
-		livetemplate.WithTemplateFS(templates),
+		livetemplate.WithParseFiles("avatar-upload.tmpl"),
 		livetemplate.WithDevMode(true),
-	)
+	))
 
 	// Create initial store
 	store := &ProfileStore{
@@ -113,10 +123,13 @@ func main() {
 	}
 
 	// Create handler with upload support
-	handler := lt.NewHandler(store)
+	handler := lt.Handle(store)
 
 	// Serve static files (for uploaded avatars)
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+
+	// Serve client library
+	http.Handle("/client/", http.StripPrefix("/client/", http.FileServer(http.Dir("../../client/dist"))))
 
 	// Mount the LiveTemplate handler
 	http.Handle("/", handler)
