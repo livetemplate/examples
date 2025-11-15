@@ -97,9 +97,15 @@ func TestAvatarUploadE2E(t *testing.T) {
 			// Upload the file
 			chromedp.SetUploadFiles(`input[type="file"]`, []string{testImagePath}, chromedp.ByQuery),
 
+			// Wait for the upload entry to appear (indicates upload_start response received)
+			// This shows the file is ready but not yet uploading (progress at 0%)
+			chromedp.WaitVisible(`.upload-entry`, chromedp.ByQuery),
+
+			// Click the "Save Profile" button to trigger upload (AutoUpload is false)
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+
 			// Wait for the "Upload complete!" message to appear LIVE (not after reload!)
 			// This is the key test - it should appear immediately via WebSocket update
-			// Increased timeout for file processing
 			chromedp.WaitVisible(`.success`, chromedp.ByQuery),
 
 			// Get the success message text to verify it's correct
@@ -135,6 +141,12 @@ func TestAvatarUploadE2E(t *testing.T) {
 
 			// Upload the file
 			chromedp.SetUploadFiles(`input[type="file"]`, []string{testImagePath}, chromedp.ByQuery),
+
+			// Wait for the upload entry to appear (indicates upload_start response received)
+			chromedp.WaitVisible(`.upload-entry`, chromedp.ByQuery),
+
+			// Click the "Save Profile" button to trigger upload (AutoUpload is false)
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 
 			// Wait for upload to complete
 			chromedp.WaitVisible(`.success`, chromedp.ByQuery),

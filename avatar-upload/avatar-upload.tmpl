@@ -284,17 +284,6 @@
 
     <script src="/client/livetemplate-client.browser.js"></script>
     <script>
-        // Initialize LiveTemplate client
-        const client = new LiveTemplateClient.LiveTemplateClient({
-            debug: true
-        });
-
-        client.connect().then(() => {
-            console.log('✅ LiveTemplate client connected');
-        }).catch(err => {
-            console.error('❌ Failed to connect:', err);
-        });
-
         // Listen for upload events
         document.addEventListener('DOMContentLoaded', () => {
             const wrapper = document.querySelector('[data-lvt-id]');
