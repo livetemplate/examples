@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -93,9 +94,49 @@ func TestAvatarUploadE2E(t *testing.T) {
 
 		var successText string
 
+		// Read the test image file
+		imageData, err := os.ReadFile(testImagePath)
+		if err != nil {
+			t.Fatalf("Failed to read test image: %v", err)
+		}
+
 		err = chromedp.Run(ctx,
-			// Upload the file
-			chromedp.SetUploadFiles(`input[type="file"]`, []string{testImagePath}, chromedp.ByQuery),
+			// Wait for the file input to be ready
+			chromedp.WaitReady(`input[type="file"][lvt-upload="avatar"]`, chromedp.ByQuery),
+
+			// Simulate file selection by creating a File object and triggering the upload handler directly
+			// chromedp.SetUploadFiles doesn't populate input.files, so we need to do this programmatically
+			chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					// Create a File object from base64 data
+					const base64Data = '%s';
+					const binaryData = atob(base64Data);
+					const bytes = new Uint8Array(binaryData.length);
+					for (let i = 0; i < binaryData.length; i++) {
+						bytes[i] = binaryData.charCodeAt(i);
+					}
+					const blob = new Blob([bytes], { type: 'image/png' });
+					const file = new File([blob], 'test-avatar.png', { type: 'image/png' });
+
+					// Get the file input and create a FileList-like object
+					const input = document.querySelector('input[type="file"][lvt-upload="avatar"]');
+					if (!input) {
+						console.error('[TEST] File input not found!');
+						return;
+					}
+					const dataTransfer = new DataTransfer();
+					dataTransfer.items.add(file);
+					input.files = dataTransfer.files;
+
+					// Trigger the change event
+					input.dispatchEvent(new Event('change', { bubbles: true }));
+
+					console.log('[TEST] File upload simulated, files:', input.files.length);
+				})();
+			`, base64.StdEncoding.EncodeToString(imageData)), nil),
+
+			// Small delay to let the event propagate
+			chromedp.Sleep(500*time.Millisecond),
 
 			// Wait for the upload entry to appear (indicates upload_start response received)
 			// This shows the file is ready but not yet uploading (progress at 0%)
@@ -134,13 +175,47 @@ func TestAvatarUploadE2E(t *testing.T) {
 
 		var progressHTML string
 
+		// Read the test image file
+		imageData, err := os.ReadFile(testImagePath)
+		if err != nil {
+			t.Fatalf("Failed to read test image: %v", err)
+		}
+
 		err = chromedp.Run(ctx,
 			// Clear any previous uploads by reloading
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
 			e2etest.WaitForWebSocketReady(3*time.Second),
+			chromedp.WaitReady(`input[type="file"][lvt-upload="avatar"]`, chromedp.ByQuery),
 
-			// Upload the file
-			chromedp.SetUploadFiles(`input[type="file"]`, []string{testImagePath}, chromedp.ByQuery),
+			// Simulate file selection programmatically
+			chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					const base64Data = '%s';
+					const binaryData = atob(base64Data);
+					const bytes = new Uint8Array(binaryData.length);
+					for (let i = 0; i < binaryData.length; i++) {
+						bytes[i] = binaryData.charCodeAt(i);
+					}
+					const blob = new Blob([bytes], { type: 'image/png' });
+					const file = new File([blob], 'test-avatar.png', { type: 'image/png' });
+
+					const input = document.querySelector('input[type="file"][lvt-upload="avatar"]');
+					if (!input) {
+						console.error('[TEST] File input not found!');
+						return;
+					}
+					const dataTransfer = new DataTransfer();
+					dataTransfer.items.add(file);
+					input.files = dataTransfer.files;
+
+					input.dispatchEvent(new Event('change', { bubbles: true }));
+
+					console.log('[TEST] File upload simulated, files:', input.files.length);
+				})();
+			`, base64.StdEncoding.EncodeToString(imageData)), nil),
+
+			// Small delay to let the event propagate
+			chromedp.Sleep(500*time.Millisecond),
 
 			// Wait for the upload entry to appear (indicates upload_start response received)
 			chromedp.WaitVisible(`.upload-entry`, chromedp.ByQuery),
