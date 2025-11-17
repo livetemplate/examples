@@ -168,6 +168,16 @@
             margin-top: 5px;
         }
 
+        .uploading {
+            color: #667eea;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .upload-status {
+            min-height: 20px;
+        }
+
         button {
             width: 100%;
             padding: 14px;
@@ -261,11 +271,15 @@
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: {{.Progress}}%"></div>
                         </div>
+                        <div class="upload-status">
                         {{if .Error}}
                             <div class="error">❌ {{.Error}}</div>
                         {{else if .Done}}
                             <div class="success">✅ Upload complete!</div>
+                        {{else}}
+                            <div class="uploading">⏳ Uploading...</div>
                         {{end}}
+                        </div>
                     </div>
                 {{end}}
 

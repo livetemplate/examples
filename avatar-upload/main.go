@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"fmt"
 	"log"
@@ -23,23 +22,50 @@ type ProfileStore struct {
 	AvatarURL  string
 }
 
-// AllowUploads configures avatar upload
-func (s *ProfileStore) AllowUploads() map[string]livetemplate.UploadConfig {
-	return map[string]livetemplate.UploadConfig{
-		"avatar": {
-			Accept:      []string{"image/jpeg", "image/png", "image/gif"},
-			MaxFileSize: 5 * 1024 * 1024, // 5MB
-			MaxEntries:  1,                // Single file
-			AutoUpload:  false,            // Upload on form submit
-			ChunkSize:   256 * 1024,       // 256KB chunks
-		},
+// Change implements the Store interface
+func (s *ProfileStore) Change(ctx *livetemplate.ActionContext) error {
+	log.Printf("DEBUG: Change called with action: %s", ctx.Action)
+	switch ctx.Action {
+	case "UpdateProfile":
+		return s.UpdateProfile(ctx)
+	case "upload:avatar:complete":
+		// Auto-triggered when avatar upload completes
+		log.Printf("DEBUG: Processing auto-triggered upload")
+		return s.ProcessAvatarUpload(ctx)
+	default:
+		return fmt.Errorf("unknown action: %s", ctx.Action)
 	}
 }
 
-// ConsumeUpload processes uploaded avatar
-func (s *ProfileStore) ConsumeUpload(ctx context.Context, name string, entries []*livetemplate.UploadEntry) error {
-	if name != "avatar" {
-		return nil
+// UpdateProfile handles profile update form submission
+func (s *ProfileStore) UpdateProfile(ctx *livetemplate.ActionContext) error {
+	name, _ := ctx.Data.GetStringOk("name")
+	email, _ := ctx.Data.GetStringOk("email")
+
+	s.Name = name
+	s.Email = email
+
+	// Also process avatar if it was uploaded with the form
+	if ctx.HasUploads("avatar") {
+		if err := s.ProcessAvatarUpload(ctx); err != nil {
+			return err
+		}
+	}
+
+	log.Printf("Profile updated: name=%s, email=%s", s.Name, s.Email)
+	return nil
+}
+
+// ProcessAvatarUpload handles avatar upload processing
+// Called either automatically when upload completes (upload:avatar:complete action)
+// or during explicit form submission (UpdateProfile action)
+func (s *ProfileStore) ProcessAvatarUpload(ctx *livetemplate.ActionContext) error {
+	// Get completed uploads from ActionContext
+	uploads := ctx.GetCompletedUploads("avatar")
+	log.Printf("DEBUG: ProcessAvatarUpload called, found %d completed uploads", len(uploads))
+	if len(uploads) == 0 {
+		log.Printf("DEBUG: No completed uploads found")
+		return nil // No uploads to process
 	}
 
 	// Create uploads directory if it doesn't exist
@@ -48,13 +74,22 @@ func (s *ProfileStore) ConsumeUpload(ctx context.Context, name string, entries [
 		return fmt.Errorf("failed to create uploads directory: %w", err)
 	}
 
-	for _, entry := range entries {
+	for _, entry := range uploads {
+		log.Printf("DEBUG: Processing entry %s, TempPath: %s, exists: %v", entry.ID, entry.TempPath, fileExists(entry.TempPath))
+
+		// Check if temp file exists (may have been processed already by auto-trigger)
+		if !fileExists(entry.TempPath) {
+			log.Printf("DEBUG: Temp file already processed for entry %s, skipping", entry.ID)
+			continue
+		}
+
 		// Generate permanent filename
 		ext := filepath.Ext(entry.ClientName)
 		permanentPath := filepath.Join(uploadsDir, fmt.Sprintf("avatar-%s%s", entry.ID, ext))
 
 		// Move from temp to permanent location
 		if err := os.Rename(entry.TempPath, permanentPath); err != nil {
+			log.Printf("DEBUG: Rename failed: %v, trying copy", err)
 			// If rename fails (different filesystem), try copy
 			if err := copyFile(entry.TempPath, permanentPath); err != nil {
 				return fmt.Errorf("failed to save avatar: %w", err)
@@ -81,26 +116,10 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
-// Change implements the Store interface
-func (s *ProfileStore) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	case "UpdateProfile":
-		return s.UpdateProfile(ctx.Ctx, ctx.Data)
-	default:
-		return fmt.Errorf("unknown action: %s", ctx.Action)
-	}
-}
-
-// UpdateProfile handles profile update form submission
-func (s *ProfileStore) UpdateProfile(ctx context.Context, data *livetemplate.ActionData) error {
-	name, _ := data.GetStringOk("name")
-	email, _ := data.GetStringOk("email")
-
-	s.Name = name
-	s.Email = email
-
-	log.Printf("Profile updated: name=%s, email=%s", s.Name, s.Email)
-	return nil
+// fileExists checks if a file exists
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 func main() {
@@ -110,10 +129,18 @@ func main() {
 		port = "8080"
 	}
 
-	// Create LiveTemplate instance
+	// Create LiveTemplate instance with upload configuration
 	lt := livetemplate.Must(livetemplate.New("avatar-upload",
 		livetemplate.WithParseFiles("avatar-upload.tmpl"),
 		livetemplate.WithDevMode(true),
+		// Configure upload using WithUpload option
+		livetemplate.WithUpload("avatar", livetemplate.UploadConfig{
+			Accept:      []string{"image/jpeg", "image/png", "image/gif"},
+			MaxFileSize: 5 * 1024 * 1024, // 5MB
+			MaxEntries:  1,                // Single file
+			AutoUpload:  false,            // Upload on form submit
+			ChunkSize:   256 * 1024,       // 256KB chunks
+		}),
 	))
 
 	// Create initial store
@@ -122,7 +149,7 @@ func main() {
 		Email: "john@example.com",
 	}
 
-	// Create handler with upload support
+	// Create handler - upload configuration is now via WithUpload option
 	handler := lt.Handle(store)
 
 	// Serve static files (for uploaded avatars)
@@ -139,6 +166,8 @@ func main() {
 	log.Printf("🚀 Avatar upload example running at http://localhost%s", addr)
 	log.Printf("📸 Upload an avatar to see the upload feature in action!")
 	log.Printf("📁 Uploaded files will be saved to ./uploads/")
+	log.Printf("✨ Upload processing happens automatically when upload completes")
+	log.Printf("   (via upload:avatar:complete action) or during form submission")
 
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal(err)
