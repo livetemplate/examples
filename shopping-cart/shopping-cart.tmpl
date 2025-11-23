@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - LiveTemplate</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .cart-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .products-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .product-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .product-card:hover {
+            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .product-image {
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .product-description {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 12px;
+            min-height: 40px;
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .product-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stock-info {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .cart-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .cart-header {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .cart-empty {
+            text-align: center;
+            color: #718096;
+            padding: 40px 0;
+            font-size: 16px;
+        }
+
+        .cart-items {
+            margin-bottom: 20px;
+        }
+
+        .cart-item {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 16px 0;
+            display: flex;
+            gap: 12px;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item-image {
+            font-size: 32px;
+        }
+
+        .cart-item-details {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .cart-item-price {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .cart-item-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .quantity-input {
+            width: 60px;
+            padding: 4px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .cart-summary {
+            background: #f7fafc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .cart-summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .cart-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .cart-actions .btn {
+            flex: 1;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .message-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .message-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 1px solid #90cdf4;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 12px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛒 Shopping Cart Demo</h1>
+            <div class="cart-badge">
+                <span>{{.ItemCount}} items</span>
+                <span>•</span>
+                <span>${{printf "%.2f" .Total}}</span>
+            </div>
+        </header>
+
+        {{if .Message}}
+        <div class="message message-{{.MessageType}}">
+            {{.Message}}
+        </div>
+        {{end}}
+
+        <div class="main-content">
+            <div class="products-section">
+                <h2>Products</h2>
+                <div class="products-grid">
+                    {{range .Products}}
+                    <div class="product-card">
+                        <div class="product-image">{{.Image}}</div>
+                        <div class="product-name">{{.Name}}</div>
+                        <div class="product-description">{{.Description}}</div>
+                        <div class="stock-info">Stock: {{.Stock}} available</div>
+                        <div class="product-footer">
+                            <div class="product-price">${{printf "%.2f" .Price}}</div>
+                            <button
+                                class="btn btn-primary"
+                                lvt-click="add_to_cart"
+                                lvt-click-payload='{"product_id": "{{.ID}}"}'
+                                {{if lt .Stock 1}}disabled{{end}}>
+                                {{if lt .Stock 1}}Out of Stock{{else}}Add to Cart{{end}}
+                            </button>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <div class="cart-section">
+                <div class="cart-header">Your Cart</div>
+
+                {{if eq (len .Cart) 0}}
+                <div class="cart-empty">
+                    Your cart is empty<br>
+                    Add some products to get started!
+                </div>
+                {{else}}
+                <div class="cart-items">
+                    {{range .GetCartItems}}
+                    <div class="cart-item">
+                        <div class="cart-item-image">{{.Product.Image}}</div>
+                        <div class="cart-item-details">
+                            <div class="cart-item-name">{{.Product.Name}}</div>
+                            <div class="cart-item-price">${{printf "%.2f" .Product.Price}} each</div>
+                            <div class="cart-item-controls">
+                                <input
+                                    type="number"
+                                    class="quantity-input"
+                                    value="{{.Quantity}}"
+                                    min="1"
+                                    max="{{.Product.Stock}}"
+                                    lvt-change="update_quantity"
+                                    lvt-change-payload='{"product_id": "{{.Product.ID}}", "quantity": parseInt(this.value)}'>
+                                <button
+                                    class="btn btn-danger btn-small"
+                                    lvt-click="remove_from_cart"
+                                    lvt-click-payload='{"product_id": "{{.Product.ID}}"}'>
+                                    Remove
+                                </button>
+                            </div>
+                            <div class="cart-item-price" style="margin-top: 8px; font-size: 14px;">
+                                Subtotal: ${{printf "%.2f" .Subtotal}}
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+
+                <div class="cart-summary">
+                    <div class="cart-summary-row">
+                        <span>Items:</span>
+                        <span>{{.ItemCount}}</span>
+                    </div>
+                    <div class="cart-total">
+                        <span>Total:</span>
+                        <span>${{printf "%.2f" .Total}}</span>
+                    </div>
+                </div>
+
+                <div class="cart-actions">
+                    <button class="btn btn-secondary" lvt-click="clear_cart">Clear Cart</button>
+                    <button class="btn btn-primary" lvt-click="checkout">Checkout</button>
+                </div>
+                {{end}}
+
+                <div class="last-updated">Last updated: {{.LastUpdated}}</div>
+            </div>
+        </div>
+    </div>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>

@@ -61,7 +61,29 @@ go run main.go
 
 ---
 
-### 4. Graceful Shutdown
+### 4. Shopping Cart - E-commerce Patterns
+**Directory**: `shopping-cart/`
+
+Complete shopping cart with product catalog, cart management, and real-time calculations.
+
+```bash
+cd shopping-cart
+go run main.go
+# Visit http://localhost:8080
+```
+
+**Features**:
+- Product catalog browsing
+- Add/remove items from cart
+- Quantity management
+- Stock validation
+- Real-time price calculations
+- User feedback messages
+- E2E tests with Chromedp
+
+---
+
+### 5. Graceful Shutdown
 **Directory**: `graceful-shutdown/`
 
 Demonstrates proper server shutdown handling.
@@ -79,7 +101,7 @@ go run main.go
 
 ---
 
-### 5. Observability
+### 6. Observability
 **Directory**: `observability/`
 
 Logging, metrics, and tracing example.
@@ -97,7 +119,7 @@ go run main.go
 
 ---
 
-### 6. Testing
+### 7. Testing
 **Directory**: `testing/01_basic/`
 
 E2E testing patterns with Chromedp.
@@ -115,7 +137,7 @@ go test -v
 
 ---
 
-### 7. Production
+### 8. Production
 **Directory**: `production/single-host/`
 
 Production deployment configuration.
@@ -133,7 +155,7 @@ go run main.go
 
 ---
 
-### 8. Trace Correlation
+### 9. Trace Correlation
 **Directory**: `trace-correlation/`
 
 Request tracing and correlation IDs.
