@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
-	"github.com/livetemplate/livetemplate/internal/observe"
 )
 
 // AppState represents the application state
@@ -37,6 +37,37 @@ func (s *AppState) Change(ctx *livetemplate.ActionContext) error {
 
 func formatTime() string {
 	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+// Context key for trace ID
+type contextKey string
+
+const traceIDKey contextKey = "trace_id"
+
+// TraceMiddleware adds a trace ID to the request context
+func TraceMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Generate or extract trace ID
+		traceID := r.Header.Get("X-Trace-ID")
+		if traceID == "" {
+			traceID = uuid.New().String()
+		}
+
+		// Add trace ID to response header
+		w.Header().Set("X-Trace-ID", traceID)
+
+		// Add trace ID to context
+		ctx := context.WithValue(r.Context(), traceIDKey, traceID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// LoggerWithTraceID returns a logger with trace ID from context
+func LoggerWithTraceID(logger *slog.Logger, ctx context.Context) *slog.Logger {
+	if traceID, ok := ctx.Value(traceIDKey).(string); ok {
+		return logger.With("trace_id", traceID)
+	}
+	return logger
 }
 
 func main() {
@@ -77,7 +108,9 @@ func main() {
 		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
 	}
 
-	logger := observe.NewLogger(level, handler)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	logger.Info("Starting production server",
 		"log_level", envConfig.LogLevel,
 		"dev_mode", envConfig.DevMode,
@@ -100,8 +133,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Main application handler with trace correlation
-	mux.Handle("/", observe.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		traceLogger := observe.LoggerWithTraceID(logger, r.Context())
+	mux.Handle("/", TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		traceLogger := LoggerWithTraceID(logger, r.Context())
 		traceLogger.Info("Handling request",
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -120,8 +153,8 @@ func main() {
 	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
 
 	// Health check endpoint
-	mux.Handle("/health", observe.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		traceLogger := observe.LoggerWithTraceID(logger, r.Context())
+	mux.Handle("/health", TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		traceLogger := LoggerWithTraceID(logger, r.Context())
 		traceLogger.Debug("Health check",
 			"status", "healthy",
 		)
@@ -132,7 +165,7 @@ func main() {
 	})))
 
 	// Readiness check endpoint (for Kubernetes)
-	mux.Handle("/ready", observe.TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/ready", TraceMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// In a real app, check database connectivity, external services, etc.
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
