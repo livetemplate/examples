@@ -9,7 +9,6 @@ import (
 
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
-	"github.com/livetemplate/livetemplate/internal/observe"
 )
 
 type CounterState struct {
@@ -90,19 +89,18 @@ func main() {
 		})
 	}
 
-	logger := observe.NewLogger(level, handler)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	logger.Info("LiveTemplate Counter Server starting with observability enabled",
 		"log_level", envConfig.LogLevel,
 		"metrics_enabled", envConfig.MetricsEnabled,
 		"dev_mode", envConfig.DevMode)
 
-	// Setup operational metrics
-	metrics := observe.NewMetrics(logger.Logger)
-
-	// Start periodic metrics emission in background (every 30 seconds)
-	// Metrics can be disabled with LVT_METRICS_ENABLED=false
+	// Note: For production metrics, integrate with your preferred metrics system
+	// (Prometheus, StatsD, DataDog, etc.) by instrumenting the Change() method
 	if envConfig.MetricsEnabled {
-		go metrics.EmitPeriodically(30 * time.Second)
+		logger.Info("Metrics collection enabled - integrate with your metrics backend")
 	}
 
 	// ============================================================
@@ -138,10 +136,8 @@ func main() {
 	}
 
 	logger.Info("Server starting", "port", port, "url", "http://localhost:"+port)
-	logger.Info("Metrics will be emitted every 30 seconds")
 	logger.Info("Try these URLs:",
 		"counter", "http://localhost:"+port,
-		"health", "http://localhost:"+port+"/health",
 	)
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
