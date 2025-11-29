@@ -52,8 +52,10 @@ func TestCounterE2E(t *testing.T) {
 	}()
 
 	// Start Docker Chrome container
-	chromeCmd := e2etest.StartDockerChrome(t, debugPort)
-	defer e2etest.StopDockerChrome(t, chromeCmd, debugPort)
+	if err := e2etest.StartDockerChrome(t, debugPort); err != nil {
+		t.Fatalf("Failed to start Chrome: %v", err)
+	}
+	defer e2etest.StopDockerChrome(t, debugPort)
 
 	// Connect to Docker Chrome via remote debugging
 	chromeURL := fmt.Sprintf("http://localhost:%d", debugPort)
