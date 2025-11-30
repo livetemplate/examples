@@ -14,7 +14,7 @@ import (
 )
 
 // AuthState represents the authentication state for a session.
-// It implements BroadcastAware to receive WebSocket connection events.
+// It implements SessionAware to receive WebSocket connection events.
 type AuthState struct {
 	Username      string
 	IsLoggedIn    bool
@@ -23,8 +23,8 @@ type AuthState struct {
 	LoginTime     time.Time // When user logged in
 
 	// For server-initiated updates
-	broadcaster livetemplate.Broadcaster
-	mu          sync.Mutex
+	session livetemplate.Session
+	mu      sync.Mutex
 }
 
 // Change handles authentication actions
@@ -34,6 +34,8 @@ func (s *AuthState) Change(ctx *livetemplate.ActionContext) error {
 		return s.handleLogin(ctx)
 	case "logout":
 		return s.handleLogout(ctx)
+	case "serverWelcome":
+		return s.handleServerWelcome(ctx)
 	default:
 		return fmt.Errorf("unknown action: %s", ctx.Action)
 	}
@@ -98,11 +100,21 @@ func (s *AuthState) handleLogout(ctx *livetemplate.ActionContext) error {
 	return ctx.Redirect("/", http.StatusSeeOther)
 }
 
-// OnConnect is called when a WebSocket connection is established.
-// This implements livetemplate.BroadcastAware interface.
-func (s *AuthState) OnConnect(ctx context.Context, b livetemplate.Broadcaster) error {
+// handleServerWelcome handles server-initiated welcome messages.
+// This is triggered by TriggerAction from sendWelcomeMessage.
+func (s *AuthState) handleServerWelcome(ctx *livetemplate.ActionContext) error {
+	message := ctx.GetString("message")
 	s.mu.Lock()
-	s.broadcaster = b
+	s.ServerMessage = message
+	s.mu.Unlock()
+	return nil
+}
+
+// OnConnect is called when a WebSocket connection is established.
+// This implements livetemplate.SessionAware interface.
+func (s *AuthState) OnConnect(ctx context.Context, session livetemplate.Session) error {
+	s.mu.Lock()
+	s.session = session
 	isLoggedIn := s.IsLoggedIn
 	username := s.Username
 	s.mu.Unlock()
@@ -119,13 +131,13 @@ func (s *AuthState) OnConnect(ctx context.Context, b livetemplate.Broadcaster) e
 }
 
 // OnDisconnect is called when a WebSocket connection is closed.
-// This implements livetemplate.BroadcastAware interface.
+// This implements livetemplate.SessionAware interface.
 func (s *AuthState) OnDisconnect() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	log.Printf("WebSocket disconnected (user: %s)", s.Username)
-	s.broadcaster = nil
+	s.session = nil
 }
 
 // sendWelcomeMessage sends a server-initiated welcome message via WebSocket.
@@ -135,21 +147,24 @@ func (s *AuthState) sendWelcomeMessage() {
 	time.Sleep(500 * time.Millisecond)
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	session := s.session
+	isLoggedIn := s.IsLoggedIn
+	username := s.Username
+	s.mu.Unlock()
 
-	if s.broadcaster == nil || !s.IsLoggedIn {
+	if session == nil || !isLoggedIn {
 		return
 	}
 
-	// Update state with welcome message from server
-	s.ServerMessage = fmt.Sprintf("Welcome %s! This message was pushed from the server at %s",
-		s.Username, time.Now().Format("15:04:05"))
-
-	// Push update to client via WebSocket
-	if err := s.broadcaster.Send(); err != nil {
+	// Trigger server-initiated action that will call Change() with the welcome data
+	// This updates the state and sends the update to all user's connections
+	if err := session.TriggerAction("serverWelcome", map[string]interface{}{
+		"message": fmt.Sprintf("Welcome %s! This message was pushed from the server at %s",
+			username, time.Now().Format("15:04:05")),
+	}); err != nil {
 		log.Printf("Failed to send welcome message: %v", err)
 	} else {
-		log.Printf("Server-initiated welcome message sent to %s", s.Username)
+		log.Printf("Server-initiated welcome message sent to %s", username)
 	}
 }
 
