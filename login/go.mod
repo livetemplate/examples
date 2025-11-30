@@ -52,8 +52,8 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 )
 
-// Use local worktree version with auth features
-replace github.com/livetemplate/livetemplate => ../../livetemplate/.worktrees/auth-v0.5
+// Use local livetemplate with Session API
+replace github.com/livetemplate/livetemplate => ../../livetemplate
 
 // Use local lvt for testing utilities
 replace github.com/livetemplate/lvt => ../../lvt
