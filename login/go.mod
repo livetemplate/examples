@@ -3,7 +3,7 @@ module login
 go 1.25
 
 require (
-	github.com/livetemplate/livetemplate v0.4.1
+	github.com/livetemplate/livetemplate v0.5.1
 	github.com/livetemplate/lvt v0.0.0-20251103195948-fbcd6dfae2d0
 )
 
@@ -52,7 +52,7 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 )
 
-// Use local livetemplate with Session API
+// Use local livetemplate with Session and HTTP APIs (v0.5.1+)
 replace github.com/livetemplate/livetemplate => ../../livetemplate
 
 // Use local lvt for testing utilities
