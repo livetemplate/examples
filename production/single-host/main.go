@@ -22,15 +22,23 @@ type AppState struct {
 	LastUpdated string `json:"last_updated"`
 }
 
-func (s *AppState) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	case "increment":
-		s.Counter++
-	case "decrement":
-		s.Counter--
-	case "reset":
-		s.Counter = 0
-	}
+// Increment handles the "increment" action
+func (s *AppState) Increment(_ *livetemplate.ActionContext) error {
+	s.Counter++
+	s.LastUpdated = formatTime()
+	return nil
+}
+
+// Decrement handles the "decrement" action
+func (s *AppState) Decrement(_ *livetemplate.ActionContext) error {
+	s.Counter--
+	s.LastUpdated = formatTime()
+	return nil
+}
+
+// Reset handles the "reset" action
+func (s *AppState) Reset(_ *livetemplate.ActionContext) error {
+	s.Counter = 0
 	s.LastUpdated = formatTime()
 	return nil
 }

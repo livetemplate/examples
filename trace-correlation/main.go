@@ -19,26 +19,27 @@ type CounterState struct {
 	LastUpdated string `json:"last_updated"`
 }
 
-func (s *CounterState) Change(ctx *livetemplate.ActionContext) error {
-	// Note: Trace IDs are logged automatically at the HTTP handler level
-	// See the TraceMiddleware wrapper below for automatic correlation
+// Increment handles the "increment" action
+func (s *CounterState) Increment(_ *livetemplate.ActionContext) error {
+	s.Counter++
+	log.Printf("Counter incremented to %d", s.Counter)
+	s.LastUpdated = formatTime()
+	return nil
+}
 
-	switch ctx.Action {
-	case "increment":
-		s.Counter++
-		log.Printf("Counter incremented to %d", s.Counter)
-	case "decrement":
-		s.Counter--
-		log.Printf("Counter decremented to %d", s.Counter)
-	case "reset":
-		oldValue := s.Counter
-		s.Counter = 0
-		log.Printf("Counter reset from %d to 0", oldValue)
-	default:
-		log.Printf("Unknown action: %s", ctx.Action)
-		return nil
-	}
+// Decrement handles the "decrement" action
+func (s *CounterState) Decrement(_ *livetemplate.ActionContext) error {
+	s.Counter--
+	log.Printf("Counter decremented to %d", s.Counter)
+	s.LastUpdated = formatTime()
+	return nil
+}
 
+// Reset handles the "reset" action
+func (s *CounterState) Reset(_ *livetemplate.ActionContext) error {
+	oldValue := s.Counter
+	s.Counter = 0
+	log.Printf("Counter reset from %d to 0", oldValue)
 	s.LastUpdated = formatTime()
 	return nil
 }

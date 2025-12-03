@@ -17,19 +17,23 @@ type CounterState struct {
 	LastUpdated string `json:"last_updated"`
 }
 
-func (s *CounterState) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	case "increment":
-		s.Counter++
-	case "decrement":
-		s.Counter--
-	case "reset":
-		s.Counter = 0
-	default:
-		log.Printf("Unknown action: %s", ctx.Action)
-		return nil
-	}
+// Increment handles the "increment" action
+func (s *CounterState) Increment(_ *livetemplate.ActionContext) error {
+	s.Counter++
+	s.LastUpdated = formatTime()
+	return nil
+}
 
+// Decrement handles the "decrement" action
+func (s *CounterState) Decrement(_ *livetemplate.ActionContext) error {
+	s.Counter--
+	s.LastUpdated = formatTime()
+	return nil
+}
+
+// Reset handles the "reset" action
+func (s *CounterState) Reset(_ *livetemplate.ActionContext) error {
+	s.Counter = 0
 	s.LastUpdated = formatTime()
 	return nil
 }

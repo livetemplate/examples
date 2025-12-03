@@ -32,75 +32,81 @@ type User struct {
 	IsOnline bool
 }
 
-func (s *ChatState) Change(ctx *livetemplate.ActionContext) error {
+// Send handles the "send" action to send a chat message
+func (s *ChatState) Send(ctx *livetemplate.ActionContext) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch ctx.Action {
-	case "send":
-		var data struct {
-			Message string `json:"message"`
-		}
+	var data struct {
+		Message string `json:"message"`
+	}
 
-		if err := ctx.Bind(&data); err != nil {
-			log.Printf("Failed to bind message data: %v", err)
-			return nil
-		}
-
-		if data.Message == "" {
-			return nil
-		}
-
-		s.TotalMessages++
-		msg := Message{
-			ID:        s.TotalMessages,
-			Username:  s.CurrentUser,
-			Text:      data.Message,
-			Timestamp: time.Now().Format("15:04:05"),
-		}
-
-		s.Messages = append(s.Messages, msg)
-
-		// Auto-broadcast handles syncing to other tabs automatically
-		return nil
-
-	case "join":
-		var data struct {
-			Username string `json:"username"`
-		}
-
-		if err := ctx.Bind(&data); err != nil {
-			log.Printf("Failed to bind join data: %v", err)
-			return nil
-		}
-
-		if data.Username == "" {
-			return nil
-		}
-
-		s.CurrentUser = data.Username
-
-		if _, exists := s.Users[data.Username]; !exists {
-			s.Users[data.Username] = &User{
-				Username: data.Username,
-				JoinedAt: time.Now(),
-				IsOnline: true,
-			}
-			s.updateOnlineCount()
-		}
-
-		return nil
-
-	case "leave":
-		if s.CurrentUser != "" {
-			if user, exists := s.Users[s.CurrentUser]; exists {
-				user.IsOnline = false
-			}
-			s.updateOnlineCount()
-		}
+	if err := ctx.Bind(&data); err != nil {
+		log.Printf("Failed to bind message data: %v", err)
 		return nil
 	}
 
+	if data.Message == "" {
+		return nil
+	}
+
+	s.TotalMessages++
+	msg := Message{
+		ID:        s.TotalMessages,
+		Username:  s.CurrentUser,
+		Text:      data.Message,
+		Timestamp: time.Now().Format("15:04:05"),
+	}
+
+	s.Messages = append(s.Messages, msg)
+
+	// Auto-broadcast handles syncing to other tabs automatically
+	return nil
+}
+
+// Join handles the "join" action when a user joins the chat
+func (s *ChatState) Join(ctx *livetemplate.ActionContext) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var data struct {
+		Username string `json:"username"`
+	}
+
+	if err := ctx.Bind(&data); err != nil {
+		log.Printf("Failed to bind join data: %v", err)
+		return nil
+	}
+
+	if data.Username == "" {
+		return nil
+	}
+
+	s.CurrentUser = data.Username
+
+	if _, exists := s.Users[data.Username]; !exists {
+		s.Users[data.Username] = &User{
+			Username: data.Username,
+			JoinedAt: time.Now(),
+			IsOnline: true,
+		}
+		s.updateOnlineCount()
+	}
+
+	return nil
+}
+
+// Leave handles the "leave" action when a user leaves the chat
+func (s *ChatState) Leave(_ *livetemplate.ActionContext) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.CurrentUser != "" {
+		if user, exists := s.Users[s.CurrentUser]; exists {
+			user.IsOnline = false
+		}
+		s.updateOnlineCount()
+	}
 	return nil
 }
 

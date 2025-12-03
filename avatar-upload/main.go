@@ -22,22 +22,7 @@ type ProfileStore struct {
 	AvatarURL  string
 }
 
-// Change implements the Store interface
-func (s *ProfileStore) Change(ctx *livetemplate.ActionContext) error {
-	log.Printf("DEBUG: Change called with action: %s", ctx.Action)
-	switch ctx.Action {
-	case "UpdateProfile":
-		return s.UpdateProfile(ctx)
-	case "upload:avatar:complete":
-		// Auto-triggered when avatar upload completes
-		log.Printf("DEBUG: Processing auto-triggered upload")
-		return s.ProcessAvatarUpload(ctx)
-	default:
-		return fmt.Errorf("unknown action: %s", ctx.Action)
-	}
-}
-
-// UpdateProfile handles profile update form submission
+// UpdateProfile handles the "UpdateProfile" action for profile update form submission
 func (s *ProfileStore) UpdateProfile(ctx *livetemplate.ActionContext) error {
 	name, _ := ctx.Data.GetStringOk("name")
 	email, _ := ctx.Data.GetStringOk("email")
@@ -47,7 +32,7 @@ func (s *ProfileStore) UpdateProfile(ctx *livetemplate.ActionContext) error {
 
 	// Also process avatar if it was uploaded with the form
 	if ctx.HasUploads("avatar") {
-		if err := s.ProcessAvatarUpload(ctx); err != nil {
+		if err := s.processAvatarUpload(ctx); err != nil {
 			return err
 		}
 	}
@@ -56,10 +41,17 @@ func (s *ProfileStore) UpdateProfile(ctx *livetemplate.ActionContext) error {
 	return nil
 }
 
-// ProcessAvatarUpload handles avatar upload processing
-// Called either automatically when upload completes (upload:avatar:complete action)
+// UploadAvatarComplete handles the "upload_avatar_complete" action.
+// Auto-triggered when avatar upload completes.
+func (s *ProfileStore) UploadAvatarComplete(ctx *livetemplate.ActionContext) error {
+	log.Printf("DEBUG: Processing auto-triggered upload")
+	return s.processAvatarUpload(ctx)
+}
+
+// processAvatarUpload handles avatar upload processing
+// Called either automatically when upload completes (upload_avatar_complete action)
 // or during explicit form submission (UpdateProfile action)
-func (s *ProfileStore) ProcessAvatarUpload(ctx *livetemplate.ActionContext) error {
+func (s *ProfileStore) processAvatarUpload(ctx *livetemplate.ActionContext) error {
 	// Get completed uploads from ActionContext
 	uploads := ctx.GetCompletedUploads("avatar")
 	log.Printf("DEBUG: ProcessAvatarUpload called, found %d completed uploads", len(uploads))
@@ -167,7 +159,7 @@ func main() {
 	log.Printf("📸 Upload an avatar to see the upload feature in action!")
 	log.Printf("📁 Uploaded files will be saved to ./uploads/")
 	log.Printf("✨ Upload processing happens automatically when upload completes")
-	log.Printf("   (via upload:avatar:complete action) or during form submission")
+	log.Printf("   (via upload_avatar_complete action) or during form submission")
 
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal(err)
