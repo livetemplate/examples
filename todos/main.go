@@ -46,6 +46,22 @@ type PaginationInput struct {
 	Page int `json:"page" validate:"required,min=1"`
 }
 
+// TodoState demonstrates the Controller pattern with automatic method dispatch.
+//
+// Instead of implementing the Store interface with a Change() switch statement,
+// each action maps directly to a method:
+//
+//   - "add"             → Add(ctx)
+//   - "toggle"          → Toggle(ctx)
+//   - "delete"          → Delete(ctx)
+//   - "search"          → Search(ctx)
+//   - "sort"            → Sort(ctx)
+//   - "next_page"       → NextPage(ctx)
+//   - "prev_page"       → PrevPage(ctx)
+//   - "goto_page"       → GotoPage(ctx)
+//   - "clear_completed" → ClearCompleted(ctx)
+//
+// Actions support both snake_case (next_page) and camelCase (nextPage).
 type TodoState struct {
 	Title          string      `json:"title"`
 	Queries        *db.Queries `json:"-"` // Database queries (exported but not in JSON)
@@ -65,157 +81,145 @@ type TodoState struct {
 	NextDisabled   bool        `json:"next_disabled"`
 }
 
-func (s *TodoState) Change(ctx *livetemplate.ActionContext) error {
-	dbCtx := context.Background()
-
-	switch ctx.Action {
-	case "add":
-		var input AddInput
-		if err := ctx.BindAndValidate(&input, validate); err != nil {
-			return err
-		}
-
-		// Generate unique ID and timestamp
-		now := time.Now()
-		id := fmt.Sprintf("todo-%d", now.UnixNano())
-
-		// Insert into database
-		_, err := s.Queries.CreateTodo(dbCtx, db.CreateTodoParams{
-			ID:        id,
-			Text:      input.Text,
-			Completed: false,
-			CreatedAt: now,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create todo: %w", err)
-		}
-
-		// Reload todos from database
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "toggle":
-		var input ToggleInput
-		if err := ctx.BindAndValidate(&input, validate); err != nil {
-			return err
-		}
-
-		// Get current todo to toggle its completed status
-		todo, err := s.Queries.GetTodoByID(dbCtx, input.ID)
-		if err != nil {
-			return fmt.Errorf("failed to get todo: %w", err)
-		}
-
-		// Update in database
-		err = s.Queries.UpdateTodoCompleted(dbCtx, db.UpdateTodoCompletedParams{
-			Completed: !todo.Completed,
-			ID:        input.ID,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to update todo: %w", err)
-		}
-
-		// Reload todos from database
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "delete":
-		var input DeleteInput
-		if err := ctx.BindAndValidate(&input, validate); err != nil {
-			return err
-		}
-
-		// Delete from database
-		err := s.Queries.DeleteTodo(dbCtx, input.ID)
-		if err != nil {
-			return fmt.Errorf("failed to delete todo: %w", err)
-		}
-
-		// Reload todos from database
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "search":
-		var input SearchInput
-		if err := ctx.BindAndValidate(&input, validate); err != nil {
-			return err
-		}
-		s.SearchQuery = input.Query
-
-		// Reload todos with new search filter
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "sort":
-		var input SortInput
-		if err := ctx.BindAndValidate(&input, validate); err != nil {
-			return err
-		}
-		s.SortBy = input.SortBy
-
-		// Reload todos with new sort order
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "next_page":
-		if s.CurrentPage < s.TotalPages {
-			s.CurrentPage++
-		}
-
-		// Reload todos to update pagination
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "prev_page":
-		if s.CurrentPage > 1 {
-			s.CurrentPage--
-		}
-
-		// Reload todos to update pagination
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "goto_page":
-		var input PaginationInput
-		if err := ctx.BindAndValidate(&input, validate); err != nil {
-			return err
-		}
-		if input.Page >= 1 && input.Page <= s.TotalPages {
-			s.CurrentPage = input.Page
-		}
-
-		// Reload todos to update pagination
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	case "clear_completed":
-		// Delete all completed todos from database
-		err := s.Queries.DeleteCompletedTodos(dbCtx)
-		if err != nil {
-			return fmt.Errorf("failed to delete completed todos: %w", err)
-		}
-
-		// Reload todos from database
-		if err := s.loadTodos(dbCtx); err != nil {
-			return err
-		}
-
-	default:
-		log.Printf("Unknown action: %s", ctx.Action)
-		return nil
+// Add handles the "add" action - creates a new todo item
+func (s *TodoState) Add(ctx *livetemplate.ActionContext) error {
+	var input AddInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return err
 	}
 
-	// Update timestamp
+	// Generate unique ID and timestamp
+	now := time.Now()
+	id := fmt.Sprintf("todo-%d", now.UnixNano())
+	dbCtx := context.Background()
+
+	// Insert into database
+	_, err := s.Queries.CreateTodo(dbCtx, db.CreateTodoParams{
+		ID:        id,
+		Text:      input.Text,
+		Completed: false,
+		CreatedAt: now,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create todo: %w", err)
+	}
+
 	s.LastUpdated = formatTime()
-	return nil
+	return s.loadTodos(dbCtx)
+}
+
+// Toggle handles the "toggle" action - toggles todo completion status
+func (s *TodoState) Toggle(ctx *livetemplate.ActionContext) error {
+	var input ToggleInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return err
+	}
+
+	dbCtx := context.Background()
+
+	// Get current todo to toggle its completed status
+	todo, err := s.Queries.GetTodoByID(dbCtx, input.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get todo: %w", err)
+	}
+
+	// Update in database
+	err = s.Queries.UpdateTodoCompleted(dbCtx, db.UpdateTodoCompletedParams{
+		Completed: !todo.Completed,
+		ID:        input.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update todo: %w", err)
+	}
+
+	s.LastUpdated = formatTime()
+	return s.loadTodos(dbCtx)
+}
+
+// Delete handles the "delete" action - removes a todo item
+func (s *TodoState) Delete(ctx *livetemplate.ActionContext) error {
+	var input DeleteInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return err
+	}
+
+	dbCtx := context.Background()
+
+	// Delete from database
+	err := s.Queries.DeleteTodo(dbCtx, input.ID)
+	if err != nil {
+		return fmt.Errorf("failed to delete todo: %w", err)
+	}
+
+	s.LastUpdated = formatTime()
+	return s.loadTodos(dbCtx)
+}
+
+// Search handles the "search" action - filters todos by search query
+func (s *TodoState) Search(ctx *livetemplate.ActionContext) error {
+	var input SearchInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return err
+	}
+	s.SearchQuery = input.Query
+	s.LastUpdated = formatTime()
+	return s.loadTodos(context.Background())
+}
+
+// Sort handles the "sort" action - changes todo sort order
+func (s *TodoState) Sort(ctx *livetemplate.ActionContext) error {
+	var input SortInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return err
+	}
+	s.SortBy = input.SortBy
+	s.LastUpdated = formatTime()
+	return s.loadTodos(context.Background())
+}
+
+// NextPage handles the "next_page" action - navigates to next page
+func (s *TodoState) NextPage(ctx *livetemplate.ActionContext) error {
+	if s.CurrentPage < s.TotalPages {
+		s.CurrentPage++
+	}
+	s.LastUpdated = formatTime()
+	return s.loadTodos(context.Background())
+}
+
+// PrevPage handles the "prev_page" action - navigates to previous page
+func (s *TodoState) PrevPage(ctx *livetemplate.ActionContext) error {
+	if s.CurrentPage > 1 {
+		s.CurrentPage--
+	}
+	s.LastUpdated = formatTime()
+	return s.loadTodos(context.Background())
+}
+
+// GotoPage handles the "goto_page" action - navigates to specific page
+func (s *TodoState) GotoPage(ctx *livetemplate.ActionContext) error {
+	var input PaginationInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return err
+	}
+	if input.Page >= 1 && input.Page <= s.TotalPages {
+		s.CurrentPage = input.Page
+	}
+	s.LastUpdated = formatTime()
+	return s.loadTodos(context.Background())
+}
+
+// ClearCompleted handles the "clear_completed" action - removes all completed todos
+func (s *TodoState) ClearCompleted(ctx *livetemplate.ActionContext) error {
+	dbCtx := context.Background()
+
+	// Delete all completed todos from database
+	err := s.Queries.DeleteCompletedTodos(dbCtx)
+	if err != nil {
+		return fmt.Errorf("failed to delete completed todos: %w", err)
+	}
+
+	s.LastUpdated = formatTime()
+	return s.loadTodos(dbCtx)
 }
 
 // Init implements livetemplate.StoreInitializer

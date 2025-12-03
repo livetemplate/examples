@@ -10,25 +10,40 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
+// CounterState demonstrates the simplified Controller pattern.
+//
+// Instead of implementing the Store interface with a Change() method that
+// switches on action names, we use automatic method dispatch. Each action
+// maps directly to a method:
+//
+//   - "increment" → Increment(ctx)
+//   - "decrement" → Decrement(ctx)
+//   - "reset"     → Reset(ctx)
+//
+// Actions are matched case-insensitively and support both camelCase and snake_case.
 type CounterState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
 	LastUpdated string `json:"last_updated"`
 }
 
-func (s *CounterState) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	case "increment":
-		s.Counter++
-	case "decrement":
-		s.Counter--
-	case "reset":
-		s.Counter = 0
-	default:
-		log.Printf("Unknown action: %s", ctx.Action)
-		return nil
-	}
+// Increment handles the "increment" action
+func (s *CounterState) Increment(ctx *livetemplate.ActionContext) error {
+	s.Counter++
+	s.LastUpdated = formatTime()
+	return nil
+}
 
+// Decrement handles the "decrement" action
+func (s *CounterState) Decrement(ctx *livetemplate.ActionContext) error {
+	s.Counter--
+	s.LastUpdated = formatTime()
+	return nil
+}
+
+// Reset handles the "reset" action
+func (s *CounterState) Reset(ctx *livetemplate.ActionContext) error {
+	s.Counter = 0
 	s.LastUpdated = formatTime()
 	return nil
 }
