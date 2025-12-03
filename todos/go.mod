@@ -6,7 +6,7 @@ require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/livetemplate/livetemplate v0.4.1
+	github.com/livetemplate/livetemplate v0.5.1
 	github.com/livetemplate/lvt v0.0.0-20251130141940-9b94cde94e9d
 	modernc.org/sqlite v1.39.1
 )
