@@ -15,11 +15,7 @@ type PageState struct {
 	Count   int
 }
 
-// Change implements livetemplate.Store interface
-func (s *PageState) Change(ctx *livetemplate.ActionContext) error {
-	// No actions for this static page
-	return nil
-}
+// No action methods needed for this static page
 
 func main() {
 	// Create template (will auto-discover welcome.tmpl)

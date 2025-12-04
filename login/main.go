@@ -27,21 +27,8 @@ type AuthState struct {
 	mu      sync.Mutex
 }
 
-// Change handles authentication actions
-func (s *AuthState) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	case "login":
-		return s.handleLogin(ctx)
-	case "logout":
-		return s.handleLogout(ctx)
-	case "serverWelcome":
-		return s.handleServerWelcome(ctx)
-	default:
-		return fmt.Errorf("unknown action: %s", ctx.Action)
-	}
-}
-
-func (s *AuthState) handleLogin(ctx *livetemplate.ActionContext) error {
+// Login handles the "login" action
+func (s *AuthState) Login(ctx *livetemplate.ActionContext) error {
 	username := ctx.GetString("username")
 	password := ctx.GetString("password")
 
@@ -82,7 +69,8 @@ func (s *AuthState) handleLogin(ctx *livetemplate.ActionContext) error {
 	return ctx.Redirect("/", http.StatusSeeOther)
 }
 
-func (s *AuthState) handleLogout(ctx *livetemplate.ActionContext) error {
+// Logout handles the "logout" action
+func (s *AuthState) Logout(ctx *livetemplate.ActionContext) error {
 	s.mu.Lock()
 	s.Username = ""
 	s.IsLoggedIn = false
@@ -100,9 +88,9 @@ func (s *AuthState) handleLogout(ctx *livetemplate.ActionContext) error {
 	return ctx.Redirect("/", http.StatusSeeOther)
 }
 
-// handleServerWelcome handles server-initiated welcome messages.
+// ServerWelcome handles the "serverWelcome" action (server-initiated welcome messages).
 // This is triggered by TriggerAction from sendWelcomeMessage.
-func (s *AuthState) handleServerWelcome(ctx *livetemplate.ActionContext) error {
+func (s *AuthState) ServerWelcome(ctx *livetemplate.ActionContext) error {
 	message := ctx.GetString("message")
 	s.mu.Lock()
 	s.ServerMessage = message
