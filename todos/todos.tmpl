@@ -39,9 +39,9 @@
         <!-- Statistics -->
         <p>
           <small>
-            Total: <strong>{{ .TotalCount }}</strong> • Completed:
-            <strong>{{ .CompletedCount }}</strong> • Remaining:
-            <strong>{{ .RemainingCount }}</strong>
+            Total: <strong>{{ .View.TotalCount }}</strong> • Completed:
+            <strong>{{ .View.CompletedCount }}</strong> • Remaining:
+            <strong>{{ .View.RemainingCount }}</strong>
           </small>
         </p>
 
@@ -51,7 +51,7 @@
             type="search"
             name="query"
             placeholder="Search todos..."
-            value="{{ .SearchQuery }}"
+            value="{{ .Prefs.SearchQuery }}"
           />
         </form>
 
@@ -59,24 +59,24 @@
         <div>
           <label for="sort_by">Sort by:</label>
           <select name="sort_by" id="sort_by" lvt-change="sort">
-            <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
+            <option value="" {{ if eq .Prefs.SortBy "" }}selected{{ end }}>
               Newest First
             </option>
             <option
               value="alphabetical"
-              {{ if eq .SortBy "alphabetical" }}selected{{ end }}
+              {{ if eq .Prefs.SortBy "alphabetical" }}selected{{ end }}
             >
               Alphabetical (A-Z)
             </option>
             <option
               value="reverse_alphabetical"
-              {{ if eq .SortBy "reverse_alphabetical" }}selected{{ end }}
+              {{ if eq .Prefs.SortBy "reverse_alphabetical" }}selected{{ end }}
             >
               Alphabetical (Z-A)
             </option>
             <option
               value="oldest_first"
-              {{ if eq .SortBy "oldest_first" }}selected{{ end }}
+              {{ if eq .Prefs.SortBy "oldest_first" }}selected{{ end }}
             >
               Oldest First
             </option>
@@ -88,7 +88,7 @@
           <header><strong>Tasks</strong></header>
           <table>
             <tbody>
-              {{ range .PaginatedTodos }}
+              {{ range .View.PaginatedTodos }}
                 <tr data-key="{{ .ID }}">
                   <td>
                     <input
@@ -118,9 +118,9 @@
               {{ end }}
             </tbody>
           </table>
-          <p data-empty-state{{ if gt (len .PaginatedTodos) 0 }}hidden{{ end }}>
-            {{ if ne .SearchQuery "" }}
-              <small>No todos found matching "{{ .SearchQuery }}"</small>
+          <p data-empty-state{{ if gt (len .View.PaginatedTodos) 0 }}hidden{{ end }}>
+            {{ if ne .Prefs.SearchQuery "" }}
+              <small>No todos found matching "{{ .Prefs.SearchQuery }}"</small>
             {{ else }}
               <small>No todos yet. Add one above!</small>
             {{ end }}
@@ -130,17 +130,17 @@
           <nav
             data-pagination
             aria-label="Pagination"
-            data-visible="{{- if .ShowPagination -}}
+            data-visible="{{- if .View.ShowPagination -}}
               true
             {{- else -}}
               false
             {{- end -}}"
-            style="display: {{ if .ShowPagination }}
+            style="display: {{ if .View.ShowPagination }}
               block
             {{ else }}
               none
             {{ end }};"
-            {{ if not .ShowPagination }}hidden{{ end }}
+            {{ if not .View.ShowPagination }}hidden{{ end }}
           >
             <ul
               style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;"
@@ -148,27 +148,27 @@
               <li>
                 <button
                   lvt-click="prev_page"
-                  data-disabled="{{- if .PrevDisabled -}}
+                  data-disabled="{{- if .View.PrevDisabled -}}
                     true
                   {{- else -}}
                     false
                   {{- end -}}"
-                  aria-disabled="{{- if .PrevDisabled -}}
+                  aria-disabled="{{- if .View.PrevDisabled -}}
                     true
                   {{- else -}}
                     false
                   {{- end -}}"
-                  {{ if .PrevDisabled }}disabled{{ end }}
-                  tabindex="{{ if .PrevDisabled }}
+                  {{ if .View.PrevDisabled }}disabled{{ end }}
+                  tabindex="{{ if .View.PrevDisabled }}
                     -1
                   {{ else }}
                     0
                   {{ end }}"
-                  style="pointer-events: {{ if .PrevDisabled }}
+                  style="pointer-events: {{ if .View.PrevDisabled }}
                     none
                   {{ else }}
                     auto
-                  {{ end }}; opacity: {{ if .PrevDisabled }}
+                  {{ end }}; opacity: {{ if .View.PrevDisabled }}
                     0.6
                   {{ else }}
                     1
@@ -179,32 +179,32 @@
                 </button>
               </li>
               <li>
-                <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
+                <small>Page {{ .Prefs.CurrentPage }} of {{ .View.TotalPages }}</small>
               </li>
               <li>
                 <button
                   lvt-click="next_page"
-                  data-disabled="{{- if .NextDisabled -}}
+                  data-disabled="{{- if .View.NextDisabled -}}
                     true
                   {{- else -}}
                     false
                   {{- end -}}"
-                  aria-disabled="{{- if .NextDisabled -}}
+                  aria-disabled="{{- if .View.NextDisabled -}}
                     true
                   {{- else -}}
                     false
                   {{- end -}}"
-                  {{ if .NextDisabled }}disabled{{ end }}
-                  tabindex="{{ if .NextDisabled }}
+                  {{ if .View.NextDisabled }}disabled{{ end }}
+                  tabindex="{{ if .View.NextDisabled }}
                     -1
                   {{ else }}
                     0
                   {{ end }}"
-                  style="pointer-events: {{ if .NextDisabled }}
+                  style="pointer-events: {{ if .View.NextDisabled }}
                     none
                   {{ else }}
                     auto
-                  {{ end }}; opacity: {{ if .NextDisabled }}
+                  {{ end }}; opacity: {{ if .View.NextDisabled }}
                     0.6
                   {{ else }}
                     1
@@ -217,15 +217,15 @@
             </ul>
           </nav>
 
-          {{ if gt .CompletedCount 0 }}
+          {{ if gt .View.CompletedCount 0 }}
             <button lvt-click="clear_completed" class="secondary">
-              Clear Completed ({{ .CompletedCount }})
+              Clear Completed ({{ .View.CompletedCount }})
             </button>
           {{ end }}
         </section>
 
         <footer>
-          <small>Last updated: {{ .LastUpdated }}</small>
+          <small>Last updated: {{ .View.LastUpdated }}</small>
         </footer>
       </article>
     </main>
