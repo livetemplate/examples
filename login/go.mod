@@ -3,6 +3,7 @@ module login
 go 1.25
 
 require (
+	github.com/chromedp/chromedp v0.14.1
 	github.com/livetemplate/livetemplate v0.5.1
 	github.com/livetemplate/lvt v0.0.0-20251103195948-fbcd6dfae2d0
 )
@@ -28,7 +29,6 @@ require (
 	github.com/aws/smithy-go v1.23.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
-	github.com/chromedp/chromedp v0.14.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
@@ -52,8 +52,3 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 )
 
-// Use local livetemplate with Session and HTTP APIs (v0.5.1+)
-replace github.com/livetemplate/livetemplate => ../../livetemplate
-
-// Use local lvt for testing utilities
-replace github.com/livetemplate/lvt => ../../lvt

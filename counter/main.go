@@ -10,17 +10,19 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// CounterState demonstrates the simplified Controller pattern.
+// CounterController demonstrates the Controller+State pattern.
 //
-// Instead of implementing the Store interface with a Change() method that
-// switches on action names, we use automatic method dispatch. Each action
-// maps directly to a method:
+// The Controller is a singleton that holds dependencies (none in this simple example).
+// Action methods receive state as first parameter and return modified state:
 //
-//   - "increment" → Increment(ctx)
-//   - "decrement" → Decrement(ctx)
-//   - "reset"     → Reset(ctx)
+//   - "increment" → Increment(state, ctx) (state, error)
+//   - "decrement" → Decrement(state, ctx) (state, error)
+//   - "reset"     → Reset(state, ctx) (state, error)
 //
 // Actions are matched case-insensitively and support both camelCase and snake_case.
+type CounterController struct{}
+
+// CounterState is pure data, cloned per session.
 type CounterState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
@@ -28,24 +30,24 @@ type CounterState struct {
 }
 
 // Increment handles the "increment" action
-func (s *CounterState) Increment(ctx *livetemplate.ActionContext) error {
-	s.Counter++
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter++
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Decrement handles the "decrement" action
-func (s *CounterState) Decrement(ctx *livetemplate.ActionContext) error {
-	s.Counter--
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Decrement(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter--
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Reset handles the "reset" action
-func (s *CounterState) Reset(ctx *livetemplate.ActionContext) error {
-	s.Counter = 0
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Reset(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter = 0
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 func formatTime() string {
@@ -66,8 +68,11 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Create initial state
-	state := &CounterState{
+	// Create controller (singleton, holds dependencies)
+	controller := &CounterController{}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &CounterState{
 		Title:       "Live Counter",
 		Counter:     0,
 		LastUpdated: formatTime(),
@@ -77,8 +82,10 @@ func main() {
 	// Configuration is loaded from LVT_* environment variables
 	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
 
-	// Mount handler - auto-handles initial page, WebSocket, and HTTP actions
-	http.Handle("/", tmpl.Handle(state))
+	// Mount handler with Controller+State pattern
+	// - Controller: singleton with dependencies
+	// - State: wrapped with AsState() for per-session cloning
+	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
 	// Serve client library (development only - use CDN in production)
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
