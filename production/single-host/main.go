@@ -15,32 +15,35 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// AppState represents the application state
+// AppState represents the application state (cloned per session)
 type AppState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
 	LastUpdated string `json:"last_updated"`
 }
 
+// AppController handles application actions (singleton, holds dependencies)
+type AppController struct{}
+
 // Increment handles the "increment" action
-func (s *AppState) Increment(_ *livetemplate.ActionContext) error {
-	s.Counter++
-	s.LastUpdated = formatTime()
-	return nil
+func (c *AppController) Increment(state AppState, ctx *livetemplate.Context) (AppState, error) {
+	state.Counter++
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Decrement handles the "decrement" action
-func (s *AppState) Decrement(_ *livetemplate.ActionContext) error {
-	s.Counter--
-	s.LastUpdated = formatTime()
-	return nil
+func (c *AppController) Decrement(state AppState, ctx *livetemplate.Context) (AppState, error) {
+	state.Counter--
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Reset handles the "reset" action
-func (s *AppState) Reset(_ *livetemplate.ActionContext) error {
-	s.Counter = 0
-	s.LastUpdated = formatTime()
-	return nil
+func (c *AppController) Reset(state AppState, ctx *livetemplate.Context) (AppState, error) {
+	state.Counter = 0
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 func formatTime() string {
@@ -126,8 +129,9 @@ func main() {
 		"shutdown_timeout", envConfig.ShutdownTimeout,
 	)
 
-	// Create initial state
-	state := &AppState{
+	// Create controller and initial state
+	controller := &AppController{}
+	initialState := &AppState{
 		Title:       "Production Demo",
 		Counter:     0,
 		LastUpdated: formatTime(),
@@ -135,7 +139,7 @@ func main() {
 
 	// Create template
 	tmpl := livetemplate.Must(livetemplate.New("app", envConfig.ToOptions()...))
-	liveHandler := tmpl.Handle(state)
+	liveHandler := tmpl.Handle(controller, livetemplate.AsState(initialState))
 
 	// Setup HTTP routes with trace middleware
 	mux := http.NewServeMux()
