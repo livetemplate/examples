@@ -9,11 +9,15 @@ import (
 	lvttest "github.com/livetemplate/lvt/testing"
 )
 
+// PageState represents the page data (cloned per session)
 type PageState struct {
 	Title   string
 	Message string
 	Count   int
 }
+
+// PageController handles page actions (singleton, holds dependencies)
+type PageController struct{}
 
 // No action methods needed for this static page
 
@@ -21,15 +25,16 @@ func main() {
 	// Create template (will auto-discover welcome.tmpl)
 	tmpl := livetemplate.Must(livetemplate.New("welcome"))
 
-	// Create state
-	state := &PageState{
+	// Create controller and initial state
+	controller := &PageController{}
+	initialState := &PageState{
 		Title:   "Welcome",
 		Message: "Hello from LiveTemplate!",
 		Count:   42,
 	}
 
-	// Mount handler
-	http.Handle("/", tmpl.Handle(state))
+	// Mount handler with Controller+State pattern
+	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", lvttest.ServeClientLibrary)
