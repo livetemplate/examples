@@ -130,7 +130,7 @@ func (c *AuthController) sendWelcomeMessage(username string, session livetemplat
 	// Small delay so the page fully renders first
 	time.Sleep(500 * time.Millisecond)
 
-	// Trigger server-initiated action that will call Change() with the welcome data
+	// Trigger server-initiated action that returns modified state with the welcome data
 	// This updates the state and sends the update to all user's connections
 	if err := session.TriggerAction("serverWelcome", map[string]interface{}{
 		"message": fmt.Sprintf("Welcome %s! This message was pushed from the server at %s",
