@@ -10,32 +10,62 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
-type ChatState struct {
-	Messages      []Message
-	Users         map[string]*User
-	CurrentUser   string
-	OnlineCount   int
-	TotalMessages int
+// ChatController holds shared state (message store) with mutex protection.
+// This is a singleton that holds dependencies and shared state.
+type ChatController struct {
 	mu            sync.RWMutex
+	messages      []Message
+	users         map[string]*User
+	totalMessages int
+}
+
+// ChatState is pure data, cloned per session.
+// Contains only serializable fields - the view of the chat for this user.
+type ChatState struct {
+	Messages      []Message      `json:"messages"`
+	Users         map[string]*User `json:"users"`
+	CurrentUser   string         `json:"current_user"`
+	OnlineCount   int            `json:"online_count"`
+	TotalMessages int            `json:"total_messages"`
 }
 
 type Message struct {
-	ID        int
-	Username  string
-	Text      string
-	Timestamp string
+	ID        int    `json:"id"`
+	Username  string `json:"username"`
+	Text      string `json:"text"`
+	Timestamp string `json:"timestamp"`
 }
 
 type User struct {
-	Username string
-	JoinedAt time.Time
-	IsOnline bool
+	Username string    `json:"username"`
+	JoinedAt time.Time `json:"joined_at"`
+	IsOnline bool      `json:"is_online"`
+}
+
+// Mount is called when a new session is created - loads current messages
+func (c *ChatController) Mount(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// Copy current state to the session
+	state.Messages = make([]Message, len(c.messages))
+	copy(state.Messages, c.messages)
+
+	state.Users = make(map[string]*User)
+	for k, v := range c.users {
+		userCopy := *v
+		state.Users[k] = &userCopy
+	}
+
+	state.TotalMessages = c.totalMessages
+	state.OnlineCount = c.countOnline()
+	return state, nil
 }
 
 // Send handles the "send" action to send a chat message
-func (s *ChatState) Send(ctx *livetemplate.ActionContext) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (c *ChatController) Send(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	var data struct {
 		Message string `json:"message"`
@@ -43,31 +73,36 @@ func (s *ChatState) Send(ctx *livetemplate.ActionContext) error {
 
 	if err := ctx.Bind(&data); err != nil {
 		log.Printf("Failed to bind message data: %v", err)
-		return nil
+		return state, nil
 	}
 
 	if data.Message == "" {
-		return nil
+		return state, nil
 	}
 
-	s.TotalMessages++
+	c.totalMessages++
 	msg := Message{
-		ID:        s.TotalMessages,
-		Username:  s.CurrentUser,
+		ID:        c.totalMessages,
+		Username:  state.CurrentUser,
 		Text:      data.Message,
 		Timestamp: time.Now().Format("15:04:05"),
 	}
 
-	s.Messages = append(s.Messages, msg)
+	c.messages = append(c.messages, msg)
+
+	// Update session state
+	state.Messages = make([]Message, len(c.messages))
+	copy(state.Messages, c.messages)
+	state.TotalMessages = c.totalMessages
 
 	// Auto-broadcast handles syncing to other tabs automatically
-	return nil
+	return state, nil
 }
 
 // Join handles the "join" action when a user joins the chat
-func (s *ChatState) Join(ctx *livetemplate.ActionContext) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (c *ChatController) Join(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	var data struct {
 		Username string `json:"username"`
@@ -75,59 +110,64 @@ func (s *ChatState) Join(ctx *livetemplate.ActionContext) error {
 
 	if err := ctx.Bind(&data); err != nil {
 		log.Printf("Failed to bind join data: %v", err)
-		return nil
+		return state, nil
 	}
 
 	if data.Username == "" {
-		return nil
+		return state, nil
 	}
 
-	s.CurrentUser = data.Username
+	state.CurrentUser = data.Username
 
-	if _, exists := s.Users[data.Username]; !exists {
-		s.Users[data.Username] = &User{
+	if _, exists := c.users[data.Username]; !exists {
+		c.users[data.Username] = &User{
 			Username: data.Username,
 			JoinedAt: time.Now(),
 			IsOnline: true,
 		}
-		s.updateOnlineCount()
 	}
 
-	return nil
+	// Update session state
+	state.Users = make(map[string]*User)
+	for k, v := range c.users {
+		userCopy := *v
+		state.Users[k] = &userCopy
+	}
+	state.OnlineCount = c.countOnline()
+
+	return state, nil
 }
 
 // Leave handles the "leave" action when a user leaves the chat
-func (s *ChatState) Leave(_ *livetemplate.ActionContext) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (c *ChatController) Leave(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	if s.CurrentUser != "" {
-		if user, exists := s.Users[s.CurrentUser]; exists {
+	if state.CurrentUser != "" {
+		if user, exists := c.users[state.CurrentUser]; exists {
 			user.IsOnline = false
 		}
-		s.updateOnlineCount()
 	}
-	return nil
+
+	// Update session state
+	state.Users = make(map[string]*User)
+	for k, v := range c.users {
+		userCopy := *v
+		state.Users[k] = &userCopy
+	}
+	state.OnlineCount = c.countOnline()
+
+	return state, nil
 }
 
-func (s *ChatState) updateOnlineCount() {
+func (c *ChatController) countOnline() int {
 	count := 0
-	for _, user := range s.Users {
+	for _, user := range c.users {
 		if user.IsOnline {
 			count++
 		}
 	}
-	s.OnlineCount = count
-}
-
-func (s *ChatState) Init() error {
-	if s.Users == nil {
-		s.Users = make(map[string]*User)
-	}
-	if s.Messages == nil {
-		s.Messages = []Message{}
-	}
-	return nil
+	return count
 }
 
 func main() {
@@ -144,8 +184,14 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Create initial state
-	state := &ChatState{
+	// Create controller (singleton, holds shared state with mutex)
+	controller := &ChatController{
+		users:    make(map[string]*User),
+		messages: []Message{},
+	}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &ChatState{
 		Users:    make(map[string]*User),
 		Messages: []Message{},
 	}
@@ -156,8 +202,8 @@ func main() {
 	// Configure via LVT_* environment variables (e.g., LVT_DEV_MODE=true)
 	tmpl := livetemplate.Must(livetemplate.New("chat", envConfig.ToOptions()...))
 
-	// Mount handler
-	http.Handle("/", tmpl.Handle(state))
+	// Mount handler with Controller+State pattern
+	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)

@@ -13,6 +13,10 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
+// CounterController is a singleton that holds dependencies.
+type CounterController struct{}
+
+// CounterState is pure data, cloned per session.
 type CounterState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
@@ -20,24 +24,24 @@ type CounterState struct {
 }
 
 // Increment handles the "increment" action
-func (s *CounterState) Increment(_ *livetemplate.ActionContext) error {
-	s.Counter++
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter++
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Decrement handles the "decrement" action
-func (s *CounterState) Decrement(_ *livetemplate.ActionContext) error {
-	s.Counter--
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Decrement(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter--
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Reset handles the "reset" action
-func (s *CounterState) Reset(_ *livetemplate.ActionContext) error {
-	s.Counter = 0
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Reset(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter = 0
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 func formatTime() string {
@@ -59,8 +63,11 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Create initial state
-	state := &CounterState{
+	// Create controller (singleton)
+	controller := &CounterController{}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &CounterState{
 		Title:       "Graceful Shutdown Demo",
 		Counter:     0,
 		LastUpdated: formatTime(),
@@ -70,7 +77,7 @@ func main() {
 	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
 
 	// Get the LiveHandler for shutdown control
-	handler := tmpl.Handle(state)
+	handler := tmpl.Handle(controller, livetemplate.AsState(initialState))
 
 	// Setup HTTP routes
 	mux := http.NewServeMux()

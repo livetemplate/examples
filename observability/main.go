@@ -11,6 +11,10 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
+// CounterController is a singleton that holds dependencies.
+type CounterController struct{}
+
+// CounterState is pure data, cloned per session.
 type CounterState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
@@ -18,24 +22,24 @@ type CounterState struct {
 }
 
 // Increment handles the "increment" action
-func (s *CounterState) Increment(_ *livetemplate.ActionContext) error {
-	s.Counter++
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter++
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Decrement handles the "decrement" action
-func (s *CounterState) Decrement(_ *livetemplate.ActionContext) error {
-	s.Counter--
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Decrement(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter--
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Reset handles the "reset" action
-func (s *CounterState) Reset(_ *livetemplate.ActionContext) error {
-	s.Counter = 0
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Reset(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter = 0
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 func formatTime() string {
@@ -111,8 +115,11 @@ func main() {
 	// APPLICATION SETUP - With environment-based configuration
 	// ============================================================
 
-	// Create initial state
-	state := &CounterState{
+	// Create controller (singleton)
+	controller := &CounterController{}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &CounterState{
 		Title:       "Live Counter (with Observability)",
 		Counter:     0,
 		LastUpdated: formatTime(),
@@ -123,9 +130,9 @@ func main() {
 	// Configuration is loaded from LVT_* environment variables
 	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
 
-	// Mount handler - auto-handles initial page, WebSocket, and HTTP actions
+	// Mount handler with Controller+State pattern
 	// All actions and WebSocket events are now logged and metered!
-	http.Handle("/", tmpl.Handle(state))
+	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
 	// Serve client library (development only - use CDN in production)
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)

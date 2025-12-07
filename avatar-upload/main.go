@@ -14,8 +14,11 @@ import (
 //go:embed *.tmpl
 var templates embed.FS
 
-// ProfileStore manages user profile with avatar upload
-type ProfileStore struct {
+// ProfileController is a singleton that holds dependencies.
+type ProfileController struct{}
+
+// ProfileState is pure data, cloned per session.
+type ProfileState struct {
 	Name       string
 	Email      string
 	AvatarPath string
@@ -23,47 +26,46 @@ type ProfileStore struct {
 }
 
 // UpdateProfile handles the "UpdateProfile" action for profile update form submission
-func (s *ProfileStore) UpdateProfile(ctx *livetemplate.ActionContext) error {
-	name, _ := ctx.Data.GetStringOk("name")
-	email, _ := ctx.Data.GetStringOk("email")
-
-	s.Name = name
-	s.Email = email
+func (c *ProfileController) UpdateProfile(state ProfileState, ctx *livetemplate.Context) (ProfileState, error) {
+	state.Name = ctx.GetString("name")
+	state.Email = ctx.GetString("email")
 
 	// Also process avatar if it was uploaded with the form
 	if ctx.HasUploads("avatar") {
-		if err := s.processAvatarUpload(ctx); err != nil {
-			return err
+		var err error
+		state, err = c.processAvatarUpload(state, ctx)
+		if err != nil {
+			return state, err
 		}
 	}
 
-	log.Printf("Profile updated: name=%s, email=%s", s.Name, s.Email)
-	return nil
+	log.Printf("Profile updated: name=%s, email=%s", state.Name, state.Email)
+	return state, nil
 }
 
 // UploadAvatarComplete handles the "upload_avatar_complete" action.
 // Auto-triggered when avatar upload completes.
-func (s *ProfileStore) UploadAvatarComplete(ctx *livetemplate.ActionContext) error {
+func (c *ProfileController) UploadAvatarComplete(state ProfileState, ctx *livetemplate.Context) (ProfileState, error) {
 	log.Printf("DEBUG: Processing auto-triggered upload")
-	return s.processAvatarUpload(ctx)
+	return c.processAvatarUpload(state, ctx)
 }
 
 // processAvatarUpload handles avatar upload processing
 // Called either automatically when upload completes (upload_avatar_complete action)
 // or during explicit form submission (UpdateProfile action)
-func (s *ProfileStore) processAvatarUpload(ctx *livetemplate.ActionContext) error {
-	// Get completed uploads from ActionContext
+func (c *ProfileController) processAvatarUpload(state ProfileState, ctx *livetemplate.Context) (ProfileState, error) {
+	// Get completed uploads from Context
 	uploads := ctx.GetCompletedUploads("avatar")
 	log.Printf("DEBUG: ProcessAvatarUpload called, found %d completed uploads", len(uploads))
 	if len(uploads) == 0 {
 		log.Printf("DEBUG: No completed uploads found")
-		return nil // No uploads to process
+		return state, nil // No uploads to process
 	}
 
 	// Create uploads directory if it doesn't exist
 	uploadsDir := "uploads"
 	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-		return fmt.Errorf("failed to create uploads directory: %w", err)
+		return state, fmt.Errorf("failed to create uploads directory: %w", err)
 	}
 
 	for _, entry := range uploads {
@@ -84,19 +86,19 @@ func (s *ProfileStore) processAvatarUpload(ctx *livetemplate.ActionContext) erro
 			log.Printf("DEBUG: Rename failed: %v, trying copy", err)
 			// If rename fails (different filesystem), try copy
 			if err := copyFile(entry.TempPath, permanentPath); err != nil {
-				return fmt.Errorf("failed to save avatar: %w", err)
+				return state, fmt.Errorf("failed to save avatar: %w", err)
 			}
 			os.Remove(entry.TempPath) // Clean up temp file
 		}
 
-		// Update store with new avatar
-		s.AvatarPath = permanentPath
-		s.AvatarURL = "/" + permanentPath
+		// Update state with new avatar
+		state.AvatarPath = permanentPath
+		state.AvatarURL = "/" + permanentPath
 
 		log.Printf("Avatar saved: %s (original: %s, size: %d bytes)", permanentPath, entry.ClientName, entry.ClientSize)
 	}
 
-	return nil
+	return state, nil
 }
 
 // copyFile copies a file from src to dst
@@ -135,14 +137,17 @@ func main() {
 		}),
 	))
 
-	// Create initial store
-	store := &ProfileStore{
+	// Create controller (singleton)
+	controller := &ProfileController{}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &ProfileState{
 		Name:  "John Doe",
 		Email: "john@example.com",
 	}
 
-	// Create handler - upload configuration is now via WithUpload option
-	handler := lt.Handle(store)
+	// Create handler with Controller+State pattern
+	handler := lt.Handle(controller, livetemplate.AsState(initialState))
 
 	// Serve static files (for uploaded avatars)
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))

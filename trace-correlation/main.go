@@ -13,6 +13,10 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
+// CounterController is a singleton that holds dependencies.
+type CounterController struct{}
+
+// CounterState is pure data, cloned per session.
 type CounterState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
@@ -20,28 +24,28 @@ type CounterState struct {
 }
 
 // Increment handles the "increment" action
-func (s *CounterState) Increment(_ *livetemplate.ActionContext) error {
-	s.Counter++
-	log.Printf("Counter incremented to %d", s.Counter)
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter++
+	log.Printf("Counter incremented to %d", state.Counter)
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Decrement handles the "decrement" action
-func (s *CounterState) Decrement(_ *livetemplate.ActionContext) error {
-	s.Counter--
-	log.Printf("Counter decremented to %d", s.Counter)
-	s.LastUpdated = formatTime()
-	return nil
+func (c *CounterController) Decrement(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	state.Counter--
+	log.Printf("Counter decremented to %d", state.Counter)
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Reset handles the "reset" action
-func (s *CounterState) Reset(_ *livetemplate.ActionContext) error {
-	oldValue := s.Counter
-	s.Counter = 0
+func (c *CounterController) Reset(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	oldValue := state.Counter
+	state.Counter = 0
 	log.Printf("Counter reset from %d to 0", oldValue)
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 func formatTime() string {
@@ -132,8 +136,11 @@ func main() {
 		"dev_mode", envConfig.DevMode,
 	)
 
-	// Create initial state
-	state := &CounterState{
+	// Create controller (singleton)
+	controller := &CounterController{}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &CounterState{
 		Title:       "Trace Correlation Demo",
 		Counter:     0,
 		LastUpdated: formatTime(),
@@ -141,7 +148,7 @@ func main() {
 
 	// Create template
 	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
-	liveHandler := tmpl.Handle(state)
+	liveHandler := tmpl.Handle(controller, livetemplate.AsState(initialState))
 
 	// Setup HTTP routes with trace middleware
 	mux := http.NewServeMux()

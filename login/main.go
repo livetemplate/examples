@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,43 +12,47 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// AuthState represents the authentication state for a session.
-// It implements SessionAware to receive WebSocket connection events.
+// AuthController holds shared state and dependencies.
+// This is a singleton that persists across sessions.
+type AuthController struct {
+	// For server-initiated updates (per-session)
+	sessions map[string]livetemplate.Session
+	mu       sync.Mutex
+}
+
+// AuthState is pure data, cloned per session.
+// Contains only serializable fields for the auth UI.
 type AuthState struct {
 	Username      string
 	IsLoggedIn    bool
 	Error         string
 	ServerMessage string    // Message sent from server via WebSocket
 	LoginTime     time.Time // When user logged in
-
-	// For server-initiated updates
-	session livetemplate.Session
-	mu      sync.Mutex
 }
 
 // Login handles the "login" action
-func (s *AuthState) Login(ctx *livetemplate.ActionContext) error {
+func (c *AuthController) Login(state AuthState, ctx *livetemplate.Context) (AuthState, error) {
 	username := ctx.GetString("username")
 	password := ctx.GetString("password")
 
 	// Simple validation
 	if username == "" || password == "" {
-		s.Error = "Username and password are required"
-		return nil
+		state.Error = "Username and password are required"
+		return state, nil
 	}
 
 	// Demo: accept any username with password "secret"
 	if password != "secret" {
-		s.Error = "Invalid credentials"
-		return nil
+		state.Error = "Invalid credentials"
+		return state, nil
 	}
 
 	// Clear error and set logged in state
-	s.Error = ""
-	s.Username = username
-	s.IsLoggedIn = true
-	s.LoginTime = time.Now()
-	s.ServerMessage = "" // Will be set when WebSocket connects
+	state.Error = ""
+	state.Username = username
+	state.IsLoggedIn = true
+	state.LoginTime = time.Now()
+	state.ServerMessage = "" // Will be set when WebSocket connects
 
 	// Set HttpOnly session cookie
 	err := ctx.SetCookie(&http.Cookie{
@@ -62,87 +65,70 @@ func (s *AuthState) Login(ctx *livetemplate.ActionContext) error {
 		MaxAge:   3600, // 1 hour
 	})
 	if err != nil {
-		return fmt.Errorf("failed to set cookie: %w", err)
+		return state, fmt.Errorf("failed to set cookie: %w", err)
 	}
 
 	// Redirect to dashboard (page will load, then WebSocket connects)
-	return ctx.Redirect("/", http.StatusSeeOther)
+	return state, ctx.Redirect("/", http.StatusSeeOther)
 }
 
 // Logout handles the "logout" action
-func (s *AuthState) Logout(ctx *livetemplate.ActionContext) error {
-	s.mu.Lock()
-	s.Username = ""
-	s.IsLoggedIn = false
-	s.Error = ""
-	s.ServerMessage = ""
-	s.mu.Unlock()
+func (c *AuthController) Logout(state AuthState, ctx *livetemplate.Context) (AuthState, error) {
+	state.Username = ""
+	state.IsLoggedIn = false
+	state.Error = ""
+	state.ServerMessage = ""
 
 	// Delete session cookie
 	err := ctx.DeleteCookie("session_token")
 	if err != nil {
-		return fmt.Errorf("failed to delete cookie: %w", err)
+		return state, fmt.Errorf("failed to delete cookie: %w", err)
 	}
 
 	// Redirect to login page
-	return ctx.Redirect("/", http.StatusSeeOther)
+	return state, ctx.Redirect("/", http.StatusSeeOther)
 }
 
 // ServerWelcome handles the "serverWelcome" action (server-initiated welcome messages).
 // This is triggered by TriggerAction from sendWelcomeMessage.
-func (s *AuthState) ServerWelcome(ctx *livetemplate.ActionContext) error {
+func (c *AuthController) ServerWelcome(state AuthState, ctx *livetemplate.Context) (AuthState, error) {
 	message := ctx.GetString("message")
-	s.mu.Lock()
-	s.ServerMessage = message
-	s.mu.Unlock()
-	return nil
+	state.ServerMessage = message
+	return state, nil
 }
 
 // OnConnect is called when a WebSocket connection is established.
-// This implements livetemplate.SessionAware interface.
-func (s *AuthState) OnConnect(ctx context.Context, session livetemplate.Session) error {
-	s.mu.Lock()
-	s.session = session
-	isLoggedIn := s.IsLoggedIn
-	username := s.Username
-	s.mu.Unlock()
+// This is a lifecycle method on the controller.
+func (c *AuthController) OnConnect(state AuthState, ctx *livetemplate.Context) (AuthState, error) {
+	session := ctx.Session()
 
-	log.Printf("WebSocket connected (user: %s, logged_in: %v)", username, isLoggedIn)
+	log.Printf("WebSocket connected (user: %s, logged_in: %v)", state.Username, state.IsLoggedIn)
 
-	// If user is logged in, send a welcome message from the server
-	// This demonstrates server-initiated updates after WebSocket connects
-	if isLoggedIn {
-		go s.sendWelcomeMessage()
+	// Store session for server-initiated updates
+	if state.IsLoggedIn && session != nil {
+		c.mu.Lock()
+		c.sessions[state.Username] = session
+		c.mu.Unlock()
+
+		// Send a welcome message from the server
+		// This demonstrates server-initiated updates after WebSocket connects
+		go c.sendWelcomeMessage(state.Username, session)
 	}
 
-	return nil
+	return state, nil
 }
 
 // OnDisconnect is called when a WebSocket connection is closed.
-// This implements livetemplate.SessionAware interface.
-func (s *AuthState) OnDisconnect() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	log.Printf("WebSocket disconnected (user: %s)", s.Username)
-	s.session = nil
+// This is a lifecycle method on the controller.
+func (c *AuthController) OnDisconnect() {
+	log.Printf("WebSocket disconnected")
 }
 
 // sendWelcomeMessage sends a server-initiated welcome message via WebSocket.
 // This demonstrates pushing updates from server to client without user action.
-func (s *AuthState) sendWelcomeMessage() {
+func (c *AuthController) sendWelcomeMessage(username string, session livetemplate.Session) {
 	// Small delay so the page fully renders first
 	time.Sleep(500 * time.Millisecond)
-
-	s.mu.Lock()
-	session := s.session
-	isLoggedIn := s.IsLoggedIn
-	username := s.Username
-	s.mu.Unlock()
-
-	if session == nil || !isLoggedIn {
-		return
-	}
 
 	// Trigger server-initiated action that will call Change() with the welcome data
 	// This updates the state and sends the update to all user's connections
@@ -170,14 +156,19 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// Create initial state
-	state := &AuthState{}
+	// Create controller (singleton, holds session references)
+	controller := &AuthController{
+		sessions: make(map[string]livetemplate.Session),
+	}
+
+	// Create initial state (pure data, cloned per session)
+	initialState := &AuthState{}
 
 	// Create template with environment-based configuration
 	tmpl := livetemplate.Must(livetemplate.New("auth", envConfig.ToOptions()...))
 
-	// Set up handler
-	http.Handle("/", tmpl.Handle(state))
+	// Set up handler with Controller+State pattern
+	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
 	// Serve client library (development only - use CDN in production)
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
