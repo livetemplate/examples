@@ -51,7 +51,7 @@ func TestTodosE2E(t *testing.T) {
 	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
 
 	t.Logf("Starting test server on port %s", portStr)
-	serverCmd := exec.Command("go", "run", "main.go", "db_manager.go")
+	serverCmd := exec.Command("go", "run", ".")
 	serverCmd.Env = append([]string{
 		"PORT=" + portStr,
 		"TEST_MODE=1",
@@ -1018,7 +1018,7 @@ func TestWebSocketBasic(t *testing.T) {
 	wsURL := fmt.Sprintf("ws://localhost:%s/", portStr)
 
 	// Start server on dynamic port
-	cmd := exec.Command("go", "run", "main.go", "db_manager.go")
+	cmd := exec.Command("go", "run", ".")
 	cmd.Env = append([]string{"PORT=" + portStr, "TEST_MODE=1"}, cmd.Environ()...)
 
 	serverLogs := e2etest.NewSafeBuffer()

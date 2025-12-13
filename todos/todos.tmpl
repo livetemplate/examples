@@ -1,3 +1,137 @@
+{{/* Template Partials */}}
+
+{{define "add-form"}}
+<form lvt-submit="add">
+  <fieldset role="group">
+    <label for="new-todo-text" class="visually-hidden">New todo text</label>
+    <input
+      type="text"
+      id="new-todo-text"
+      name="text"
+      placeholder="What needs to be done?"
+      required
+      aria-required="true"
+      {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
+    />
+    <button type="submit" lvt-disable-with="Adding...">Add</button>
+  </fieldset>
+  {{ if .lvt.HasError "text" }}
+    <small style="color: var(--pico-del-color);">{{ .lvt.Error "text" }}</small>
+  {{ end }}
+</form>
+{{end}}
+
+{{define "stats"}}
+<!-- Statistics -->
+<p>
+  <small>
+    Total: <strong>{{ .TotalCount }}</strong> •
+    Completed: <strong>{{ .CompletedCount }}</strong> •
+    Remaining: <strong>{{ .RemainingCount }}</strong>
+  </small>
+</p>
+{{end}}
+
+{{define "search-form"}}
+<form lvt-change="search" lvt-debounce="300">
+  <label for="search-todos" class="visually-hidden">Search todos</label>
+  <input
+    type="search"
+    id="search-todos"
+    name="query"
+    placeholder="Search todos..."
+    value="{{ .SearchQuery }}"
+  />
+</form>
+{{end}}
+
+{{define "sort-select"}}
+<div>
+  <label for="sort_by">Sort by:</label>
+  <select name="sort_by" id="sort_by" lvt-change="sort">
+    <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
+      Newest First
+    </option>
+    <option value="alphabetical" {{ if eq .SortBy "alphabetical" }}selected{{ end }}>
+      Alphabetical (A-Z)
+    </option>
+    <option value="reverse_alphabetical" {{ if eq .SortBy "reverse_alphabetical" }}selected{{ end }}>
+      Alphabetical (Z-A)
+    </option>
+    <option value="oldest_first" {{ if eq .SortBy "oldest_first" }}selected{{ end }}>
+      Oldest First
+    </option>
+  </select>
+</div>
+{{end}}
+
+{{define "todo-item"}}
+<tr data-key="{{ .ID }}">
+  <td>
+    <input
+      type="checkbox"
+      {{ if .Completed }}checked{{ end }}
+      lvt-change="toggle"
+      lvt-data-id="{{ .ID }}"
+      aria-label="Toggle completion"
+    />
+  </td>
+  <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
+    {{ .Text }}
+  </td>
+  <td>
+    <button
+      lvt-click="delete"
+      lvt-data-id="{{ .ID }}"
+      class="secondary"
+      aria-label="Delete this todo"
+    >
+      Delete
+    </button>
+  </td>
+</tr>
+{{end}}
+
+{{define "pagination"}}
+<nav
+  data-pagination
+  aria-label="Page navigation"
+  data-visible="{{ if .ShowPagination }}true{{ else }}false{{ end }}"
+  style="display: {{ if .ShowPagination }}block{{ else }}none{{ end }};"
+  {{ if not .ShowPagination }}hidden{{ end }}
+>
+  <ul style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;">
+    <li>
+      <button
+        lvt-click="prev_page"
+        data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
+        {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
+        class="secondary"
+        aria-label="Go to previous page"
+      >
+        Previous
+      </button>
+    </li>
+    <li>
+      <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
+    </li>
+    <li>
+      <button
+        lvt-click="next_page"
+        data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
+        {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
+        class="secondary"
+        aria-label="Go to next page"
+      >
+        Next
+      </button>
+    </li>
+  </ul>
+</nav>
+{{end}}
+
+{{/* Main Template */}}
+
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
   <head>
@@ -8,6 +142,20 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
     />
+    <style>
+      /* Visually hidden but accessible to screen readers */
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
   </head>
   <body>
     <main class="container">
@@ -17,108 +165,29 @@
           <p>A simple todo app with real-time updates</p>
         </header>
 
-        <!-- Add Todo Form -->
-        <form lvt-submit="add">
-          <fieldset role="group">
-            <input
-              type="text"
-              name="text"
-              placeholder="What needs to be done?"
-              required
-              {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
-            />
-            <button type="submit" lvt-disable-with="Adding...">Add</button>
-          </fieldset>
-          {{ if .lvt.HasError "text" }}
-            <small style="color: var(--pico-del-color);"
-              >{{ .lvt.Error "text" }}</small
-            >
-          {{ end }}
-        </form>
+        {{/* Add Todo Form */}}
+        {{template "add-form" .}}
 
-        <!-- Statistics -->
-        <p>
-          <small>
-            Total: <strong>{{ .TotalCount }}</strong> • Completed:
-            <strong>{{ .CompletedCount }}</strong> • Remaining:
-            <strong>{{ .RemainingCount }}</strong>
-          </small>
-        </p>
+        {{/* Statistics */}}
+        {{template "stats" .}}
 
-        <!-- Search -->
-        <form lvt-change="search" lvt-debounce="300">
-          <input
-            type="search"
-            name="query"
-            placeholder="Search todos..."
-            value="{{ .SearchQuery }}"
-          />
-        </form>
+        {{/* Search */}}
+        {{template "search-form" .}}
 
-        <!-- Sort -->
-        <div>
-          <label for="sort_by">Sort by:</label>
-          <select name="sort_by" id="sort_by" lvt-change="sort">
-            <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
-              Newest First
-            </option>
-            <option
-              value="alphabetical"
-              {{ if eq .SortBy "alphabetical" }}selected{{ end }}
-            >
-              Alphabetical (A-Z)
-            </option>
-            <option
-              value="reverse_alphabetical"
-              {{ if eq .SortBy "reverse_alphabetical" }}selected{{ end }}
-            >
-              Alphabetical (Z-A)
-            </option>
-            <option
-              value="oldest_first"
-              {{ if eq .SortBy "oldest_first" }}selected{{ end }}
-            >
-              Oldest First
-            </option>
-          </select>
-        </div>
+        {{/* Sort */}}
+        {{template "sort-select" .}}
 
-        <!-- Todo List -->
+        {{/* Todo List */}}
         <section>
           <header><strong>Tasks</strong></header>
           <table>
             <tbody>
               {{ range .PaginatedTodos }}
-                <tr data-key="{{ .ID }}">
-                  <td>
-                    <input
-                      type="checkbox"
-                      {{ if .Completed }}checked{{ end }}
-                      lvt-change="toggle"
-                      lvt-data-id="{{ .ID }}"
-                    />
-                  </td>
-                  <td
-                    style="{{ if .Completed }}
-                      text-decoration: line-through; opacity: 0.6;
-                    {{ end }}"
-                  >
-                    {{ .Text }}
-                  </td>
-                  <td>
-                    <button
-                      lvt-click="delete"
-                      lvt-data-id="{{ .ID }}"
-                      class="secondary"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
+                {{template "todo-item" .}}
               {{ end }}
             </tbody>
           </table>
-          <p data-empty-state{{ if gt (len .PaginatedTodos) 0 }}hidden{{ end }}>
+          <p data-empty-state {{ if gt (len .PaginatedTodos) 0 }}hidden{{ end }}>
             {{ if ne .SearchQuery "" }}
               <small>No todos found matching "{{ .SearchQuery }}"</small>
             {{ else }}
@@ -126,96 +195,8 @@
             {{ end }}
           </p>
 
-          <!-- Pagination Controls -->
-          <nav
-            data-pagination
-            aria-label="Pagination"
-            data-visible="{{- if .ShowPagination -}}
-              true
-            {{- else -}}
-              false
-            {{- end -}}"
-            style="display: {{ if .ShowPagination }}
-              block
-            {{ else }}
-              none
-            {{ end }};"
-            {{ if not .ShowPagination }}hidden{{ end }}
-          >
-            <ul
-              style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;"
-            >
-              <li>
-                <button
-                  lvt-click="prev_page"
-                  data-disabled="{{- if .PrevDisabled -}}
-                    true
-                  {{- else -}}
-                    false
-                  {{- end -}}"
-                  aria-disabled="{{- if .PrevDisabled -}}
-                    true
-                  {{- else -}}
-                    false
-                  {{- end -}}"
-                  {{ if .PrevDisabled }}disabled{{ end }}
-                  tabindex="{{ if .PrevDisabled }}
-                    -1
-                  {{ else }}
-                    0
-                  {{ end }}"
-                  style="pointer-events: {{ if .PrevDisabled }}
-                    none
-                  {{ else }}
-                    auto
-                  {{ end }}; opacity: {{ if .PrevDisabled }}
-                    0.6
-                  {{ else }}
-                    1
-                  {{ end }};"
-                  class="secondary"
-                >
-                  Previous
-                </button>
-              </li>
-              <li>
-                <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
-              </li>
-              <li>
-                <button
-                  lvt-click="next_page"
-                  data-disabled="{{- if .NextDisabled -}}
-                    true
-                  {{- else -}}
-                    false
-                  {{- end -}}"
-                  aria-disabled="{{- if .NextDisabled -}}
-                    true
-                  {{- else -}}
-                    false
-                  {{- end -}}"
-                  {{ if .NextDisabled }}disabled{{ end }}
-                  tabindex="{{ if .NextDisabled }}
-                    -1
-                  {{ else }}
-                    0
-                  {{ end }}"
-                  style="pointer-events: {{ if .NextDisabled }}
-                    none
-                  {{ else }}
-                    auto
-                  {{ end }}; opacity: {{ if .NextDisabled }}
-                    0.6
-                  {{ else }}
-                    1
-                  {{ end }};"
-                  class="secondary"
-                >
-                  Next
-                </button>
-              </li>
-            </ul>
-          </nav>
+          {{/* Pagination Controls */}}
+          {{template "pagination" .}}
 
           {{ if gt .CompletedCount 0 }}
             <button lvt-click="clear_completed" class="secondary">

@@ -35,4 +35,13 @@ tmp/
 todos/todos
 chat/chat
 counter/counter
+avatar-upload/avatar-upload
 avatar-upload/uploads/
+graceful-shutdown/graceful-shutdown
+login/login
+observability/observability
+production/single-host/single-host
+trace-correlation/trace-correlation
+testing/01_basic/basic
+todos-components/todos-components
+todos-components/.uploads/
