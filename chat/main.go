@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/livetemplate/livetemplate"
+	e2etest "github.com/livetemplate/lvt/testing"
 )
 
 // ChatController holds shared state (message store) with mutex protection.
@@ -205,8 +206,8 @@ func main() {
 	// Mount handler with Controller+State pattern
 	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
-	// Serve client library
-	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)
+	// Serve client library (uses embedded client from lvt/testing)
+	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -224,21 +225,3 @@ func main() {
 	}
 }
 
-func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
-	paths := []string{
-		"livetemplate-client.js",
-		"../client/dist/livetemplate-client.browser.js",
-		"../../client/dist/livetemplate-client.browser.js",
-	}
-
-	for _, path := range paths {
-		content, err := os.ReadFile(path)
-		if err == nil {
-			w.Header().Set("Content-Type", "application/javascript")
-			w.Write(content)
-			return
-		}
-	}
-
-	http.Error(w, "Client library not found. For production, use CDN: https://cdn.jsdelivr.net/npm/@livefir/livetemplate-client/dist/livetemplate-client.browser.js", http.StatusNotFound)
-}
