@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+    <style>
+        /* Minimal custom styles - Pico handles most styling */
+        .todo-item { display: flex; align-items: center; gap: 0.5rem; }
+        .todo-item label { flex: 1; margin: 0; }
+        .todo-item.completed label { text-decoration: line-through; opacity: 0.6; }
+        .delete-btn { --pico-background-color: transparent; --pico-border-color: transparent; width: auto; padding: 0.25rem 0.5rem; margin: 0; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>{{.Title}}</h1>
+
+        {{/* Add Todo Form */}}
+        <form lvt-submit="add_todo" role="group">
+            <input
+                type="text"
+                name="title"
+                placeholder="What needs to be done?"
+                value="{{.NewTodoTitle}}"
+            />
+            <button type="submit">Add</button>
+        </form>
+
+        {{/* Todo List */}}
+        <article>
+            {{if .Todos}}
+            <div>
+                {{range .Todos}}
+                <div class="todo-item{{if .Completed.Checked}} completed{{end}}" data-key="{{.ID}}">
+                    <input
+                        type="checkbox"
+                        id="todo-checkbox-{{.ID}}"
+                        {{if .Completed.Checked}}checked{{end}}
+                        lvt-change="toggle_todo"
+                        lvt-data-id="{{.ID}}"
+                    />
+                    <label for="todo-checkbox-{{.ID}}">{{if .Completed.Checked}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}</label>
+                    <button
+                        type="button"
+                        class="delete-btn outline secondary"
+                        lvt-click="confirm_delete"
+                        lvt-data-id="{{.ID}}"
+                        title="Delete todo"
+                    >
+                        &times;
+                    </button>
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <p><small>No todos yet. Add one above!</small></p>
+            {{end}}
+        </article>
+
+        {{/* Actions */}}
+        {{if .Todos}}
+        <footer>
+            <small>{{len .Todos}} todo{{if gt (len .Todos) 1}}s{{end}}</small>
+            <button type="button" class="outline secondary" lvt-click="clear_completed">Clear completed</button>
+        </footer>
+        {{end}}
+    </main>
+
+    {{/* Delete Confirmation Modal - uses component template */}}
+    {{template "lvt:modal:confirm:v1" .DeleteConfirm}}
+
+    {{/* Toast Container - uses component template */}}
+    {{template "lvt:toast:container:v1" .Toasts}}
+</body>
+</html>

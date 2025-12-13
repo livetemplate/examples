@@ -118,7 +118,11 @@
             margin-top: 0.5rem;
         }
     </style>
+    {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
 </head>
 <body>
     <div class="container">
