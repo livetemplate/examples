@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/google/uuid v1.6.0
 	github.com/livetemplate/livetemplate v0.7.3
-	github.com/livetemplate/lvt v0.0.0-20251103070549-7ffea37f50da
+	github.com/livetemplate/lvt v0.0.0-20251222083737-e541db7db54d
 )
 
 require (
