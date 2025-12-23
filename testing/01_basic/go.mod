@@ -3,7 +3,7 @@ module basic
 go 1.25
 
 require (
-	github.com/livetemplate/livetemplate v0.7.0
+	github.com/livetemplate/livetemplate v0.7.4
 	github.com/livetemplate/lvt v0.0.0-20251103195948-fbcd6dfae2d0
 )
 
