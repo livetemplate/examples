@@ -1,7 +1,7 @@
 package main
 
 import (
-	"todos/db"
+	"github.com/livetemplate/examples/todos/db"
 )
 
 // Default configuration constants for the todo application.

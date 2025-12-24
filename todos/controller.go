@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/livetemplate/livetemplate"
-	"todos/db"
+	"github.com/livetemplate/examples/todos/db"
 )
 
 // TodoController implements the Controller+State pattern for the todo application.
