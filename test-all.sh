@@ -11,6 +11,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Change to script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Disable parent go.work if present
+export GOWORK=off
+
 # Track results
 declare -a PASSED=()
 declare -a FAILED=()
@@ -43,6 +50,12 @@ if [[ "$1" == "--skip-disabled" ]]; then
     SKIP_DISABLED=true
 fi
 
+# Download dependencies once at the root
+echo "Downloading dependencies..."
+echo "----------------------------------------"
+go mod download
+echo ""
+
 # Test a single example
 test_example() {
     local example=$1
@@ -57,22 +70,10 @@ test_example() {
         return 1
     fi
 
-    cd "$example"
-
-    # Download dependencies
-    echo "  → Downloading dependencies..."
-    if ! go mod download 2>&1 | sed 's/^/    /'; then
-        echo -e "${RED}✗ Failed to download dependencies${NC}"
-        cd - > /dev/null
-        FAILED+=("$example")
-        return 1
-    fi
-
     # Build
     echo "  → Building..."
-    if ! go build -v . 2>&1 | sed 's/^/    /'; then
+    if ! go build -v "./$example/..." 2>&1 | sed 's/^/    /'; then
         echo -e "${RED}✗ Build failed${NC}"
-        cd - > /dev/null
         FAILED+=("$example")
         return 1
     fi
@@ -80,27 +81,23 @@ test_example() {
     # Skip tests for disabled examples unless explicitly requested
     if [[ "$is_disabled" == "true" ]] && [[ "$SKIP_DISABLED" == "true" ]]; then
         echo -e "${YELLOW}⊘ Tests skipped (disabled example)${NC}"
-        cd - > /dev/null
         SKIPPED+=("$example")
         return 0
     fi
 
     # Run tests
     echo "  → Running tests..."
-    # Use set -o pipefail to catch failures in pipeline
     set +e  # Temporarily disable exit on error
-    (set -o pipefail; go test -v -race -timeout=5m ./... 2>&1 | sed 's/^/    /')
+    (set -o pipefail; go test -v -race -timeout=5m "./$example/..." 2>&1 | sed 's/^/    /')
     local test_exit=$?
     set -e  # Re-enable exit on error
 
     if [ $test_exit -eq 0 ]; then
         echo -e "${GREEN}✓ All tests passed${NC}"
-        cd - > /dev/null
         PASSED+=("$example")
         return 0
     else
         echo -e "${RED}✗ Tests failed${NC}"
-        cd - > /dev/null
         FAILED+=("$example")
         return 1
     fi
