@@ -70,10 +70,14 @@ test_example() {
         return 1
     fi
 
+    # Change to example directory (tests expect to run from their directory)
+    cd "$example"
+
     # Build
     echo "  → Building..."
-    if ! go build -v "./$example/..." 2>&1 | sed 's/^/    /'; then
+    if ! go build -v ./... 2>&1 | sed 's/^/    /'; then
         echo -e "${RED}✗ Build failed${NC}"
+        cd "$SCRIPT_DIR"
         FAILED+=("$example")
         return 1
     fi
@@ -81,16 +85,20 @@ test_example() {
     # Skip tests for disabled examples unless explicitly requested
     if [[ "$is_disabled" == "true" ]] && [[ "$SKIP_DISABLED" == "true" ]]; then
         echo -e "${YELLOW}⊘ Tests skipped (disabled example)${NC}"
+        cd "$SCRIPT_DIR"
         SKIPPED+=("$example")
         return 0
     fi
 
-    # Run tests
+    # Run tests from example directory (tests use relative paths like "main.go")
     echo "  → Running tests..."
     set +e  # Temporarily disable exit on error
-    (set -o pipefail; go test -v -race -timeout=5m "./$example/..." 2>&1 | sed 's/^/    /')
+    (set -o pipefail; go test -v -race -timeout=5m ./... 2>&1 | sed 's/^/    /')
     local test_exit=$?
     set -e  # Re-enable exit on error
+
+    # Return to script directory
+    cd "$SCRIPT_DIR"
 
     if [ $test_exit -eq 0 ]; then
         echo -e "${GREEN}✓ All tests passed${NC}"
