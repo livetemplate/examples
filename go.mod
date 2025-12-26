@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/livetemplate/components v0.0.0-20251224004709-1f8c1de230b4
-	github.com/livetemplate/livetemplate v0.7.5
+	github.com/livetemplate/livetemplate v0.7.7
 	github.com/livetemplate/lvt v0.0.0-20251130141940-9b94cde94e9d
 	modernc.org/sqlite v1.39.1
 )
