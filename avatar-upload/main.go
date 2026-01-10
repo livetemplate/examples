@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/livetemplate/livetemplate"
+	lvttest "github.com/livetemplate/lvt/testing"
 )
 
 //go:embed *.tmpl
@@ -153,7 +154,7 @@ func main() {
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
 
 	// Serve client library
-	http.Handle("/client/", http.StripPrefix("/client/", http.FileServer(http.Dir("../../client/dist"))))
+	http.HandleFunc("/livetemplate-client.js", lvttest.ServeClientLibrary)
 
 	// Mount the LiveTemplate handler
 	http.Handle("/", handler)

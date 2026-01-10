@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/chromedp/chromedp"
+	e2etest "github.com/livetemplate/lvt/testing"
 )
 
 // waitFor polls a JavaScript condition until it returns true or timeout is reached
@@ -39,29 +39,30 @@ func TestChatE2E(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	// Use fixed port for simplicity
-	serverPort := 8096
-	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
-
-	// Start chat server
-	t.Logf("Starting test server on port %d", serverPort)
-	serverCmd := exec.Command("go", "run", "main.go")
-	serverCmd.Env = append(serverCmd.Environ(), fmt.Sprintf("PORT=%d", serverPort))
-
-	// Don't capture stdout/stderr to avoid I/O blocking
-	if err := serverCmd.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+	// Get free ports for server and Chrome debugging
+	serverPort, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port for server: %v", err)
 	}
+
+	debugPort, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port for Chrome: %v", err)
+	}
+
+	// Start chat server using e2etest helper
+	serverCmd := e2etest.StartTestServer(t, "main.go", serverPort)
 	defer func() {
 		if serverCmd != nil && serverCmd.Process != nil {
 			serverCmd.Process.Kill()
-			// Don't call Wait() - it blocks on I/O
 		}
 	}()
 
+	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
+
 	// Wait for server to be ready
 	ready := false
-	for i := 0; i < 50; i++ { // 5 seconds
+	for i := 0; i < 100; i++ { // 10 seconds
 		resp, err := http.Get(serverURL)
 		if err == nil {
 			resp.Body.Close()
@@ -72,20 +73,19 @@ func TestChatE2E(t *testing.T) {
 	}
 
 	if !ready {
-		serverCmd.Process.Kill()
-		t.Fatal("Server failed to start within 5 seconds")
+		t.Fatal("Server failed to start within 10 seconds")
 	}
 
 	t.Logf("✅ Test server ready at %s", serverURL)
 
-	// Use local Chrome instead of Docker for simplicity
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("no-sandbox", true),
-	)
+	// Start Docker Chrome container
+	chromeCmd := e2etest.StartDockerChrome(t, debugPort)
+	defer e2etest.StopDockerChrome(t, debugPort)
+	_ = chromeCmd // Command returned for reference; cleanup handled by StopDockerChrome
 
-	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	// Connect to Docker Chrome via remote debugging
+	chromeURL := fmt.Sprintf("http://localhost:%d", debugPort)
+	allocCtx, allocCancel := chromedp.NewRemoteAllocator(context.Background(), chromeURL)
 	defer allocCancel()
 
 	browserCtx, cancelBrowser := chromedp.NewContext(allocCtx, chromedp.WithLogf(t.Logf))
@@ -95,11 +95,14 @@ func TestChatE2E(t *testing.T) {
 	browserCtx, cancelTimeout := context.WithTimeout(browserCtx, 120*time.Second)
 	defer cancelTimeout()
 
+	// URL for Docker Chrome to access the server
+	chromeTestURL := e2etest.GetChromeTestURL(serverPort)
+
 	t.Run("Initial_Load", func(t *testing.T) {
 		var initialHTML string
 
 		err := chromedp.Run(browserCtx,
-			chromedp.Navigate(serverURL),
+			chromedp.Navigate(chromeTestURL),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			waitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
 			chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
