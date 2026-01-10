@@ -315,12 +315,12 @@ func createTestImage(t *testing.T) (string, error) {
 // This test reproduces the actual browser upload behavior
 func TestUploadViaWebSocket(t *testing.T) {
 	// Create test server
-	store := &ProfileStore{
+	state := &ProfileState{
 		Name:  "John Doe",
 		Email: "john@example.com",
 	}
 
-	handler := createTestHandler(t, store)
+	handler := createTestHandler(t, state)
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
@@ -569,7 +569,7 @@ func getKeys(m map[string]interface{}) []string {
 	return keys
 }
 
-func createTestHandler(t *testing.T, store *ProfileStore) http.Handler {
+func createTestHandler(t *testing.T, state *ProfileState) http.Handler {
 	// Same setup as main.go
 	lt, err := livetemplate.New("avatar-upload",
 		livetemplate.WithParseFiles("avatar-upload.tmpl"),
@@ -586,5 +586,6 @@ func createTestHandler(t *testing.T, store *ProfileStore) http.Handler {
 		t.Fatalf("Failed to create LiveTemplate: %v", err)
 	}
 
-	return lt.Handle(store)
+	controller := &ProfileController{}
+	return lt.Handle(controller, livetemplate.AsState(state))
 }
