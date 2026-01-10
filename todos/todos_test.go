@@ -453,10 +453,9 @@ func TestTodosE2E(t *testing.T) {
 			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
-					const form = document.querySelector('form[lvt-change="search"]');
-					const input = form.querySelector('input[name="query"]');
+					const input = document.querySelector('input[lvt-input="search"]');
 					input.value = 'First';
-					form.dispatchEvent(new Event('change', { bubbles: true }));
+					input.dispatchEvent(new Event('input', { bubbles: true }));
 				})();
 			`, nil),
 			e2etest.WaitForUpdateEvent("search", 5*time.Second),
@@ -477,14 +476,14 @@ func TestTodosE2E(t *testing.T) {
 
 		t.Log("✅ Search filtering works correctly")
 
-		// Clear search by setting value to empty and triggering change event
+		// Clear search by setting value to empty and triggering input event
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
-					const input = document.querySelector('input[name="query"]');
+					const input = document.querySelector('input[lvt-input="search"]');
 					input.value = '';
-					input.dispatchEvent(new Event('change', { bubbles: true }));
+					input.dispatchEvent(new Event('input', { bubbles: true }));
 				})();
 			`, nil),
 			e2etest.WaitForUpdateEvent("search", 5*time.Second),
@@ -531,9 +530,9 @@ func TestTodosE2E(t *testing.T) {
 			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
-					const input = document.querySelector('input[name="query"]');
+					const input = document.querySelector('input[lvt-input="search"]');
 					input.value = 'NonExistent';
-					input.dispatchEvent(new Event('change', { bubbles: true }));
+					input.dispatchEvent(new Event('input', { bubbles: true }));
 				})();
 			`, nil),
 			e2etest.WaitForUpdateEvent("search", 5*time.Second),
@@ -624,9 +623,9 @@ func TestTodosE2E(t *testing.T) {
 			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
-					const input = document.querySelector('input[name="query"]');
+					const input = document.querySelector('input[lvt-input="search"]');
 					input.value = '';
-					input.dispatchEvent(new Event('change', { bubbles: true }));
+					input.dispatchEvent(new Event('input', { bubbles: true }));
 				})();
 			`, nil),
 			e2etest.WaitForUpdateEvent("search", 5*time.Second),
@@ -945,9 +944,9 @@ func TestTodosE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
-					const searchInput = document.querySelector('input[name="query"]');
+					const searchInput = document.querySelector('input[lvt-input="search"]');
 					searchInput.value = 'i';
-					searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+					searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 				})();
 			`, nil),
 		)
@@ -980,9 +979,9 @@ func TestTodosE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
-					const clearInput = document.querySelector('input[name="query"]');
+					const clearInput = document.querySelector('input[lvt-input="search"]');
 					clearInput.value = '';
-					clearInput.dispatchEvent(new Event('change', { bubbles: true }));
+					clearInput.dispatchEvent(new Event('input', { bubbles: true }));
 				})();
 			`, nil),
 		)

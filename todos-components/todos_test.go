@@ -108,8 +108,8 @@ func TestTodosComponentsE2E(t *testing.T) {
 			chromedp.SendKeys(`input[name="title"]`, "Test component integration", chromedp.ByQuery),
 			// Submit the form
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-			// Wait for update
-			chromedp.Sleep(500*time.Millisecond),
+			// Wait for WebSocket update to complete
+			e2etest.WaitForText("body", "Test component integration", 5*time.Second),
 			// Count todos after
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &todoCountAfter),
 			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
@@ -564,29 +564,41 @@ func TestTodosComponentsE2E(t *testing.T) {
 		var todoCount int
 		var html string
 
+		// Add first todo
 		err := chromedp.Run(ctx,
-			// Add first todo
 			chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="title"]`, "First new todo", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-			chromedp.Sleep(300*time.Millisecond),
-			// Add second todo
+			e2etest.WaitForText("body", "First new todo", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to add first todo: %v", err)
+		}
+
+		// Add second todo
+		err = chromedp.Run(ctx,
 			chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="title"]`, "Second new todo", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-			chromedp.Sleep(300*time.Millisecond),
-			// Add third todo
+			e2etest.WaitForText("body", "Second new todo", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to add second todo: %v", err)
+		}
+
+		// Add third todo
+		err = chromedp.Run(ctx,
 			chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="title"]`, "Third new todo", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-			chromedp.Sleep(300*time.Millisecond),
+			e2etest.WaitForText("body", "Third new todo", 5*time.Second),
 			// Get final count and HTML
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &todoCount),
 			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
 		)
 
 		if err != nil {
-			t.Fatalf("Failed to add multiple todos: %v", err)
+			t.Fatalf("Failed to add third todo: %v", err)
 		}
 
 		t.Logf("Final todo count: %d", todoCount)
