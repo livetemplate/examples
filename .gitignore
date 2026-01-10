@@ -45,3 +45,4 @@ trace-correlation/trace-correlation
 testing/01_basic/basic
 todos-components/todos-components
 todos-components/.uploads/
+.worktrees/
