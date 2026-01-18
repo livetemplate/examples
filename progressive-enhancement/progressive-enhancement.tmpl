@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.Title}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+        .mode-indicator {
+            background: #e8f4f8;
+            border: 1px solid #b8d4e3;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .mode-indicator.js { background: #e8f8e8; border-color: #b8e3b8; }
+        .flash {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .add-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .add-form input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .add-form input[type="text"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .add-form input.error {
+            border-color: #dc3545;
+        }
+        .add-form button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .add-form button:hover { background: #0056b3; }
+        .error-message {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: -5px;
+            margin-bottom: 10px;
+        }
+        .todo-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .todo-item:last-child { border-bottom: none; }
+        .todo-item.completed .todo-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+        .todo-title {
+            flex: 1;
+            margin-left: 10px;
+        }
+        .todo-time {
+            color: #999;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .todo-actions { display: flex; gap: 5px; }
+        .todo-actions form { margin: 0; }
+        .btn-toggle, .btn-delete {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-toggle { background: #28a745; color: white; }
+        .btn-toggle:hover { background: #1e7e34; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-delete:hover { background: #bd2130; }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        noscript .mode-indicator { display: block !important; }
+        .js-mode { display: none; }
+        .no-js-mode { display: block; }
+    </style>
+</head>
+<body>
+    <h1>{{.Title}}</h1>
+    <p class="subtitle">This app works with or without JavaScript enabled</p>
+
+    <!-- Mode indicator (no-JS version shown by default) -->
+    <noscript>
+        <div class="mode-indicator">
+            <strong>No JavaScript Mode:</strong> Using traditional HTTP form submissions with page reloads.
+            Each action reloads the page to show updates.
+        </div>
+    </noscript>
+    <div class="mode-indicator js js-mode" id="mode-indicator">
+        <strong>JavaScript Mode:</strong> Using WebSocket for instant updates without page reloads.
+        Actions update the page in real-time.
+    </div>
+
+    <!-- Flash messages -->
+    {{if .lvt.Flash "success"}}
+    <div class="flash success">{{.lvt.Flash "success"}}</div>
+    {{end}}
+    {{if .lvt.Flash "error"}}
+    <div class="flash error">{{.lvt.Flash "error"}}</div>
+    {{end}}
+
+    <!-- Add todo form -->
+    <!-- Works with JS: lvt-submit triggers WebSocket action -->
+    <!-- Works without JS: method="POST" + lvt-action triggers HTTP form submission -->
+    <div class="add-form">
+        <form method="POST" lvt-submit="add">
+            <input type="hidden" name="lvt-action" value="add">
+            <input
+                type="text"
+                name="title"
+                value="{{.InputTitle}}"
+                placeholder="What needs to be done?"
+                {{if .lvt.HasError "title"}}class="error"{{end}}
+                autofocus
+            >
+            {{if .lvt.HasError "title"}}
+            <div class="error-message">{{.lvt.Error "title"}}</div>
+            {{end}}
+            <button type="submit">Add Todo</button>
+        </form>
+    </div>
+
+    <!-- Todo list -->
+    <div class="todo-list">
+        {{if not .Items}}
+        <div class="empty-state">
+            <p>No todos yet. Add one above!</p>
+        </div>
+        {{else}}
+        {{range .Items}}
+        {{/* No explicit data-key needed - library auto-generates content-based keys */}}
+        <div class="todo-item {{if .Completed}}completed{{end}}">
+            <!-- Toggle form -->
+            <form method="POST" lvt-submit="toggle" style="display:inline">
+                <input type="hidden" name="lvt-action" value="toggle">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <button type="submit" class="btn-toggle" title="Toggle completed">
+                    {{if .Completed}}&#10003;{{else}}&#9675;{{end}}
+                </button>
+            </form>
+            <span class="todo-title">{{.Title}}</span>
+            <span class="todo-time">{{.CreatedAt}}</span>
+            <!-- Delete form -->
+            <form method="POST" lvt-submit="delete" style="display:inline">
+                <input type="hidden" name="lvt-action" value="delete">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <button type="submit" class="btn-delete" title="Delete">&#10005;</button>
+            </form>
+        </div>
+        {{end}}
+        {{end}}
+    </div>
+
+    <!-- JavaScript for mode detection and client library -->
+    <script>
+        // Show JS mode indicator
+        document.getElementById('mode-indicator').style.display = 'block';
+    </script>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>

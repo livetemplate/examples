@@ -2,6 +2,9 @@ module github.com/livetemplate/examples
 
 go 1.25.3
 
+// Use local livetemplate for progressive enhancement development
+replace github.com/livetemplate/livetemplate => ../../../livetemplate/.worktrees/progressive-enhancement
+
 require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/go-playground/validator/v10 v10.30.1
