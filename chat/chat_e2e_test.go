@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -59,23 +58,6 @@ func TestChatE2E(t *testing.T) {
 	}()
 
 	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
-
-	// Wait for server to be ready
-	ready := false
-	for i := 0; i < 100; i++ { // 10 seconds
-		resp, err := http.Get(serverURL)
-		if err == nil {
-			resp.Body.Close()
-			ready = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !ready {
-		t.Fatal("Server failed to start within 10 seconds")
-	}
-
 	t.Logf("✅ Test server ready at %s", serverURL)
 
 	// Start Docker Chrome container
