@@ -95,11 +95,17 @@ func (c *TodoController) Add(state TodoState, ctx *livetemplate.Context) (TodoSt
 // Toggle handles toggling a todo's completed status.
 func (c *TodoController) Toggle(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	id := ctx.GetString("id")
+	found := false
 	for i := range state.Items {
 		if state.Items[i].ID == id {
 			state.Items[i].Completed = !state.Items[i].Completed
+			found = true
+			ctx.SetFlash("success", "Item updated")
 			break
 		}
+	}
+	if !found {
+		ctx.SetFlash("error", "Item not found")
 	}
 	return state, nil
 }
@@ -107,12 +113,21 @@ func (c *TodoController) Toggle(state TodoState, ctx *livetemplate.Context) (Tod
 // Delete handles deleting a todo item.
 func (c *TodoController) Delete(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	id := ctx.GetString("id")
-	for i := range state.Items {
-		if state.Items[i].ID == id {
-			state.Items = append(state.Items[:i], state.Items[i+1:]...)
-			ctx.SetFlash("success", "Item deleted")
+
+	// Find index of the item to delete without modifying the slice during iteration.
+	deleteIndex := -1
+	for i, item := range state.Items {
+		if item.ID == id {
+			deleteIndex = i
 			break
 		}
+	}
+
+	if deleteIndex >= 0 {
+		state.Items = append(state.Items[:deleteIndex], state.Items[deleteIndex+1:]...)
+		ctx.SetFlash("success", "Item deleted")
+	} else {
+		ctx.SetFlash("error", "Item not found")
 	}
 	return state, nil
 }

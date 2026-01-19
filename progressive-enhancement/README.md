@@ -87,4 +87,5 @@ tmpl := livetemplate.New("app", livetemplate.WithProgressiveEnhancement(false))
 
 - `main.go` - Controller, state, and action handlers
 - `progressive-enhancement.tmpl` - Template with dual-mode forms
+- `progressive_enhancement_test.go` - End-to-end tests for progressive enhancement behavior
 - `README.md` - This documentation

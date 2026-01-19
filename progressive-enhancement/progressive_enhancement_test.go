@@ -51,8 +51,8 @@ func TestProgressiveEnhancement_WithJS(t *testing.T) {
 	defer cancel()
 
 	// Set timeout
-	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
+	ctx, timeoutCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer timeoutCancel()
 
 	var initialHTML string
 
@@ -98,8 +98,8 @@ func TestProgressiveEnhancement_JSFormSubmission(t *testing.T) {
 	defer cancel()
 
 	// Set timeout
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer timeoutCancel()
 
 	var initialHTML string
 	var hasWrapper bool
