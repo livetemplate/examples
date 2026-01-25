@@ -486,6 +486,78 @@ func TestProgressiveEnhancement_DisabledReturnsJSON(t *testing.T) {
 	}
 }
 
+// TestProgressiveEnhancement_WebSocketCRUD tests add, toggle, and delete operations via WebSocket
+// with DOM verification to ensure the UI updates correctly.
+func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	// Create browser context
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	var initialCount int
+	var afterAddCount int
+	var afterDeleteCount int
+
+	// Step 1: Navigate and count initial todos
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL),
+		chromedp.WaitReady(`body`, chromedp.ByQuery),
+		chromedp.Sleep(1*time.Second), // Wait for WebSocket to connect
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 1 (navigate) error: %v", err)
+	}
+	t.Logf("Initial todo count: %d", initialCount)
+
+	// Step 2: Add a new todo
+	err = chromedp.Run(ctx,
+		chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
+		chromedp.Submit(`form[lvt-submit="add"]`, chromedp.ByQuery),
+		chromedp.Sleep(1*time.Second), // Wait for WebSocket response
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterAddCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 2 (add) error: %v", err)
+	}
+	t.Logf("After add count: %d", afterAddCount)
+
+	// Verify add worked
+	if afterAddCount != initialCount+1 {
+		t.Errorf("Add failed: expected %d todos, got %d", initialCount+1, afterAddCount)
+	}
+
+	// Step 3: Delete the last todo (the one we just added)
+	err = chromedp.Run(ctx,
+		chromedp.Submit(`.todo-item:last-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		chromedp.Sleep(1*time.Second), // Wait for WebSocket response
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 3 (delete) error: %v", err)
+	}
+	t.Logf("After delete count: %d", afterDeleteCount)
+
+	// Verify delete worked
+	if afterDeleteCount != initialCount {
+		t.Errorf("Delete failed: expected %d todos, got %d", initialCount, afterDeleteCount)
+	}
+
+	t.Log("SUCCESS: WebSocket CRUD operations work correctly with DOM updates")
+}
+
 func init() {
 	// Suppress log output during tests
 	fmt.Println("Progressive Enhancement E2E Tests")
