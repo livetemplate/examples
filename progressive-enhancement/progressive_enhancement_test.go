@@ -486,6 +486,228 @@ func TestProgressiveEnhancement_DisabledReturnsJSON(t *testing.T) {
 	}
 }
 
+// TestProgressiveEnhancement_WebSocketCRUD tests add, toggle, and delete operations via WebSocket
+// with DOM verification to ensure the UI updates correctly.
+func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	// Create browser context
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer timeoutCancel()
+
+	var initialCount int
+	var afterAddCount int
+	var afterToggleCount int
+	var hasCompletedClass bool
+	var afterUntoggleCount int
+	var hasCompletedClassAfterUntoggle bool
+	var afterDeleteCount int
+
+	// Step 1: Navigate and wait for WebSocket to connect
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL),
+		chromedp.WaitReady(`body`, chromedp.ByQuery),
+		e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 1 (navigate) error: %v", err)
+	}
+	t.Logf("Initial todo count: %d", initialCount)
+
+	// Step 2: Add a new todo
+	expectedAfterAdd := initialCount + 1
+	err = chromedp.Run(ctx,
+		chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
+		chromedp.Submit(`form[lvt-submit="add"]`, chromedp.ByQuery),
+		// Wait for DOM to update with new item
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterAdd), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterAddCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 2 (add) error: %v", err)
+	}
+	t.Logf("After add count: %d", afterAddCount)
+
+	// Verify add worked
+	if afterAddCount != expectedAfterAdd {
+		t.Errorf("Add failed: expected %d todos, got %d", expectedAfterAdd, afterAddCount)
+	}
+
+	// Step 3: Toggle the last todo (mark as complete)
+	// The new todo should NOT have .completed class initially
+	err = chromedp.Run(ctx,
+		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		// Wait for the completed class to appear
+		e2etest.WaitFor(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClass),
+	)
+	if err != nil {
+		t.Fatalf("Step 3 (toggle) error: %v", err)
+	}
+	t.Logf("After toggle count: %d, has completed class: %v", afterToggleCount, hasCompletedClass)
+
+	// Verify toggle worked - count should stay the same, but item should now have .completed class
+	if afterToggleCount != afterAddCount {
+		t.Errorf("Toggle changed item count: expected %d, got %d", afterAddCount, afterToggleCount)
+	}
+	if !hasCompletedClass {
+		t.Errorf("Toggle failed: item should have .completed class after toggle")
+	}
+
+	// Step 4: Toggle again (mark as incomplete)
+	err = chromedp.Run(ctx,
+		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		// Wait for the completed class to be removed
+		e2etest.WaitFor(`!document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterUntoggleCount),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClassAfterUntoggle),
+	)
+	if err != nil {
+		t.Fatalf("Step 4 (untoggle) error: %v", err)
+	}
+	t.Logf("After untoggle count: %d, has completed class: %v", afterUntoggleCount, hasCompletedClassAfterUntoggle)
+
+	// Verify untoggle worked - count should stay the same, item should NOT have .completed class
+	if afterUntoggleCount != afterAddCount {
+		t.Errorf("Untoggle changed item count: expected %d, got %d", afterAddCount, afterUntoggleCount)
+	}
+	if hasCompletedClassAfterUntoggle {
+		t.Errorf("Untoggle failed: item should NOT have .completed class after second toggle")
+	}
+
+	// Step 5: Delete the last todo (the one we just added)
+	err = chromedp.Run(ctx,
+		chromedp.Submit(`.todo-item:last-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		// Wait for DOM to update with deleted item
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, initialCount), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 5 (delete) error: %v", err)
+	}
+	t.Logf("After delete count: %d", afterDeleteCount)
+
+	// Verify delete worked
+	if afterDeleteCount != initialCount {
+		t.Errorf("Delete failed: expected %d todos, got %d", initialCount, afterDeleteCount)
+	}
+
+	t.Log("SUCCESS: All CRUD operations (add, toggle, untoggle, delete) work correctly")
+}
+
+// TestProgressiveEnhancement_DeleteThenToggle tests toggling a todo after deleting another one.
+// This specifically tests that the auto-generated keys work correctly after item removal.
+func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	// Create browser context
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer timeoutCancel()
+
+	var initialCount int
+	var afterDeleteCount int
+	var afterToggleCount int
+	var hasCompletedClass bool
+
+	// Step 1: Navigate and wait for WebSocket to connect
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL),
+		chromedp.WaitReady(`body`, chromedp.ByQuery),
+		e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 1 (navigate) error: %v", err)
+	}
+	t.Logf("Initial todo count: %d", initialCount)
+
+	if initialCount < 2 {
+		t.Fatalf("Need at least 2 initial items for this test, got %d", initialCount)
+	}
+
+	// Step 2: Delete the FIRST todo
+	expectedAfterDelete := initialCount - 1
+	err = chromedp.Run(ctx,
+		chromedp.Submit(`.todo-item:first-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		// Wait for DOM to update with deleted item
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterDelete), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+	)
+	if err != nil {
+		t.Fatalf("Step 2 (delete) error: %v", err)
+	}
+	t.Logf("After delete count: %d", afterDeleteCount)
+
+	// Verify delete worked
+	if afterDeleteCount != expectedAfterDelete {
+		t.Errorf("Delete failed: expected %d todos, got %d", expectedAfterDelete, afterDeleteCount)
+	}
+
+	// Step 3: Toggle the LAST remaining todo (different item than what we deleted)
+	// Check if it has completed class before toggle
+	var hasCompletedClassBefore bool
+	err = chromedp.Run(ctx,
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClassBefore),
+	)
+	if err != nil {
+		t.Fatalf("Step 3 (check before toggle) error: %v", err)
+	}
+	t.Logf("Last item has completed class before toggle: %v", hasCompletedClassBefore)
+
+	// Build the wait condition based on whether we expect completed class or not
+	toggleWaitCondition := `document.querySelector('.todo-item:last-child').classList.contains('completed')`
+	if hasCompletedClassBefore {
+		toggleWaitCondition = `!document.querySelector('.todo-item:last-child').classList.contains('completed')`
+	}
+
+	err = chromedp.Run(ctx,
+		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		// Wait for the completed class to change
+		e2etest.WaitFor(toggleWaitCondition, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClass),
+	)
+	if err != nil {
+		t.Fatalf("Step 3 (toggle) error: %v", err)
+	}
+	t.Logf("After toggle count: %d, has completed class: %v", afterToggleCount, hasCompletedClass)
+
+	// Verify toggle worked - count should stay the same
+	if afterToggleCount != afterDeleteCount {
+		t.Errorf("Toggle changed item count: expected %d, got %d", afterDeleteCount, afterToggleCount)
+	}
+
+	// Verify the completed class changed
+	if hasCompletedClass == hasCompletedClassBefore {
+		t.Errorf("Toggle failed: completed class should have changed from %v to %v", hasCompletedClassBefore, !hasCompletedClassBefore)
+	}
+
+	t.Log("SUCCESS: Toggle works correctly after deleting a different item")
+}
+
 func init() {
 	// Suppress log output during tests
 	fmt.Println("Progressive Enhancement E2E Tests")
