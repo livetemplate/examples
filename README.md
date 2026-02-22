@@ -133,24 +133,6 @@ go run main.go
 
 ---
 
-### 8. Trace Correlation
-**Directory**: `trace-correlation/`
-
-Request tracing and correlation IDs.
-
-```bash
-cd trace-correlation
-go run main.go
-```
-
-**Features**:
-- Trace ID generation
-- Request correlation
-- Distributed tracing
-- Log correlation
-
----
-
 ## Running Examples
 
 Each example is self-contained with its own `go.mod`. To run an example:

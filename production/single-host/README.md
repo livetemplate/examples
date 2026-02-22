@@ -774,7 +774,6 @@ maxmemory-policy allkeys-lru
 
 - [Configuration Guide](../../../docs/CONFIGURATION.md)
 - [Graceful Shutdown Example](../../graceful-shutdown/)
-- [Trace Correlation Example](../../trace-correlation/)
 - [Observability Example](../../observability/)
 
 ## Summary
