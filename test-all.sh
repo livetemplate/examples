@@ -36,7 +36,6 @@ WORKING_EXAMPLES=(
 DISABLED_EXAMPLES=(
     "observability"
     "production/single-host"
-    "trace-correlation"
 )
 
 echo "================================================"

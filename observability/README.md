@@ -125,13 +125,12 @@ func main() {
 
 ```go
 func main() {
-    // Add logging
-    logger := observe.NewLogger(slog.NewJSONHandler(...))
+    // Configure structured logging
+    slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
     // Add metrics
-    metrics := observe.NewMetrics()
-    metrics.StartEmission(logger, 30)
-    defer metrics.StopEmission()
+    metrics := observe.NewMetrics(slog.Default())
+    go metrics.EmitPeriodically(30 * time.Second)
 
     // Same application code
     state := &CounterState{...}
@@ -191,8 +190,7 @@ metrics.StartEmission(logger, 60) // Emit every 60 seconds
 
 ```go
 // Use any slog-compatible handler
-handler := myCustomHandler{}
-logger := observe.NewLogger(handler)
+slog.SetDefault(slog.New(myCustomHandler{}))
 ```
 
 ## See Also
