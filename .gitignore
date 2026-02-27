@@ -45,4 +45,5 @@ trace-correlation/trace-correlation
 testing/01_basic/basic
 todos-components/todos-components
 todos-components/.uploads/
+ws-disabled/ws-disabled
 .worktrees/

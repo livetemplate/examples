@@ -30,6 +30,7 @@ WORKING_EXAMPLES=(
     "todos"
     "graceful-shutdown"
     "testing/01_basic"
+    "ws-disabled"
 )
 
 # Disabled examples (require internal/observe package)

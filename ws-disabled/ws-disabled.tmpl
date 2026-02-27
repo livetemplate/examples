@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.Title}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <h1>{{.Title}}</h1>
+        <p><small>WebSocket is disabled. The client library uses HTTP fetch for all actions
+        and applies tree-based DOM updates without page reloads.</small></p>
+
+        {{if .lvt.Flash "success"}}
+        <ins style="display:block; text-decoration:none;">{{.lvt.Flash "success"}}</ins>
+        {{end}}
+        {{if .lvt.Flash "error"}}
+        <del style="display:block; text-decoration:none;">{{.lvt.Flash "error"}}</del>
+        {{end}}
+
+        <article>
+            <form method="POST" lvt-submit="Add">
+                <input type="hidden" name="lvt-action" value="Add">
+                <div class="grid">
+                    <label>
+                        Label
+                        <input type="text" name="label" placeholder="My favorite site"
+                            {{if .lvt.HasError "label"}}aria-invalid="true"{{end}}>
+                        {{if .lvt.HasError "label"}}
+                        <small>{{.lvt.Error "label"}}</small>
+                        {{end}}
+                    </label>
+                    <label>
+                        URL
+                        <input type="url" name="url" placeholder="https://example.com"
+                            {{if .lvt.HasError "url"}}aria-invalid="true"{{end}}>
+                        {{if .lvt.HasError "url"}}
+                        <small>{{.lvt.Error "url"}}</small>
+                        {{end}}
+                    </label>
+                </div>
+                <button type="submit">Add Bookmark</button>
+            </form>
+        </article>
+
+        <article>
+            <header>
+                <strong>Bookmarks ({{.Count}})</strong>
+            </header>
+            {{if not .Bookmarks}}
+            <p style="text-align:center;">No bookmarks yet. Add one above!</p>
+            {{else}}
+            {{range .Bookmarks}}
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.5rem;">
+                <span style="flex:1;">
+                    <a href="{{.URL}}" target="_blank" rel="noopener">{{.Label}}</a>
+                    <small> — {{.URL}}</small>
+                </span>
+                <form method="POST" lvt-submit="Delete" style="margin:0;">
+                    <input type="hidden" name="lvt-action" value="Delete">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <button type="submit" class="contrast outline" style="margin:0; padding:0.25rem 0.5rem;">&#10005;</button>
+                </form>
+            </div>
+            {{end}}
+            {{end}}
+        </article>
+    </main>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>

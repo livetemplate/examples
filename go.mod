@@ -3,12 +3,13 @@ module github.com/livetemplate/examples
 go 1.26.0
 
 require (
+	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.2
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/livetemplate/components v0.0.0-20251224004709-1f8c1de230b4
-	github.com/livetemplate/livetemplate v0.8.2
+	github.com/livetemplate/livetemplate v0.8.3
 	github.com/livetemplate/lvt v0.0.0-20260110064539-b9afb9e6df26
 	modernc.org/sqlite v1.43.0
 )
@@ -34,7 +35,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
