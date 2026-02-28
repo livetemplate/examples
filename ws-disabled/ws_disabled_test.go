@@ -207,6 +207,8 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 
 		var htmlAfterDelete string
 		err = chromedp.Run(ctx,
+			// Wait for Delete form to be in DOM after PRG redirect from Add
+			chromedp.WaitReady(`form[lvt-submit="Delete"]`, chromedp.ByQuery),
 			chromedp.Submit(`form[lvt-submit="Delete"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`document.body.innerText.includes('No bookmarks yet')`, 5*time.Second),
 			chromedp.OuterHTML("html", &htmlAfterDelete),
@@ -310,6 +312,24 @@ func TestWSDisabled_PRGPattern(t *testing.T) {
 	location := resp.Header.Get("Location")
 	if location == "" {
 		t.Error("Expected Location header in redirect response")
+	}
+	if strings.Contains(location, "success=") {
+		t.Errorf("Flash message should NOT be in redirect URL, got: %s", location)
+	}
+
+	// Flash should be in lvt-flash cookie
+	var flashCookie *http.Cookie
+	for _, c := range resp.Cookies() {
+		if c.Name == "lvt-flash" {
+			flashCookie = c
+			break
+		}
+	}
+	if flashCookie == nil {
+		t.Fatal("Expected lvt-flash cookie to be set")
+	}
+	if !strings.Contains(flashCookie.Value, "success=") {
+		t.Errorf("Expected 'success=' in flash cookie value, got: %s", flashCookie.Value)
 	}
 }
 
