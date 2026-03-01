@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/livetemplate/components/base"
-	"github.com/livetemplate/components/modal"
-	"github.com/livetemplate/components/toast"
-	"github.com/livetemplate/components/toggle"
+	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/modal"
+	"github.com/livetemplate/lvt/components/toast"
+	"github.com/livetemplate/lvt/components/toggle"
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
