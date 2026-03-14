@@ -258,28 +258,23 @@ func TestTodosComponentsE2E(t *testing.T) {
 	t.Run("Delete Confirmation Modal Appears", func(t *testing.T) {
 		var modalVisible bool
 		var modalPosition string
-		var html string
 
-		// Create a short timeout context for this subtest
 		modalCtx, modalCancel := context.WithTimeout(ctx, 15*time.Second)
 		defer modalCancel()
 
+		// Use JS .click() instead of chromedp.Click — chromedp.Click doesn't
+		// reliably trigger event delegation handlers in headless Chrome.
 		err := chromedp.Run(modalCtx,
-			// Click delete button on second todo
-			chromedp.Click(`button[lvt-click="confirm_delete"][lvt-data-id="2"]`, chromedp.ByQuery),
-			chromedp.Sleep(500*time.Millisecond),
-			// Check if modal is visible
+			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"][lvt-data-id="2"]').click()`, nil),
+			e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 			chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisible),
-			// Check if modal has fixed positioning (the fix!)
 			chromedp.Evaluate(`
 				(function() {
 					var modal = document.querySelector('[data-modal="delete_confirm"]');
 					if (!modal) return 'not found';
-					var style = window.getComputedStyle(modal);
-					return style.position;
+					return window.getComputedStyle(modal).position;
 				})()
 			`, &modalPosition),
-			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
 		)
 
 		if err != nil {
@@ -287,128 +282,83 @@ func TestTodosComponentsE2E(t *testing.T) {
 		}
 
 		if !modalVisible {
-			t.Error("Delete confirmation modal not visible")
-			snippet := html
-			if len(snippet) > 500 {
-				snippet = snippet[:500]
-			}
-			t.Logf("HTML snippet: %s", snippet)
-		} else {
-			// Verify modal has fixed positioning (this was the bug!)
-			if modalPosition != "fixed" {
-				t.Errorf("REGRESSION: Modal should have position:fixed, got: %s", modalPosition)
-			} else {
-				t.Log("Modal has correct fixed positioning")
-			}
+			t.Fatal("Delete confirmation modal not visible")
 		}
 
-		// Verify modal contains expected buttons
-		if strings.Contains(html, "cancel_delete_confirm") && strings.Contains(html, "confirm_delete_confirm") {
-			t.Log("Modal contains expected action buttons")
-		} else {
-			t.Log("Note: Modal button selectors may differ")
+		if modalPosition != "fixed" {
+			t.Errorf("Modal should have position:fixed, got: %s", modalPosition)
 		}
 
 		t.Log("✅ Delete confirmation modal appears correctly")
 	})
 
 	t.Run("Cancel Delete Modal", func(t *testing.T) {
-		var modalVisibleBefore, modalVisibleAfter bool
-
 		modalCtx, modalCancel := context.WithTimeout(ctx, 10*time.Second)
 		defer modalCancel()
 
-		// Check if modal is currently visible from previous test
+		// Modal should still be open from previous subtest
+		var modalVisibleBefore bool
 		err := chromedp.Run(modalCtx,
 			chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisibleBefore),
 		)
-
-		if !modalVisibleBefore {
-			// Need to open modal first
-			err = chromedp.Run(modalCtx,
-				chromedp.Click(`button[lvt-click="confirm_delete"]`, chromedp.ByQuery),
-				chromedp.Sleep(500*time.Millisecond),
+		if err != nil || !modalVisibleBefore {
+			// Reopen modal if needed
+			chromedp.Run(modalCtx,
+				chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]').click()`, nil),
+				e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 			)
-			if err != nil {
-				t.Logf("Could not open modal for cancel test: %v", err)
-			}
 		}
 
+		var modalVisibleAfter bool
 		err = chromedp.Run(modalCtx,
-			// Click cancel button in modal
-			chromedp.Click(`button[lvt-click="cancel_delete_confirm"]`, chromedp.ByQuery),
-			chromedp.Sleep(500*time.Millisecond),
-			// Check if modal is now hidden
+			chromedp.Evaluate(`document.querySelector('button[lvt-click="cancel_delete_confirm"]').click()`, nil),
+			e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') === null`, 5*time.Second),
 			chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisibleAfter),
 		)
 
 		if err != nil {
-			t.Logf("Cancel modal click failed: %v", err)
+			t.Fatalf("Cancel modal failed: %v", err)
 		}
 
 		if modalVisibleAfter {
-			t.Log("Warning: Modal may still be visible (timing issue)")
-		} else {
-			t.Log("Modal closed after cancel")
+			t.Error("Modal should be hidden after cancel")
 		}
 
 		t.Log("✅ Cancel delete modal works")
 	})
 
 	t.Run("Confirm Delete Modal Deletes Todo", func(t *testing.T) {
-		var modalVisible bool
 		var todoCountBefore, todoCountAfter int
-		var hasDeletedTodo bool
 
 		modalCtx, modalCancel := context.WithTimeout(ctx, 15*time.Second)
 		defer modalCancel()
 
 		err := chromedp.Run(modalCtx,
-			// Count todos before
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &todoCountBefore),
 			// Open delete modal for first todo
-			chromedp.Click(`button[lvt-click="confirm_delete"][lvt-data-id="1"]`, chromedp.ByQuery),
-			chromedp.Sleep(500*time.Millisecond),
-			// Verify modal appeared
-			chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisible),
+			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"][lvt-data-id="1"]').click()`, nil),
+			e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 		)
-
-		if err != nil || !modalVisible {
-			t.Logf("Could not open delete modal: %v", err)
-			t.Log("✅ Confirm delete modal test skipped (modal not available)")
-			return
+		if err != nil {
+			t.Fatalf("Failed to open delete modal: %v", err)
 		}
 
 		err = chromedp.Run(modalCtx,
-			// Click confirm/delete button in modal
-			chromedp.Click(`button[lvt-click="confirm_delete_confirm"]`, chromedp.ByQuery),
-			// Wait for modal to close
-			chromedp.Sleep(500*time.Millisecond),
-			// Check if modal is now hidden
-			chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisible),
-			// Count todos after
+			// Click confirm button in modal
+			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete_confirm"]').click()`, nil),
+			// Wait for modal to close AND todo count to decrease
+			e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') === null`, 5*time.Second),
+			e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length < %d`, todoCountBefore), 5*time.Second),
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &todoCountAfter),
-			// Check if the specific todo was deleted
-			chromedp.Evaluate(`!document.body.innerHTML.includes('Learn LiveTemplate')`, &hasDeletedTodo),
 		)
-
 		if err != nil {
-			t.Logf("Confirm delete failed: %v", err)
-		}
-
-		if modalVisible {
-			t.Log("Note: Modal may still be visible (animation timing)")
-		} else {
-			t.Log("Modal closed after confirm")
+			t.Fatalf("Confirm delete failed: %v", err)
 		}
 
 		t.Logf("Todo count before: %d, after: %d", todoCountBefore, todoCountAfter)
 
-		// Just log the count change - the important thing is the modal workflow worked
-		if todoCountAfter < todoCountBefore {
-			t.Log("Todo count decreased correctly")
-		} else {
-			t.Log("Note: Todo count did not decrease (may be timing or state issue)")
+		if todoCountAfter >= todoCountBefore {
+			t.Errorf("Todo count should decrease after deletion (before: %d, after: %d)", todoCountBefore, todoCountAfter)
 		}
 
 		t.Log("✅ Confirm delete modal works")
@@ -962,7 +912,6 @@ func TestBrowserDeleteFlow(t *testing.T) {
 	// Navigate and wait for page to load
 	var todoCountBefore, todoCountAfter int
 	var hasFirstTodo bool
-	var html string
 
 	t.Log("Step 1: Loading page and counting todos...")
 	err = chromedp.Run(ctx,
@@ -982,52 +931,27 @@ func TestBrowserDeleteFlow(t *testing.T) {
 		t.Fatal("Expected at least 1 todo initially")
 	}
 
-	// Click delete button on first todo
+	// Use JS .click() instead of chromedp.Click — chromedp.Click doesn't
+	// reliably trigger event delegation handlers in headless Chrome.
 	t.Log("Step 2: Clicking delete button...")
-	var deleteButtonExists bool
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, &deleteButtonExists),
-	)
-	if err != nil || !deleteButtonExists {
-		t.Fatalf("Delete button not found: %v", err)
-	}
-
-	err = chromedp.Run(ctx,
-		chromedp.Click(`button[lvt-click="confirm_delete"]`, chromedp.ByQuery),
-		chromedp.Sleep(500*time.Millisecond),
+		chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]').click()`, nil),
+		e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 	)
 	if err != nil {
-		t.Fatalf("Failed to click delete button: %v", err)
+		t.Fatalf("Failed to open delete modal: %v", err)
 	}
+	t.Log("Step 3: Modal appeared")
 
-	// Wait for modal to appear
-	t.Log("Step 3: Waiting for modal...")
-	var modalVisible bool
-	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisible),
-	)
-	if err != nil || !modalVisible {
-		t.Fatalf("Modal did not appear: %v (visible: %v)", err, modalVisible)
-	}
-	t.Log("Modal appeared")
-
-	// Click confirm/delete button in modal
+	// Click confirm button in modal
 	t.Log("Step 4: Clicking confirm button in modal...")
-	var confirmButtonExists bool
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete_confirm"]') !== null`, &confirmButtonExists),
-	)
-	if err != nil || !confirmButtonExists {
-		chromedp.Run(ctx, chromedp.OuterHTML(`[data-modal="delete_confirm"]`, &html, chromedp.ByQuery))
-		t.Fatalf("Confirm button not found: %v (button exists: %v), modal HTML: %s", err, confirmButtonExists, html)
-	}
-
-	err = chromedp.Run(ctx,
-		chromedp.Click(`button[lvt-click="confirm_delete_confirm"]`, chromedp.ByQuery),
-		chromedp.Sleep(1000*time.Millisecond),
+		chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete_confirm"]').click()`, nil),
+		e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') === null`, 5*time.Second),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length < %d`, todoCountBefore), 5*time.Second),
 	)
 	if err != nil {
-		t.Fatalf("Failed to click confirm button: %v", err)
+		t.Fatalf("Failed to confirm delete: %v", err)
 	}
 
 	// Verify deletion
@@ -1036,40 +960,21 @@ func TestBrowserDeleteFlow(t *testing.T) {
 	err = chromedp.Run(ctx,
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &todoCountAfter),
 		chromedp.Evaluate(`document.body.innerHTML.includes('Learn LiveTemplate')`, &hasFirstTodoAfter),
-		chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
 	)
 	if err != nil {
 		t.Fatalf("Verification failed: %v", err)
 	}
 
 	t.Logf("Todo count: before=%d, after=%d", todoCountBefore, todoCountAfter)
-	t.Logf("First todo present: before=%v, after=%v", hasFirstTodo, hasFirstTodoAfter)
 
-	// Check modal closed
-	var modalStillVisible bool
-	chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalStillVisible))
-	if modalStillVisible {
-		t.Error("Modal should be closed after confirm")
-	} else {
-		t.Log("Modal closed correctly")
+	if todoCountAfter >= todoCountBefore {
+		t.Errorf("Todo count should decrease (before: %d, after: %d)", todoCountBefore, todoCountAfter)
 	}
 
-	// Note: The delete via modal may have timing issues in the standalone test
-	// The main TestTodosComponentsE2E covers this functionality
-	t.Logf("Todo count: before=%d, after=%d", todoCountBefore, todoCountAfter)
-	if todoCountAfter < todoCountBefore {
-		t.Log("✅ Todo count decreased correctly")
-	} else {
-		t.Log("Note: Todo count did not decrease - modal confirmation may have timing issues")
+	if hasFirstTodoAfter {
+		t.Error("First todo should be deleted")
 	}
 
-	// Verify first todo state
-	if !hasFirstTodoAfter {
-		t.Log("✅ First todo was deleted")
-	} else {
-		t.Log("Note: First todo still present - may be timing or state issue")
-	}
-
-	t.Log("✅ Browser delete flow test completed!")
+	t.Log("✅ Browser delete flow test passed!")
 }
 
