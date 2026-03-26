@@ -45,4 +45,5 @@ testing/01_basic/basic
 todos-components/todos-components
 todos-components/.uploads/
 ws-disabled/ws-disabled
+live-preview/live-preview
 .worktrees/
