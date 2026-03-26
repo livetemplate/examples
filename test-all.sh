@@ -28,6 +28,7 @@ WORKING_EXAMPLES=(
     "counter"
     "chat"
     "todos"
+    "live-preview"
     "graceful-shutdown"
     "testing/01_basic"
     "ws-disabled"
