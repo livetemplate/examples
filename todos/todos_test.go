@@ -184,9 +184,9 @@ func TestTodosE2E(t *testing.T) {
 			t.Fatalf("Failed to add first todo: %v", err)
 		}
 
-		// Re-query HTML after DOM patch completes
+		// Read HTML via JS to avoid stale node references after DOM patch
 		err = chromedp.Run(ctx,
-			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('section').outerHTML`, &html),
 		)
 		if err != nil {
 			t.Fatalf("Failed to read section HTML: %v", err)
@@ -559,6 +559,7 @@ func TestTodosE2E(t *testing.T) {
 		}
 
 		err = chromedp.Run(ctx,
+			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
 					const input = document.querySelector('input[lvt-input="search"]');
