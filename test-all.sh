@@ -29,6 +29,8 @@ WORKING_EXAMPLES=(
     "chat"
     "todos"
     "live-preview"
+    "todos-progressive"
+    "profile-progressive"
     "graceful-shutdown"
     "testing/01_basic"
     "ws-disabled"
