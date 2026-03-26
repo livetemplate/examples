@@ -9,11 +9,11 @@
     <h1>{{.Title}}</h1>
     <div>
         <p>Counter: {{.Counter}}</p>
-        <div>
-            <button lvt-click="increment">+1</button>
-            <button lvt-click="decrement">-1</button>
-            <button lvt-click="reset">Reset</button>
-        </div>
+        <form method="POST">
+            <button type="submit" name="increment">+1</button>
+            <button type="submit" name="decrement">-1</button>
+            <button type="submit" name="reset">Reset</button>
+        </form>
     </div>
     <footer>
         <p>Last updated: {{.LastUpdated}}</p>

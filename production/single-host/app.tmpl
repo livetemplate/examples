@@ -159,11 +159,11 @@
             <div class="counter-label">Counter Value</div>
         </div>
 
-        <div class="button-group">
-            <button lvt-click="increment">+1</button>
-            <button lvt-click="decrement">-1</button>
-            <button class="reset" lvt-click="reset">Reset</button>
-        </div>
+        <form method="POST" class="button-group">
+            <button type="submit" name="increment">+1</button>
+            <button type="submit" name="decrement">-1</button>
+            <button type="submit" name="reset" class="reset">Reset</button>
+        </form>
 
         <div class="footer">
             Last updated: {{.LastUpdated}}

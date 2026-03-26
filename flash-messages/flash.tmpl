@@ -166,12 +166,12 @@
 
     <!-- Add Item Form -->
     <div class="form-group">
-        <form lvt-submit="add_item">
+        <form method="POST">
             <input type="text"
                    name="item"
                    placeholder="Enter item name"
                    class="{{if .lvt.HasError "item"}}error{{end}}" />
-            <button type="submit">Add Item</button>
+            <button type="submit" name="add_item">Add Item</button>
             {{if .lvt.HasError "item"}}
             <div class="field-error">{{.lvt.Error "item"}}</div>
             {{end}}
@@ -180,8 +180,10 @@
 
     <!-- Action Buttons -->
     <div class="form-group">
-        <button lvt-click="clear_items" class="btn-warning">Clear All</button>
-        <button lvt-click="simulate_error" class="btn-danger">Simulate Error</button>
+        <form method="POST" style="display:inline;">
+            <button type="submit" name="clear_items" class="btn-warning">Clear All</button>
+            <button type="submit" name="simulate_error" class="btn-danger">Simulate Error</button>
+        </form>
     </div>
 
     <!-- Items List -->
@@ -191,7 +193,10 @@
         {{range .Items}}
         <div class="item">
             <span class="item-name">{{.}}</span>
-            <button lvt-click="remove_item" lvt-data-item="{{.}}" class="remove-btn btn-secondary">Remove</button>
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="item" value="{{.}}">
+                <button type="submit" name="remove_item" class="remove-btn btn-secondary">Remove</button>
+            </form>
         </div>
         {{end}}
         {{else}}

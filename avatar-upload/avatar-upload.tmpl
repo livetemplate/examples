@@ -242,7 +242,7 @@
             </div>
         </div>
 
-        <form lvt-submit="UpdateProfile">
+        <form method="POST">
             <div class="form-group">
                 <label for="name">Name</label>
                 <input type="text" id="name" name="name" value="{{.Name}}" required>
@@ -288,7 +288,7 @@
                 {{end}}
             </div>
 
-            <button type="submit">Save Profile</button>
+            <button type="submit" name="update_profile">Save Profile</button>
         </form>
 
         <div class="powered-by">

@@ -75,12 +75,12 @@
         </div>
 
         {{if not .CurrentUser}}
-        <form lvt-submit="join">
+        <form method="POST">
             <label>
                 Choose your username:
                 <input type="text" name="username" required autofocus>
             </label>
-            <button type="submit">Join Chat</button>
+            <button type="submit" name="join">Join Chat</button>
         </form>
         {{else}}
         <div class="messages" id="messages" lvt-scroll="bottom-sticky">
@@ -101,9 +101,9 @@
             {{end}}
         </div>
 
-        <form class="input-form" lvt-submit="send">
+        <form method="POST" class="input-form">
             <input type="text" name="message" placeholder="Type your message..." autocomplete="off" autofocus>
-            <button type="submit">Send</button>
+            <button type="submit" name="send">Send</button>
         </form>
         {{end}}
     </main>

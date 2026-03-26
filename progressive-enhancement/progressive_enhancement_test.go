@@ -76,9 +76,9 @@ func TestProgressiveEnhancement_WithJS(t *testing.T) {
 		t.Error("Expected page title in HTML")
 	}
 
-	// Verify form exists
-	if !strings.Contains(initialHTML, `name="lvt-action"`) {
-		t.Error("Expected lvt-action hidden field in form")
+	// Verify form buttons use name routing
+	if !strings.Contains(initialHTML, `name="add"`) {
+		t.Error("Expected named button for add action")
 	}
 }
 
@@ -270,7 +270,7 @@ func TestProgressiveEnhancement_NoJS(t *testing.T) {
 	}
 
 	// POST a new todo (simulating form submission without JS)
-	form := strings.NewReader("lvt-action=add&title=HTTP+test+todo")
+	form := strings.NewReader("action=add&title=HTTP+test+todo")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -312,7 +312,7 @@ func TestProgressiveEnhancement_ValidationError(t *testing.T) {
 	}
 
 	// POST with empty title (should fail validation)
-	form := strings.NewReader("lvt-action=add&title=")
+	form := strings.NewReader("action=add&title=")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -347,7 +347,7 @@ func TestProgressiveEnhancement_JSClientGetsJSON(t *testing.T) {
 	client := &http.Client{}
 
 	// POST with Accept: application/json (like JS client would)
-	form := strings.NewReader("lvt-action=add&title=JSON+test")
+	form := strings.NewReader("action=add&title=JSON+test")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -385,7 +385,7 @@ func TestProgressiveEnhancement_Toggle(t *testing.T) {
 	}
 
 	// Toggle an existing todo (ID "1" is pre-populated)
-	form := strings.NewReader("lvt-action=toggle&id=1")
+	form := strings.NewReader("action=toggle&id=1")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -417,7 +417,7 @@ func TestProgressiveEnhancement_Delete(t *testing.T) {
 	}
 
 	// Delete an existing todo (ID "2" is pre-populated)
-	form := strings.NewReader("lvt-action=delete&id=2")
+	form := strings.NewReader("action=delete&id=2")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -465,7 +465,7 @@ func TestProgressiveEnhancement_DisabledReturnsJSON(t *testing.T) {
 	client := &http.Client{}
 
 	// POST with Accept: text/html (like a no-JS browser)
-	form := strings.NewReader("lvt-action=add&title=test")
+	form := strings.NewReader("action=add&title=test")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -530,7 +530,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 	err = chromedp.Run(ctx,
 		chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
 		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
-		chromedp.Submit(`form[lvt-submit="add"]`, chromedp.ByQuery),
+		chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 		// Wait for DOM to update with new item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterAdd), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterAddCount),
@@ -548,7 +548,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 	// Step 3: Toggle the last todo (mark as complete)
 	// The new todo should NOT have .completed class initially
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		chromedp.Click(`.todo-item:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to appear
 		e2etest.WaitFor(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
@@ -569,7 +569,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 4: Toggle again (mark as incomplete)
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		chromedp.Click(`.todo-item:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to be removed
 		e2etest.WaitFor(`!document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterUntoggleCount),
@@ -590,7 +590,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 5: Delete the last todo (the one we just added)
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		chromedp.Click(`.todo-item:last-child button[name="delete"]`, chromedp.ByQuery),
 		// Wait for DOM to update with deleted item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, initialCount), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
@@ -651,7 +651,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	// Step 2: Delete the FIRST todo
 	expectedAfterDelete := initialCount - 1
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:first-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		chromedp.Click(`.todo-item:first-child button[name="delete"]`, chromedp.ByQuery),
 		// Wait for DOM to update with deleted item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterDelete), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
@@ -684,7 +684,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	}
 
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		chromedp.Click(`.todo-item:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to change
 		e2etest.WaitFor(toggleWaitCondition, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),

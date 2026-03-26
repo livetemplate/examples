@@ -123,7 +123,7 @@ func TestChatE2E(t *testing.T) {
 		err := chromedp.Run(browserCtx,
 			// Capture initial state
 			chromedp.Text(".stats", &initialStatsText, chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('form[lvt-submit="join"]') !== null`, &initialFormVisible),
+			chromedp.Evaluate(`document.querySelector('button[name="join"]') !== null`, &initialFormVisible),
 
 			// Fill and submit join form
 			chromedp.SetValue(`input[name="username"]`, "testuser", chromedp.ByQuery),
@@ -133,7 +133,7 @@ func TestChatE2E(t *testing.T) {
 			// Capture after-join state
 			chromedp.Text(".stats", &afterStatsText, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('.messages') !== null`, &afterChatVisible),
-			chromedp.Evaluate(`document.querySelector('form[lvt-submit="join"]') !== null`, &afterFormVisible),
+			chromedp.Evaluate(`document.querySelector('button[name="join"]') !== null`, &afterFormVisible),
 		)
 
 		if err != nil {
@@ -210,7 +210,7 @@ func TestChatE2E(t *testing.T) {
 				return nil
 			}),
 			chromedp.SetValue(`input[name="message"]`, "First message", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="send"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 1`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -231,7 +231,7 @@ func TestChatE2E(t *testing.T) {
 				return nil
 			}),
 			chromedp.SetValue(`input[name="message"]`, "Second message", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="send"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 2`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -252,7 +252,7 @@ func TestChatE2E(t *testing.T) {
 				return nil
 			}),
 			chromedp.SetValue(`input[name="message"]`, "Third message", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="send"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 3`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {

@@ -2,6 +2,27 @@
 
 Example applications demonstrating LiveTemplate usage with various features and patterns.
 
+## Progressive Complexity Tiers
+
+All examples follow the [progressive complexity pattern](https://github.com/livetemplate/livetemplate/blob/main/docs/guides/progressive-complexity.md). Tier 1 uses standard HTML only. Tier 2 adds `lvt-*` attributes when no HTML equivalent exists.
+
+| Example | Tier | Tier 2 Attributes | Description |
+|---------|------|-------------------|-------------|
+| `counter/` | 1 | None | Simple state management with named buttons |
+| `todos-progressive/` | 1 | None | Multi-action todo app, pure standard HTML |
+| `profile-progressive/` | 1 | None | Form validation with HTML attributes |
+| `live-preview/` | 1 | None | Live input binding via `Change()` method |
+| `flash-messages/` | 1 | None | Flash message patterns with forms |
+| `ws-disabled/` | 1 | None | HTTP-only mode, no WebSocket |
+| `progressive-enhancement/` | 1 | None | Works with or without JavaScript |
+| `login/` | 1 | None | Authentication with standard forms |
+| `observability/` | 1 | None | Logging and tracing |
+| `graceful-shutdown/` | 1 | None | Server shutdown patterns |
+| `chat/` | 1+2 | `lvt-scroll` | Real-time chat with auto-scroll |
+| `avatar-upload/` | 1+2 | `lvt-upload` | File upload with progress tracking |
+| `todos/` | 1+2 | `lvt-input` (search), `lvt-change` (sort), `lvt-disable-with` | Full CRUD with search, sort, pagination |
+| `todos-components/` | 1+2 | `lvt-change` (toggle), components | UI components (modal, toast) |
+
 ## Examples
 
 ### 1. Counter - Simple State Management

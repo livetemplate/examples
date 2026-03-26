@@ -20,8 +20,7 @@
         {{end}}
 
         <article>
-            <form method="POST" lvt-submit="Add">
-                <input type="hidden" name="lvt-action" value="Add">
+            <form method="POST">
                 <div class="grid">
                     <label>
                         Label
@@ -40,7 +39,7 @@
                         {{end}}
                     </label>
                 </div>
-                <button type="submit">Add Bookmark</button>
+                <button type="submit" name="add">Add Bookmark</button>
             </form>
         </article>
 
@@ -57,10 +56,9 @@
                     <a href="{{.URL}}" target="_blank" rel="noopener">{{.Label}}</a>
                     <small> — {{.URL}}</small>
                 </span>
-                <form method="POST" lvt-submit="Delete" style="margin:0;">
-                    <input type="hidden" name="lvt-action" value="Delete">
+                <form method="POST" style="margin:0;">
                     <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" class="contrast outline" style="margin:0; padding:0.25rem 0.5rem;">&#10005;</button>
+                    <button type="submit" name="delete" class="contrast outline" style="margin:0; padding:0.25rem 0.5rem;">&#10005;</button>
                 </form>
             </div>
             {{end}}

@@ -172,17 +172,24 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "First Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			// Wait for todo to appear
 			e2etest.WaitFor(`(() => {
 				const tbody = document.querySelector('tbody');
 				return tbody && tbody.textContent.includes('First Todo Item');
 			})()`, 5*time.Second),
-			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
 
 		if err != nil {
 			t.Fatalf("Failed to add first todo: %v", err)
+		}
+
+		// Re-query HTML after DOM patch completes
+		err = chromedp.Run(ctx,
+			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read section HTML: %v", err)
 		}
 
 		// Verify first todo was added
@@ -207,15 +214,22 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`window.__wsMessages = [];`, nil),
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Second Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForCount("tbody tr", 2, 10*time.Second),
-			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
-			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
 		)
 
 		if err != nil {
-			t.Logf("WebSocket messages during second todo add:\n%s", wsMessages)
 			t.Fatalf("Failed to add second todo: %v", err)
+		}
+
+		// Re-query after DOM patch
+		err = chromedp.Run(ctx,
+			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
+			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
+		)
+		if err != nil {
+			t.Logf("WebSocket messages during second todo add:\n%s", wsMessages)
+			t.Fatalf("Failed to read section HTML: %v", err)
 		}
 
 		// Log and validate WebSocket messages
@@ -257,15 +271,22 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`window.__wsMessages = [];`, nil),
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Third Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForCount("tbody tr", 3, 10*time.Second),
-			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
-			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
 		)
 
 		if err != nil {
-			t.Logf("WebSocket messages during third todo add:\n%s", wsMessages)
 			t.Fatalf("Failed to add third todo: %v", err)
+		}
+
+		// Re-query after DOM patch
+		err = chromedp.Run(ctx,
+			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
+			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
+		)
+		if err != nil {
+			t.Logf("WebSocket messages during third todo add:\n%s", wsMessages)
+			t.Fatalf("Failed to read section HTML: %v", err)
 		}
 
 		// Log and validate WebSocket messages
@@ -327,7 +348,7 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Fourth Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForText("tbody", "Fourth Todo Item", 10*time.Second),
 		)
 		if err != nil {
@@ -339,7 +360,7 @@ func TestTodosE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Fifth Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForText("tbody", "Fifth Todo Item", 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
@@ -446,10 +467,9 @@ func TestTodosE2E(t *testing.T) {
 			consoleLogs string
 		)
 
-		// Test search with "First" - should match "First Todo Item"
-		// Use event-driven waiting for deterministic results
+		// Test search with "First" - uses lvt-input="search" (Tier 2)
 		err := chromedp.Run(ctx,
-			chromedp.WaitVisible(`input[name="query"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`input[lvt-input="search"]`, chromedp.ByQuery),
 			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
@@ -459,11 +479,17 @@ func TestTodosE2E(t *testing.T) {
 				})();
 			`, nil),
 			e2etest.WaitForUpdateEvent("search", 5*time.Second),
-			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
 
 		if err != nil {
 			t.Fatalf("Failed to wait for search results: %v", err)
+		}
+
+		err = chromedp.Run(ctx,
+			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read section HTML: %v", err)
 		}
 
 		// Verify only "First Todo Item" is visible
@@ -487,11 +513,17 @@ func TestTodosE2E(t *testing.T) {
 				})();
 			`, nil),
 			e2etest.WaitForUpdateEvent("search", 5*time.Second),
-			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
 
 		if err != nil {
 			t.Fatalf("Failed to wait for search clear: %v", err)
+		}
+
+		err = chromedp.Run(ctx,
+			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read section HTML: %v", err)
 		}
 
 		// Verify first page todos are visible again (page 1 shows Fifth, Fourth, Third in newest-first order)
@@ -527,7 +559,6 @@ func TestTodosE2E(t *testing.T) {
 		}
 
 		err = chromedp.Run(ctx,
-			e2etest.SetupUpdateEventListener(),
 			chromedp.Evaluate(`
 				(() => {
 					const input = document.querySelector('input[lvt-input="search"]');
@@ -779,20 +810,23 @@ func TestTodosE2E(t *testing.T) {
 
 		// Currently have 5 todos (page size is 3, so 2 pages)
 		// Add one more to make 6 todos (exactly 2 pages)
-		// Use event-driven waiting for deterministic results
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
-			e2etest.SetupUpdateEventListener(),
 			chromedp.SendKeys(`input[name="text"]`, "Sixth Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-			e2etest.WaitForUpdateEvent("add", 5*time.Second),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			// Wait for pagination controls to appear (they only show when TotalPages > 1)
-			e2etest.WaitFor(`document.querySelector('button[lvt-click="next_page"]') !== null`, 5*time.Second),
-			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('button[name="next_page"]') !== null`, 5*time.Second),
 		)
 
 		if err != nil {
 			t.Fatalf("Failed to wait for sixth todo and pagination: %v", err)
+		}
+
+		err = chromedp.Run(ctx,
+			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read tbody HTML: %v", err)
 		}
 
 		// Check page 1 has Sixth, Fifth, Fourth
@@ -813,13 +847,11 @@ func TestTodosE2E(t *testing.T) {
 
 		t.Log("✅ Page 1 shows correct todos")
 
-		// Click Next to go to page 2 - use event-driven waiting
+		// Click Next to go to page 2
 		err = chromedp.Run(ctx,
-			e2etest.SetupUpdateEventListener(),
-			chromedp.Click(`button[lvt-click="next_page"]`, chromedp.ByQuery),
-			e2etest.WaitForUpdateEvent("next_page", 5*time.Second),
+			chromedp.Click(`button[name="next_page"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`(() => {
-				const btn = document.querySelector('button[lvt-click="next_page"]');
+				const btn = document.querySelector('button[name="next_page"]');
 				if (!btn) {
 					return false;
 				}
@@ -833,7 +865,7 @@ func TestTodosE2E(t *testing.T) {
 				return style.pointerEvents === 'none';
 			})()`, 5*time.Second),
 			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
-			chromedp.OuterHTML(`button[lvt-click="next_page"]`, &nextButtonHTML, chromedp.ByQuery),
+			chromedp.OuterHTML(`button[name="next_page"]`, &nextButtonHTML, chromedp.ByQuery),
 		)
 
 		if err != nil {
@@ -862,7 +894,7 @@ func TestTodosE2E(t *testing.T) {
 		var nextDisabled bool
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const btn = document.querySelector('button[lvt-click="next_page"]');
+				const btn = document.querySelector('button[name="next_page"]');
 				if (!btn) {
 					return false;
 				}
@@ -882,13 +914,11 @@ func TestTodosE2E(t *testing.T) {
 
 		t.Log("✅ Next button disabled on last page")
 
-		// Click Previous to go back to page 1 - use event-driven waiting
+		// Click Previous to go back to page 1
 		err = chromedp.Run(ctx,
-			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="prev_page"]').click()`, nil),
-			e2etest.WaitForUpdateEvent("prev_page", 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('button[name="prev_page"]').click()`, nil),
 			e2etest.WaitFor(`(() => {
-				const btn = document.querySelector('button[lvt-click="prev_page"]');
+				const btn = document.querySelector('button[name="prev_page"]');
 				if (!btn) {
 					return false;
 				}
@@ -902,7 +932,7 @@ func TestTodosE2E(t *testing.T) {
 				return style.pointerEvents === 'none';
 			})()`, 5*time.Second),
 			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
-			chromedp.OuterHTML(`button[lvt-click="prev_page"]`, &prevButtonHTML, chromedp.ByQuery),
+			chromedp.OuterHTML(`button[name="prev_page"]`, &prevButtonHTML, chromedp.ByQuery),
 		)
 
 		if err != nil {
@@ -920,7 +950,7 @@ func TestTodosE2E(t *testing.T) {
 		var prevDisabled bool
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const btn = document.querySelector('button[lvt-click="prev_page"]');
+				const btn = document.querySelector('button[name="prev_page"]');
 				if (!btn) {
 					return false;
 				}

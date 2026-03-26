@@ -47,11 +47,9 @@
         {{end}}
 
         <!-- Add todo form -->
-        <!-- Works with JS: lvt-submit triggers WebSocket action -->
-        <!-- Works without JS: method="POST" + lvt-action triggers HTTP form submission -->
+        <!-- Button name="add" routes to Add() method across all transports -->
         <article>
-            <form method="POST" lvt-submit="add">
-                <input type="hidden" name="lvt-action" value="add">
+            <form method="POST">
                 <input
                     type="text"
                     name="title"
@@ -63,7 +61,7 @@
                 {{if .lvt.HasError "title"}}
                 <small>{{.lvt.Error "title"}}</small>
                 {{end}}
-                <button type="submit">Add Todo</button>
+                <button type="submit" name="add">Add Todo</button>
             </form>
         </article>
 
@@ -78,20 +76,18 @@
             {{/* No explicit data-key needed - library auto-generates content-based keys */}}
             <div class="todo-item{{if .Completed}} completed{{end}}">
                 <!-- Toggle form -->
-                <form method="POST" lvt-submit="toggle">
-                    <input type="hidden" name="lvt-action" value="toggle">
+                <form method="POST">
                     <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" class="secondary outline" title="Toggle completed">
+                    <button type="submit" name="toggle" class="secondary outline" title="Toggle completed">
                         {{if .Completed}}&#10003;{{else}}&#9675;{{end}}
                     </button>
                 </form>
                 <span class="todo-title">{{.Title}}</span>
                 <small>{{.CreatedAt}}</small>
                 <!-- Delete form -->
-                <form method="POST" lvt-submit="delete">
-                    <input type="hidden" name="lvt-action" value="delete">
+                <form method="POST">
                     <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" class="contrast outline" title="Delete">&#10005;</button>
+                    <button type="submit" name="delete" class="contrast outline" title="Delete">&#10005;</button>
                 </form>
             </div>
             {{end}}

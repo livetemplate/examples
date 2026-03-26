@@ -1,7 +1,7 @@
 {{/* Template Partials */}}
 
 {{define "add-form"}}
-<form lvt-submit="add">
+<form method="POST">
   <fieldset role="group">
     <label for="new-todo-text" class="visually-hidden">New todo text</label>
     <input
@@ -13,7 +13,7 @@
       aria-required="true"
       {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
     />
-    <button type="submit" lvt-disable-with="Adding...">Add</button>
+    <button type="submit" name="add" lvt-disable-with="Adding...">Add</button>
   </fieldset>
   {{ if .lvt.HasError "text" }}
     <small style="color: var(--pico-del-color);">{{ .lvt.Error "text" }}</small>
@@ -72,28 +72,22 @@
 
 {{define "todo-item"}}
 <tr data-key="{{ .ID }}">
-  <td>
-    <input
-      type="checkbox"
-      {{ if .Completed }}checked{{ end }}
-      lvt-change="toggle"
-      lvt-data-id="{{ .ID }}"
-      aria-label="Toggle completion"
-    />
-  </td>
-  <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
-    {{ .Text }}
-  </td>
-  <td>
-    <button
-      lvt-click="delete"
-      lvt-data-id="{{ .ID }}"
-      class="secondary"
-      aria-label="Delete this todo"
-    >
-      Delete
-    </button>
-  </td>
+  <form method="POST" style="display:contents;">
+    <input type="hidden" name="id" value="{{ .ID }}">
+    <td>
+      <button type="submit" name="toggle" class="toggle-btn" aria-label="Toggle completion">
+        {{ if .Completed }}&#10003;{{ else }}&#9675;{{ end }}
+      </button>
+    </td>
+    <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
+      {{ .Text }}
+    </td>
+    <td>
+      <button type="submit" name="delete" class="secondary" aria-label="Delete this todo">
+        Delete
+      </button>
+    </td>
+  </form>
 </tr>
 {{end}}
 
@@ -107,29 +101,35 @@
 >
   <ul style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;">
     <li>
-      <button
-        lvt-click="prev_page"
-        data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
-        {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
-        class="secondary"
-        aria-label="Go to previous page"
-      >
-        Previous
-      </button>
+      <form method="POST" style="margin:0;">
+        <button
+          type="submit"
+          name="prev_page"
+          data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
+          {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
+          class="secondary"
+          aria-label="Go to previous page"
+        >
+          Previous
+        </button>
+      </form>
     </li>
     <li>
       <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
     </li>
     <li>
-      <button
-        lvt-click="next_page"
-        data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
-        {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
-        class="secondary"
-        aria-label="Go to next page"
-      >
-        Next
-      </button>
+      <form method="POST" style="margin:0;">
+        <button
+          type="submit"
+          name="next_page"
+          data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
+          {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
+          class="secondary"
+          aria-label="Go to next page"
+        >
+          Next
+        </button>
+      </form>
     </li>
   </ul>
 </nav>
@@ -159,6 +159,13 @@
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
         border: 0;
+      }
+      .toggle-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.25rem;
+        font-size: 1.2rem;
       }
     </style>
   </head>
@@ -204,9 +211,11 @@
           {{template "pagination" .}}
 
           {{ if gt .CompletedCount 0 }}
-            <button lvt-click="clear_completed" class="secondary">
-              Clear Completed ({{ .CompletedCount }})
-            </button>
+            <form method="POST" style="margin:0;">
+              <button type="submit" name="clear_completed" class="secondary">
+                Clear Completed ({{ .CompletedCount }})
+              </button>
+            </form>
           {{ end }}
         </section>
 
