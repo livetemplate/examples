@@ -72,22 +72,25 @@
 
 {{define "todo-item"}}
 <tr data-key="{{ .ID }}">
-  <form method="POST" style="display:contents;">
-    <input type="hidden" name="id" value="{{ .ID }}">
-    <td>
+  <td>
+    <form method="POST">
+      <input type="hidden" name="id" value="{{ .ID }}">
       <button type="submit" name="toggle" class="toggle-btn" aria-label="Toggle completion">
         {{ if .Completed }}&#10003;{{ else }}&#9675;{{ end }}
       </button>
-    </td>
-    <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
-      {{ .Text }}
-    </td>
-    <td>
+    </form>
+  </td>
+  <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
+    {{ .Text }}
+  </td>
+  <td>
+    <form method="POST">
+      <input type="hidden" name="id" value="{{ .ID }}">
       <button type="submit" name="delete" class="secondary" aria-label="Delete this todo">
         Delete
       </button>
-    </td>
-  </form>
+    </form>
+  </td>
 </tr>
 {{end}}
 

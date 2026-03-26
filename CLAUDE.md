@@ -5,8 +5,8 @@
 All examples MUST follow the progressive complexity pattern introduced in LiveTemplate v0.8.6:
 
 ### Tier 1 (Standard HTML) — Use by default
-- **Form submission:** `<form method="POST">` with `<button type="submit" name="action">`
-- **Multiple actions:** Use button `name` attribute for routing (e.g., `name="toggle"` routes to `Toggle()` method)
+- **Form submission:** `<form method="POST">` with `<button type="submit" name="ActionName">` (e.g., `name="add"` routes to `Add()`)
+- **Multiple actions:** Use distinct button `name` attributes for routing (e.g., `name="toggle"` routes to `Toggle()`, `name="delete"` routes to `Delete()`)
 - **Data passing:** `<input type="hidden" name="id" value="{{.ID}}">` (NOT `lvt-data-*` attributes)
 - **Live input binding:** Add a `Change()` method to the controller + `value="{{.Field}}"` on inputs
 - **Validation:** Use HTML attributes (`required`, `type="email"`, `minlength`, etc.)
