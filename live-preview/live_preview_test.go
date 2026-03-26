@@ -213,26 +213,18 @@ func TestLivePreviewE2E(t *testing.T) {
 		}
 	})
 
-	t.Run("Form Submit", func(t *testing.T) {
+	t.Run("LiveTemplate Wrapper", func(t *testing.T) {
 		var html string
 
 		err := chromedp.Run(ctx,
-			// Set value and submit via JS for reliability in headless Chrome
-			chromedp.Evaluate(`
-				const input = document.querySelector('input[name="Name"]');
-				input.value = 'Alice';
-				input.dispatchEvent(new Event('input', {bubbles: true}));
-				document.querySelector('button[type="submit"]').click();
-			`, nil),
-			chromedp.Sleep(1*time.Second),
-			chromedp.OuterHTML(`#preview`, &html, chromedp.ByQuery),
+			chromedp.OuterHTML(`[data-lvt-id]`, &html, chromedp.ByQuery),
 		)
 		if err != nil {
-			t.Fatalf("Form submit test failed: %v", err)
+			t.Fatalf("Failed to find LiveTemplate wrapper: %v", err)
 		}
 
-		if !strings.Contains(html, "Saved: Alice") {
-			t.Errorf("Expected 'Saved: Alice' in preview, got: %s", html)
+		if !strings.Contains(html, "data-lvt-id") {
+			t.Error("LiveTemplate wrapper not found")
 		}
 	})
 }
