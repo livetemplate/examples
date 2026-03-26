@@ -8,7 +8,8 @@
 <body>
     <h1>Live Preview</h1>
     <form method="POST">
-        <input name="Name" value="{{.Name}}" placeholder="Type your name...">
+        <label for="name-input">Name</label>
+        <input id="name-input" name="Name" value="{{.Name}}" placeholder="Type your name...">
         <button type="submit">Save</button>
     </form>
     <div id="preview">{{.Preview}}</div>

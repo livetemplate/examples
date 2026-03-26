@@ -53,12 +53,27 @@ func startServer(t *testing.T) (int, *e2etest.SafeBuffer) {
 	})
 
 	serverURL := fmt.Sprintf("http://localhost:%s", portStr)
+
+	client := &http.Client{
+		Timeout: 200 * time.Millisecond,
+	}
+
+	serverReady := false
 	for i := 0; i < 50; i++ {
-		if resp, err := http.Get(serverURL); err == nil {
+		resp, err := client.Get(serverURL)
+		if err == nil {
 			resp.Body.Close()
+			serverReady = true
 			break
 		}
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !serverReady {
+		t.Fatalf("server did not become reachable at %s within timeout; logs:\n%s", serverURL, logs.String())
 	}
 
 	return port, logs
