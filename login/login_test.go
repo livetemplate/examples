@@ -98,7 +98,7 @@ func TestLoginE2E(t *testing.T) {
 	t.Run("Invalid Credentials via Form Submit", func(t *testing.T) {
 		var html string
 
-		// Use chromedp.Submit which triggers form submission and waits for navigation
+		// Click the submit button (not form.submit()) so button name is included in form data
 		err := chromedp.Run(ctx,
 			// Fill in wrong credentials
 			chromedp.WaitVisible(`#username`, chromedp.ByQuery),
@@ -106,8 +106,8 @@ func TestLoginE2E(t *testing.T) {
 			chromedp.SendKeys(`#username`, "testuser", chromedp.ByQuery),
 			chromedp.Clear(`#password`, chromedp.ByQuery),
 			chromedp.SendKeys(`#password`, "wrongpassword", chromedp.ByQuery),
-			// Submit the form (this triggers HTTP POST and page refresh)
-			chromedp.Submit(`form`, chromedp.ByQuery),
+			// Click the submit button so its name="login" is included in form data
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 			// Wait for page to reload and render
 			chromedp.Sleep(2*time.Second),
 			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
@@ -135,8 +135,8 @@ func TestLoginE2E(t *testing.T) {
 			chromedp.SendKeys(`#username`, "testuser", chromedp.ByQuery),
 			chromedp.Clear(`#password`, chromedp.ByQuery),
 			chromedp.SendKeys(`#password`, "secret", chromedp.ByQuery),
-			// Submit form
-			chromedp.Submit(`form`, chromedp.ByQuery),
+			// Click submit button so its name="login" is included in form data
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 			// Wait for redirect and page load
 			chromedp.Sleep(2*time.Second),
 			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
@@ -165,9 +165,9 @@ func TestLoginE2E(t *testing.T) {
 		var html string
 
 		err := chromedp.Run(ctx,
-			// Submit logout form
-			chromedp.WaitVisible(`form`, chromedp.ByQuery),
-			chromedp.Submit(`form`, chromedp.ByQuery),
+			// Click logout button so its name="logout" is included in form data
+			chromedp.WaitVisible(`button[name="logout"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="logout"]`, chromedp.ByQuery),
 			// Wait for redirect
 			chromedp.Sleep(2*time.Second),
 			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
@@ -244,7 +244,7 @@ func TestLoginHTTPCookie(t *testing.T) {
 	}
 
 	// Test login via HTTP POST
-	formData := strings.NewReader("lvt-action=login&username=testuser&password=secret")
+	formData := strings.NewReader("login=&username=testuser&password=secret")
 	req, err := http.NewRequest("POST", serverURL, formData)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -290,7 +290,7 @@ func TestLoginHTTPCookie(t *testing.T) {
 	t.Log("✅ HTTP cookie login verified")
 
 	// Test logout
-	formData = strings.NewReader("lvt-action=logout")
+	formData = strings.NewReader("logout=")
 	req, err = http.NewRequest("POST", serverURL, formData)
 	if err != nil {
 		t.Fatalf("Failed to create logout request: %v", err)

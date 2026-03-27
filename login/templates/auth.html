@@ -143,8 +143,7 @@
         </div>
         <!-- HTTP logout (deletes session cookie) -->
         <form method="POST">
-            <input type="hidden" name="lvt-action" value="logout">
-            <button type="submit" class="btn-danger">Logout</button>
+            <button type="submit" name="logout" class="btn-danger">Logout</button>
         </form>
         {{else}}
         <!-- Login View -->
@@ -154,7 +153,6 @@
         {{end}}
         <!-- HTTP login form (sets HttpOnly cookie, redirects to dashboard) -->
         <form method="POST">
-            <input type="hidden" name="lvt-action" value="login">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" placeholder="Enter username" required>
@@ -163,7 +161,7 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" placeholder="Enter password" required>
             </div>
-            <button type="submit" class="btn-primary">Login</button>
+            <button type="submit" name="login" class="btn-primary">Login</button>
         </form>
 
         <div class="info">

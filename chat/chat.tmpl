@@ -75,7 +75,7 @@
         </div>
 
         {{if not .CurrentUser}}
-        <form lvt-submit="join">
+        <form method="POST" name="join">
             <label>
                 Choose your username:
                 <input type="text" name="username" required autofocus>
@@ -101,7 +101,7 @@
             {{end}}
         </div>
 
-        <form class="input-form" lvt-submit="send">
+        <form class="input-form" method="POST" name="send">
             <input type="text" name="message" placeholder="Type your message..." autocomplete="off" autofocus>
             <button type="submit">Send</button>
         </form>

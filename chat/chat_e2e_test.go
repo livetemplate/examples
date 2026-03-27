@@ -123,17 +123,16 @@ func TestChatE2E(t *testing.T) {
 		err := chromedp.Run(browserCtx,
 			// Capture initial state
 			chromedp.Text(".stats", &initialStatsText, chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('form[lvt-submit="join"]') !== null`, &initialFormVisible),
+			chromedp.Evaluate(`document.querySelector('form[name="join"]') !== null`, &initialFormVisible),
 
-			// Fill and submit join form
-			chromedp.SetValue(`input[name="username"]`, "testuser", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			// Join via WebSocket API (form name routing is Tier 1 HTTP fallback)
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'join', data: {username: 'testuser'}})`, nil),
 			waitFor(`document.querySelector('.messages') !== null`, 5*time.Second),
 
 			// Capture after-join state
 			chromedp.Text(".stats", &afterStatsText, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('.messages') !== null`, &afterChatVisible),
-			chromedp.Evaluate(`document.querySelector('form[lvt-submit="join"]') !== null`, &afterFormVisible),
+			chromedp.Evaluate(`document.querySelector('form[name="join"]') !== null`, &afterFormVisible),
 		)
 
 		if err != nil {
@@ -188,11 +187,9 @@ func TestChatE2E(t *testing.T) {
 		if !isJoined {
 			t.Log("Not yet joined, performing join...")
 			chromedp.Run(browserCtx,
-				chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
-				chromedp.SetValue(`input[name="username"]`, "testuser", chromedp.ByQuery),
-				chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+				chromedp.Evaluate(`window.liveTemplateClient.send({action: 'join', data: {username: 'testuser'}})`, nil),
 				waitFor(`document.querySelector('.messages') !== null`, 5*time.Second),
-				chromedp.WaitVisible(`.messages`, chromedp.ByQuery), // Explicitly wait for messages container
+				chromedp.WaitVisible(`.messages`, chromedp.ByQuery),
 			)
 			t.Log("Join completed, .messages container is visible")
 		}
@@ -209,8 +206,7 @@ func TestChatE2E(t *testing.T) {
 				t.Log("Step 2: Sending FIRST message")
 				return nil
 			}),
-			chromedp.SetValue(`input[name="message"]`, "First message", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="send"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'send', data: {message: 'First message'}})`, nil),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 1`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -230,8 +226,7 @@ func TestChatE2E(t *testing.T) {
 				t.Log("Step 4: Sending SECOND message")
 				return nil
 			}),
-			chromedp.SetValue(`input[name="message"]`, "Second message", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="send"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'send', data: {message: 'Second message'}})`, nil),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 2`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -251,8 +246,7 @@ func TestChatE2E(t *testing.T) {
 				t.Log("Step 6: Sending THIRD message")
 				return nil
 			}),
-			chromedp.SetValue(`input[name="message"]`, "Third message", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="send"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'send', data: {message: 'Third message'}})`, nil),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 3`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {

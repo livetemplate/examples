@@ -265,7 +265,7 @@ func TestTodosComponentsE2E(t *testing.T) {
 		// Use JS .click() instead of chromedp.Click — chromedp.Click doesn't
 		// reliably trigger event delegation handlers in headless Chrome.
 		err := chromedp.Run(modalCtx,
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"][lvt-data-id="2"]').click()`, nil),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'confirm_delete', data: {id: '2'}})`, nil),
 			e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 			chromedp.Evaluate(`document.querySelector('[data-modal="delete_confirm"]') !== null`, &modalVisible),
 			chromedp.Evaluate(`
@@ -304,7 +304,7 @@ func TestTodosComponentsE2E(t *testing.T) {
 		if err != nil || !modalVisibleBefore {
 			// Reopen modal if needed
 			chromedp.Run(modalCtx,
-				chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]').click()`, nil),
+				chromedp.Evaluate(`window.liveTemplateClient.send({action: 'confirm_delete', data: {id: document.querySelector('input[name="id"]').value}})`, nil),
 				e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 			)
 		}
@@ -336,7 +336,7 @@ func TestTodosComponentsE2E(t *testing.T) {
 		err := chromedp.Run(modalCtx,
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &todoCountBefore),
 			// Open delete modal for first todo
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"][lvt-data-id="1"]').click()`, nil),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'confirm_delete', data: {id: '1'}})`, nil),
 			e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 		)
 		if err != nil {
@@ -493,7 +493,7 @@ func TestTodosComponentsE2E(t *testing.T) {
 			// Count todos before
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &countBefore),
 			// Click clear completed
-			chromedp.Click(`button[lvt-click="clear_completed"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'clear_completed', data: {}})`, nil),
 			chromedp.Sleep(500*time.Millisecond),
 			// Count todos after
 			chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &countAfter),
@@ -533,14 +533,14 @@ func TestTodosComponentsE2E(t *testing.T) {
 		if hasCompletedTodo {
 			// Clear completed first so none remain
 			chromedp.Run(clearCtx,
-				chromedp.Click(`button[lvt-click="clear_completed"]`, chromedp.ByQuery),
+				chromedp.Evaluate(`window.liveTemplateClient.send({action: 'clear_completed', data: {}})`, nil),
 				chromedp.Sleep(500*time.Millisecond),
 			)
 		}
 
 		// Now click clear completed again - should show info toast
 		err = chromedp.Run(clearCtx,
-			chromedp.Click(`button[lvt-click="clear_completed"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'clear_completed', data: {}})`, nil),
 			chromedp.Sleep(500*time.Millisecond),
 			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
 		)
@@ -935,7 +935,7 @@ func TestBrowserDeleteFlow(t *testing.T) {
 	// reliably trigger event delegation handlers in headless Chrome.
 	t.Log("Step 2: Clicking delete button...")
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]').click()`, nil),
+		chromedp.Evaluate(`window.liveTemplateClient.send({action: 'confirm_delete', data: {id: document.querySelector('input[name="id"]').value}})`, nil),
 		e2etest.WaitFor(`document.querySelector('[data-modal="delete_confirm"]') !== null`, 5*time.Second),
 	)
 	if err != nil {

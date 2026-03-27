@@ -23,14 +23,14 @@
         <h1>{{.Title}}</h1>
 
         {{/* Add Todo Form */}}
-        <form lvt-submit="add_todo" role="group">
+        <form method="POST" name="addTodo" role="group">
             <input
                 type="text"
                 name="title"
                 placeholder="What needs to be done?"
                 value="{{.NewTodoTitle}}"
             />
-            <button type="submit">Add</button>
+            <button type="submit" name="addTodo">Add</button>
         </form>
 
         {{/* Todo List */}}
@@ -39,23 +39,28 @@
             <div>
                 {{range .Todos}}
                 <div class="todo-item{{if .Completed.Checked}} completed{{end}}" data-key="{{.ID}}">
-                    <input
-                        type="checkbox"
-                        id="todo-checkbox-{{.ID}}"
-                        {{if .Completed.Checked}}checked{{end}}
-                        lvt-change="toggle_todo"
-                        lvt-data-id="{{.ID}}"
-                    />
+                    <form method="POST" name="toggleTodo" style="display:inline; margin:0;">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <input
+                            type="checkbox"
+                            id="todo-checkbox-{{.ID}}"
+                            {{if .Completed.Checked}}checked{{end}}
+                            onchange="this.form.requestSubmit()"
+                        />
+                        <button type="submit" name="toggleTodo" hidden>Toggle</button>
+                    </form>
                     <label for="todo-checkbox-{{.ID}}">{{if .Completed.Checked}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}</label>
-                    <button
-                        type="button"
-                        class="delete-btn outline secondary"
-                        lvt-click="confirm_delete"
-                        lvt-data-id="{{.ID}}"
-                        title="Delete todo"
-                    >
-                        &times;
-                    </button>
+                    <form method="POST" name="confirmDelete" style="display:inline; margin:0;">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <button
+                            type="submit"
+                            name="confirmDelete"
+                            class="delete-btn outline secondary"
+                            title="Delete todo"
+                        >
+                            &times;
+                        </button>
+                    </form>
                 </div>
                 {{end}}
             </div>
@@ -68,7 +73,7 @@
         {{if .Todos}}
         <footer>
             <small>{{len .Todos}} todo{{if gt (len .Todos) 1}}s{{end}}</small>
-            <button type="button" class="outline secondary" lvt-click="clear_completed">Clear completed</button>
+            <button name="clearCompleted" class="outline secondary">Clear completed</button>
         </footer>
         {{end}}
     </main>

@@ -2,136 +2,30 @@
 
 Example applications demonstrating LiveTemplate usage with various features and patterns.
 
+## Progressive Complexity
+
+All examples follow the [progressive complexity](https://github.com/livetemplate/livetemplate/blob/main/docs/guides/progressive-complexity.md) model. Tier 1 (standard HTML) is preferred; Tier 2 (`lvt-*` attributes) is used only when necessary.
+
+| Example | Tier | Description | Tier 2 Attributes |
+|---------|------|-------------|--------------------|
+| `counter/` | 1 | Simple state management | None |
+| `chat/` | 1+2 | Real-time multi-user chat | `lvt-scroll` |
+| `todos/` | 1 | Full CRUD with SQLite | None |
+| `todos-progressive/` | 1 | Zero-attribute CRUD demo | None |
+| `todos-components/` | 1+2 | Component library (modal, toast) | Component-internal |
+| `flash-messages/` | 1 | Flash notification patterns | None |
+| `avatar-upload/` | 1+2 | File upload with progress | `lvt-upload` |
+| `graceful-shutdown/` | 1 | Server shutdown patterns | None |
+| `observability/` | 1 | Logging, metrics, tracing | None |
+| `progressive-enhancement/` | 1 | Works with/without JS | None |
+| `profile-progressive/` | 1 | Form validation | None |
+| `ws-disabled/` | 1 | HTTP-only mode | None |
+| `live-preview/` | 1 | Change() live updates | None |
+| `login/` | 1 | Authentication + sessions | None |
+| `testing/01_basic/` | 1 | E2E test patterns | None |
+| `production/single-host/` | 1 | Production deployment | None |
+
 ## Examples
-
-### 1. Counter - Simple State Management
-**Directory**: `counter/`
-
-Basic counter demonstrating reactive state updates.
-
-```bash
-cd counter
-go run main.go
-# Visit http://localhost:8080
-```
-
-**Features**:
-- Simple state management
-- Button click handling
-- Real-time updates
-
----
-
-### 2. Chat - Real-time Communication
-**Directory**: `chat/`
-
-Multi-user chat application with WebSocket communication.
-
-```bash
-cd chat
-go run main.go
-# Visit http://localhost:8080
-```
-
-**Features**:
-- Multi-user chat rooms
-- WebSocket messaging
-- User presence
-- Message history
-
----
-
-### 3. Todos - Full CRUD Application
-**Directory**: `todos/`
-
-Complete todo list with database, validation, and full CRUD operations.
-
-```bash
-cd todos
-go run main.go
-# Visit http://localhost:8080
-```
-
-**Features**:
-- SQLite database
-- CRUD operations
-- Form validation
-- Database migrations
-- E2E tests with Chromedp
-
----
-
-### 4. Graceful Shutdown
-**Directory**: `graceful-shutdown/`
-
-Demonstrates proper server shutdown handling.
-
-```bash
-cd graceful-shutdown
-go run main.go
-# Press Ctrl+C to trigger graceful shutdown
-```
-
-**Features**:
-- Signal handling
-- Connection draining
-- Cleanup procedures
-
----
-
-### 5. Observability
-**Directory**: `observability/`
-
-Logging, metrics, and tracing example.
-
-```bash
-cd observability
-go run main.go
-```
-
-**Features**:
-- Structured logging
-- Custom metrics
-- Request tracing
-- Performance monitoring
-
----
-
-### 6. Testing
-**Directory**: `testing/01_basic/`
-
-E2E testing patterns with Chromedp.
-
-```bash
-cd testing/01_basic
-go test -v
-```
-
-**Features**:
-- Browser automation
-- E2E test patterns
-- Test helpers
-- Assertions
-
----
-
-### 7. Production
-**Directory**: `production/single-host/`
-
-Production deployment configuration.
-
-```bash
-cd production/single-host
-go run main.go
-```
-
-**Features**:
-- Production server setup
-- Environment configuration
-- Health checks
-- Deployment best practices
-
----
 
 ## Running Examples
 
@@ -187,9 +81,9 @@ For local development, examples can serve the client library locally using `gith
 
 ## Dependencies
 
-- **Core Library**: `github.com/livetemplate/livetemplate v0.1.0`
-- **LVT Testing** (for examples with E2E tests): `github.com/livetemplate/lvt v0.1.0`
-- **Client Library**: `@livetemplate/client@0.1.0` (via CDN)
+- **Core Library**: `github.com/livetemplate/livetemplate v0.8.7`
+- **LVT Testing** (for examples with E2E tests): `github.com/livetemplate/lvt` (latest)
+- **Client Library**: `@livetemplate/client@latest` (via CDN)
 
 ## Related Projects
 

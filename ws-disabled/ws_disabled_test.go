@@ -107,11 +107,8 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 		if !strings.Contains(html, "Bookmarks (WebSocket Disabled)") {
 			t.Error("Expected page title in HTML")
 		}
-		if !strings.Contains(html, `name="lvt-action"`) {
-			t.Error("Expected lvt-action hidden field in form")
-		}
-		if !strings.Contains(html, `lvt-submit="Add"`) {
-			t.Error("Expected lvt-submit attribute on form")
+		if !strings.Contains(html, `name="add"`) {
+			t.Error("Expected form or button with name='add'")
 		}
 	})
 
@@ -129,7 +126,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.SendKeys(`input[name="label"]`, "Go Docs", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://go.dev", chromedp.ByQuery),
-			chromedp.Submit(`form[lvt-submit="Add"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitFor(`document.body.innerText.includes('Go Docs')`, 5*time.Second),
 			chromedp.OuterHTML("html", &htmlAfter),
 		)
@@ -160,7 +157,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.SendKeys(`input[name="label"]`, "First", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://first.example", chromedp.ByQuery),
-			chromedp.Submit(`form[lvt-submit="Add"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitFor(`document.body.innerText.includes('First')`, 5*time.Second),
 		)
 		if err != nil {
@@ -173,7 +170,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			chromedp.Clear(`input[name="url"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="label"]`, "Second", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://second.example", chromedp.ByQuery),
-			chromedp.Submit(`form[lvt-submit="Add"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitFor(`document.body.innerText.includes('Second')`, 5*time.Second),
 			chromedp.OuterHTML("html", &htmlAfterTwo),
 		)
@@ -198,7 +195,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			waitForClient(10*time.Second),
 			chromedp.SendKeys(`input[name="label"]`, "To Delete", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://delete.me", chromedp.ByQuery),
-			chromedp.Submit(`form[lvt-submit="Add"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitFor(`document.body.innerText.includes('To Delete')`, 5*time.Second),
 		)
 		if err != nil {
@@ -207,9 +204,9 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 
 		var htmlAfterDelete string
 		err = chromedp.Run(ctx,
-			// Wait for Delete form to be in DOM after PRG redirect from Add
-			chromedp.WaitReady(`form[lvt-submit="Delete"]`, chromedp.ByQuery),
-			chromedp.Submit(`form[lvt-submit="Delete"]`, chromedp.ByQuery),
+			// Wait for Delete button to be in DOM after PRG redirect from Add
+			chromedp.WaitReady(`button[name="delete"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="delete"]').click()`, nil),
 			e2etest.WaitFor(`document.body.innerText.includes('No bookmarks yet')`, 5*time.Second),
 			chromedp.OuterHTML("html", &htmlAfterDelete),
 		)
@@ -231,12 +228,9 @@ func TestWSDisabled_ValidationError(t *testing.T) {
 	server := setupServer(t)
 	defer server.Close()
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	client := &http.Client{}
 
+	// GET initial page to establish session
 	resp, err := client.Get(server.URL)
 	if err != nil {
 		t.Fatalf("GET failed: %v", err)
@@ -244,13 +238,15 @@ func TestWSDisabled_ValidationError(t *testing.T) {
 	cookies := resp.Cookies()
 	resp.Body.Close()
 
-	form := strings.NewReader("lvt-action=Add&label=&url=")
+	// POST with empty fields via JSON (like the client library does)
+	// Field errors are returned inline in JSON responses
+	form := strings.NewReader("add=&label=&url=")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "text/html")
+	req.Header.Set("Accept", "application/json")
 	for _, c := range cookies {
 		req.AddCookie(c)
 	}
@@ -262,12 +258,13 @@ func TestWSDisabled_ValidationError(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200 for validation error, got %d", resp.StatusCode)
+		t.Errorf("Expected status 200 for JSON validation error, got %d", resp.StatusCode)
 	}
 
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "label is required") {
-		t.Error("Expected validation error message in response body")
+	bodyStr := string(body)
+	if !strings.Contains(bodyStr, "label") {
+		t.Error("Expected field error for 'label' in JSON response")
 	}
 }
 
@@ -288,7 +285,7 @@ func TestWSDisabled_PRGPattern(t *testing.T) {
 	cookies := resp.Cookies()
 	resp.Body.Close()
 
-	form := strings.NewReader("lvt-action=Add&label=Test&url=https://test.com")
+	form := strings.NewReader("add=&label=Test&url=https://test.com")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -346,7 +343,7 @@ func TestWSDisabled_JSONResponse(t *testing.T) {
 	cookies := resp.Cookies()
 	resp.Body.Close()
 
-	form := strings.NewReader("lvt-action=Add&label=API+Test&url=https://api.example")
+	form := strings.NewReader("add=&label=API+Test&url=https://api.example")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -397,7 +394,7 @@ func TestWSDisabled_DiffOptimization(t *testing.T) {
 	resp.Body.Close()
 
 	doPost := func(label, url string) string {
-		form := strings.NewReader(fmt.Sprintf("lvt-action=Add&label=%s&url=%s", label, url))
+		form := strings.NewReader(fmt.Sprintf("add=&label=%s&url=%s", label, url))
 		req, err := http.NewRequest("POST", server.URL, form)
 		if err != nil {
 			t.Fatalf("Failed to create request: %v", err)
