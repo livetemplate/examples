@@ -204,7 +204,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 
 		var htmlAfterDelete string
 		err = chromedp.Run(ctx,
-			// Wait for Delete button to be in DOM after PRG redirect from Add
+			// Wait for Delete button to appear in the DOM after the Add state update
 			chromedp.WaitReady(`button[name="delete"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('button[name="delete"]').click()`, nil),
 			e2etest.WaitFor(`document.body.innerText.includes('No bookmarks yet')`, 5*time.Second),

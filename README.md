@@ -27,6 +27,8 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 
 ## Examples
 
+The directories listed in the table above are individual example applications. Each folder contains a minimal, self-contained project that demonstrates a specific LiveTemplate pattern or feature.
+
 ## Running Examples
 
 Each example is self-contained with its own `go.mod`. To run an example:

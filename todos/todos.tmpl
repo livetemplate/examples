@@ -44,7 +44,7 @@
     value="{{ .SearchQuery }}"
     style="padding-right: 2rem;"
   />
-  <button type="button" name="search" onclick="this.previousElementSibling.value=''; this.style.display='none';" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.25rem; color: #9ca3af; font-size: 1.25rem; line-height: 1;{{if not .SearchQuery}} display: none;{{end}}" title="Clear search">&times;</button>
+  <button type="button" name="search" onclick="var input=this.previousElementSibling; input.value=''; input.dispatchEvent(new Event('input', { bubbles: true })); this.style.display='none';" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.25rem; color: #9ca3af; font-size: 1.25rem; line-height: 1;{{if not .SearchQuery}} display: none;{{end}}" title="Clear search">&times;</button>
 </div>
 {{end}}
 
