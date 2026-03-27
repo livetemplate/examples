@@ -93,9 +93,12 @@ func TestProfileProgressiveE2E(t *testing.T) {
 
 	t.Run("ValidSave", func(t *testing.T) {
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(`document.querySelector('input[name="DisplayName"]').value = 'John Smith'`, nil),
-			chromedp.Evaluate(`document.querySelector('input[name="Email"]').value = 'john@example.com'`, nil),
-			chromedp.Evaluate(`document.querySelector('textarea[name="Bio"]').value = 'Updated bio text.'`, nil),
+			chromedp.Clear(`input[name="DisplayName"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="DisplayName"]`, "John Smith", chromedp.ByQuery),
+			chromedp.Clear(`input[name="Email"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="Email"]`, "john@example.com", chromedp.ByQuery),
+			chromedp.Clear(`textarea[name="Bio"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`textarea[name="Bio"]`, "Updated bio text.", chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('button[type="submit"]').click()`, nil),
 			e2etest.WaitFor(`document.querySelector('.success') !== null`, 5*time.Second),
 		)

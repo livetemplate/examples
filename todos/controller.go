@@ -104,6 +104,23 @@ func (c *TodoController) Delete(state TodoState, ctx *livetemplate.Context) (Tod
 	return c.loadTodos(dbCtx, state)
 }
 
+// Change handles live input updates (search-as-you-type, sort-on-change).
+// The framework auto-wires this method to all inputs with 300ms debounce.
+func (c *TodoController) Change(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	if ctx.Has("query") {
+		state.SearchQuery = ctx.GetString("query")
+		state.CurrentPage = 1
+		state.LastUpdated = formatTime()
+		return c.loadTodos(context.Background(), state)
+	}
+	if ctx.Has("sort_by") {
+		state.SortBy = ctx.GetString("sort_by")
+		state.LastUpdated = formatTime()
+		return c.loadTodos(context.Background(), state)
+	}
+	return state, nil
+}
+
 // Search filters todos by the given query string (case-insensitive substring match).
 // An empty query returns all todos.
 func (c *TodoController) Search(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
