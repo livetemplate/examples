@@ -42,7 +42,7 @@ func TestFlash_ShowsInTemplate(t *testing.T) {
 
 	// 2. POST to add item (should set success flash)
 	form := url.Values{}
-	form.Set("action", "add_item")
+	form.Set("addItem", "")
 	form.Set("item", "Test Item")
 
 	resp, err = client.PostForm(server.URL+"/", form)
@@ -90,7 +90,7 @@ func TestFlash_ClearsAfterAction(t *testing.T) {
 
 	// 2. POST to add first item (sets flash)
 	form := url.Values{}
-	form.Set("action", "add_item")
+	form.Set("addItem", "")
 	form.Set("item", "First Item")
 	resp, err = client.PostForm(server.URL+"/", form)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestFlash_ClearsAfterAction(t *testing.T) {
 
 	// 3. POST to add second item (new flash replaces old)
 	form = url.Values{}
-	form.Set("action", "add_item")
+	form.Set("addItem", "")
 	form.Set("item", "Second Item")
 	resp, err = client.PostForm(server.URL+"/", form)
 	if err != nil {
@@ -154,28 +154,28 @@ func TestFlash_DifferentTypes(t *testing.T) {
 	}{
 		{
 			name:      "success flash",
-			action:    "add_item",
+			action:    "addItem",
 			item:      "New Item",
 			wantClass: "flash-success",
 			wantText:  "Added item: New Item",
 		},
 		{
 			name:      "warning flash (duplicate)",
-			action:    "add_item",
+			action:    "addItem",
 			item:      "New Item", // Same item = duplicate
 			wantClass: "flash-warning",
 			wantText:  "Item already exists",
 		},
 		{
 			name:      "info flash",
-			action:    "remove_item",
+			action:    "removeItem",
 			item:      "New Item",
 			wantClass: "flash-info",
 			wantText:  "Removed item: New Item",
 		},
 		{
 			name:      "error flash",
-			action:    "simulate_error",
+			action:    "simulateError",
 			item:      "",
 			wantClass: "flash-error",
 			wantText:  "Something went wrong",
@@ -185,7 +185,7 @@ func TestFlash_DifferentTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			form := url.Values{}
-			form.Set("action", tt.action)
+			form.Set(tt.action, "")
 			if tt.item != "" {
 				form.Set("item", tt.item)
 			}
@@ -229,7 +229,7 @@ func TestFlash_FieldErrorsStillWork(t *testing.T) {
 
 	// POST with empty item (triggers field error, not flash)
 	form := url.Values{}
-	form.Set("action", "add_item")
+	form.Set("addItem", "")
 	form.Set("item", "") // Empty = validation error
 
 	resp, err := client.PostForm(server.URL+"/", form)

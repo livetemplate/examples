@@ -76,9 +76,9 @@ func TestProgressiveEnhancement_WithJS(t *testing.T) {
 		t.Error("Expected page title in HTML")
 	}
 
-	// Verify form exists
-	if !strings.Contains(initialHTML, `name="lvt-action"`) {
-		t.Error("Expected lvt-action hidden field in form")
+	// Verify form has submit button with name
+	if !strings.Contains(initialHTML, `name="add"`) {
+		t.Error("Expected button with name='add' in form")
 	}
 }
 
@@ -270,7 +270,7 @@ func TestProgressiveEnhancement_NoJS(t *testing.T) {
 	}
 
 	// POST a new todo (simulating form submission without JS)
-	form := strings.NewReader("lvt-action=add&title=HTTP+test+todo")
+	form := strings.NewReader("add=&title=HTTP+test+todo")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -305,37 +305,43 @@ func TestProgressiveEnhancement_ValidationError(t *testing.T) {
 	server := setupServer(t)
 	defer server.Close()
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	client := &http.Client{}
 
-	// POST with empty title (should fail validation)
-	form := strings.NewReader("lvt-action=add&title=")
+	// GET to establish session
+	resp, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	cookies := resp.Cookies()
+	resp.Body.Close()
+
+	// POST with empty title via JSON (like the client library does)
+	// Field errors are returned inline in JSON responses
+	form := strings.NewReader("add=&title=")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "text/html")
+	req.Header.Set("Accept", "application/json")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
 
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Should return 200 with re-rendered form (not redirect)
-	// because validation failed
+	// Should return 200 with JSON containing field errors
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200 (re-render with errors), got %d", resp.StatusCode)
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
 
-	// Content-Type should be HTML
 	ct := resp.Header.Get("Content-Type")
-	if !strings.Contains(ct, "text/html") {
-		t.Errorf("Expected Content-Type text/html, got %q", ct)
+	if !strings.Contains(ct, "application/json") {
+		t.Errorf("Expected Content-Type application/json, got %q", ct)
 	}
 }
 
@@ -347,7 +353,7 @@ func TestProgressiveEnhancement_JSClientGetsJSON(t *testing.T) {
 	client := &http.Client{}
 
 	// POST with Accept: application/json (like JS client would)
-	form := strings.NewReader("lvt-action=add&title=JSON+test")
+	form := strings.NewReader("add=&title=JSON+test")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -385,7 +391,7 @@ func TestProgressiveEnhancement_Toggle(t *testing.T) {
 	}
 
 	// Toggle an existing todo (ID "1" is pre-populated)
-	form := strings.NewReader("lvt-action=toggle&id=1")
+	form := strings.NewReader("toggle=&id=1")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -417,7 +423,7 @@ func TestProgressiveEnhancement_Delete(t *testing.T) {
 	}
 
 	// Delete an existing todo (ID "2" is pre-populated)
-	form := strings.NewReader("lvt-action=delete&id=2")
+	form := strings.NewReader("delete=&id=2")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -465,7 +471,7 @@ func TestProgressiveEnhancement_DisabledReturnsJSON(t *testing.T) {
 	client := &http.Client{}
 
 	// POST with Accept: text/html (like a no-JS browser)
-	form := strings.NewReader("lvt-action=add&title=test")
+	form := strings.NewReader("add=&title=test")
 	req, err := http.NewRequest("POST", server.URL, form)
 	if err != nil {
 		t.Fatalf("Failed to create request: %v", err)
@@ -525,12 +531,11 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 	}
 	t.Logf("Initial todo count: %d", initialCount)
 
-	// Step 2: Add a new todo
+	// Step 2: Add a new todo via form submission (client intercepts and routes via WebSocket)
 	expectedAfterAdd := initialCount + 1
 	err = chromedp.Run(ctx,
-		chromedp.Clear(`input[name="title"]`, chromedp.ByQuery),
 		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
-		chromedp.Submit(`form[lvt-submit="add"]`, chromedp.ByQuery),
+		chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 		// Wait for DOM to update with new item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterAdd), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterAddCount),
@@ -546,9 +551,8 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 	}
 
 	// Step 3: Toggle the last todo (mark as complete)
-	// The new todo should NOT have .completed class initially
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
 		// Wait for the completed class to appear
 		e2etest.WaitFor(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
@@ -569,7 +573,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 4: Toggle again (mark as incomplete)
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
 		// Wait for the completed class to be removed
 		e2etest.WaitFor(`!document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterUntoggleCount),
@@ -590,7 +594,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 5: Delete the last todo (the one we just added)
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="delete"]').click()`, nil),
 		// Wait for DOM to update with deleted item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, initialCount), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
@@ -651,7 +655,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	// Step 2: Delete the FIRST todo
 	expectedAfterDelete := initialCount - 1
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:first-child form[lvt-submit="delete"]`, chromedp.ByQuery),
+		chromedp.Evaluate(`document.querySelector('.todo-item:first-child button[name="delete"]').click()`, nil),
 		// Wait for DOM to update with deleted item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterDelete), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
@@ -684,7 +688,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	}
 
 	err = chromedp.Run(ctx,
-		chromedp.Submit(`.todo-item:last-child form[lvt-submit="toggle"]`, chromedp.ByQuery),
+		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
 		// Wait for the completed class to change
 		e2etest.WaitFor(toggleWaitCondition, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),

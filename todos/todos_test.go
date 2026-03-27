@@ -172,7 +172,7 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "First Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			// Wait for todo to appear
 			e2etest.WaitFor(`(() => {
 				const tbody = document.querySelector('tbody');
@@ -207,7 +207,7 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`window.__wsMessages = [];`, nil),
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Second Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitForCount("tbody tr", 2, 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
@@ -257,7 +257,7 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`window.__wsMessages = [];`, nil),
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Third Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitForCount("tbody tr", 3, 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
@@ -327,7 +327,7 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Fourth Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitForText("tbody", "Fourth Todo Item", 10*time.Second),
 		)
 		if err != nil {
@@ -339,7 +339,7 @@ func TestTodosE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Fifth Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitForText("tbody", "Fifth Todo Item", 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
@@ -451,14 +451,8 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="query"]`, chromedp.ByQuery),
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`
-				(() => {
-					const input = document.querySelector('input[lvt-input="search"]');
-					input.value = 'First';
-					input.dispatchEvent(new Event('input', { bubbles: true }));
-				})();
-			`, nil),
-			e2etest.WaitForUpdateEvent("search", 5*time.Second),
+			chromedp.Evaluate(`(() => { const i = document.querySelector('input[name="query"]'); i.value = 'First'; i.dispatchEvent(new Event('input', {bubbles: true})); })()`, nil),
+			e2etest.WaitForUpdateEvent("change", 5*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
 
@@ -479,14 +473,8 @@ func TestTodosE2E(t *testing.T) {
 		// Clear search by setting value to empty and triggering input event
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`
-				(() => {
-					const input = document.querySelector('input[lvt-input="search"]');
-					input.value = '';
-					input.dispatchEvent(new Event('input', { bubbles: true }));
-				})();
-			`, nil),
-			e2etest.WaitForUpdateEvent("search", 5*time.Second),
+			chromedp.Evaluate(`(() => { const i = document.querySelector('input[name="query"]'); i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true})); })()`, nil),
+			e2etest.WaitForUpdateEvent("change", 5*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
 
@@ -528,14 +516,8 @@ func TestTodosE2E(t *testing.T) {
 
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`
-				(() => {
-					const input = document.querySelector('input[lvt-input="search"]');
-					input.value = 'NonExistent';
-					input.dispatchEvent(new Event('input', { bubbles: true }));
-				})();
-			`, nil),
-			e2etest.WaitForUpdateEvent("search", 5*time.Second),
+			chromedp.Evaluate(`(() => { const i = document.querySelector('input[name="query"]'); i.value = 'NonExistent'; i.dispatchEvent(new Event('input', {bubbles: true})); })()`, nil),
+			e2etest.WaitForUpdateEvent("change", 5*time.Second),
 			chromedp.Evaluate(`
 				(() => {
 					const el = document.querySelector('[data-empty-state]');
@@ -621,14 +603,8 @@ func TestTodosE2E(t *testing.T) {
 		// Clear search for cleanup - this is critical for subsequent tests
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`
-				(() => {
-					const input = document.querySelector('input[lvt-input="search"]');
-					input.value = '';
-					input.dispatchEvent(new Event('input', { bubbles: true }));
-				})();
-			`, nil),
-			e2etest.WaitForUpdateEvent("search", 5*time.Second),
+			chromedp.Evaluate(`(() => { const i = document.querySelector('input[name="query"]'); i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true})); })()`, nil),
+			e2etest.WaitForUpdateEvent("change", 5*time.Second),
 		)
 
 		if err != nil {
@@ -667,7 +643,7 @@ func TestTodosE2E(t *testing.T) {
 
 	t.Run("Sort Functionality", func(t *testing.T) {
 		var html string
-		var lvtChange string
+
 
 		// Get the entire page to verify select is rendered
 		err := chromedp.Run(ctx,
@@ -683,11 +659,6 @@ func TestTodosE2E(t *testing.T) {
 			t.Errorf("Sort select not found in page HTML")
 		}
 
-		// Verify lvt-change attribute
-		if !strings.Contains(html, `lvt-change="sort"`) {
-			t.Errorf("Sort select missing lvt-change='sort' attribute")
-		}
-
 		// Verify all sort options are present
 		requiredOptions := []string{"Newest First", "Alphabetical (A-Z)", "Alphabetical (Z-A)", "Oldest First"}
 		for _, option := range requiredOptions {
@@ -695,15 +666,7 @@ func TestTodosE2E(t *testing.T) {
 				t.Errorf("Sort select missing option: %s", option)
 			}
 		}
-
-		// Try to get the lvt-change attribute directly
-		err = chromedp.Run(ctx,
-			chromedp.AttributeValue(`select[name="sort_by"]`, "lvt-change", &lvtChange, nil),
-		)
-
-		if err == nil && lvtChange == "sort" {
-			t.Log("✅ Sort select has correct lvt-change='sort' attribute")
-		}
+		t.Log("✅ Sort select has correct name='sort_by' attribute")
 
 		// Test actual sorting behavior by changing the select value via JavaScript
 		t.Log("Testing alphabetical sort...")
@@ -762,7 +725,7 @@ func TestTodosE2E(t *testing.T) {
 					}
 				})();
 			`, nil),
-			e2etest.WaitForUpdateEvent("sort", 5*time.Second),
+			e2etest.WaitForUpdateEvent("change", 5*time.Second),
 		)
 
 		if err != nil {
@@ -784,10 +747,10 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			e2etest.SetupUpdateEventListener(),
 			chromedp.SendKeys(`input[name="text"]`, "Sixth Todo Item", chromedp.ByQuery),
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 			e2etest.WaitForUpdateEvent("add", 5*time.Second),
 			// Wait for pagination controls to appear (they only show when TotalPages > 1)
-			e2etest.WaitFor(`document.querySelector('button[lvt-click="next_page"]') !== null`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('button[name="nextPage"]') !== null`, 5*time.Second),
 			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
 		)
 
@@ -813,13 +776,13 @@ func TestTodosE2E(t *testing.T) {
 
 		t.Log("✅ Page 1 shows correct todos")
 
-		// Click Next to go to page 2 - use event-driven waiting
+		// Navigate to page 2 via WebSocket API
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Click(`button[lvt-click="next_page"]`, chromedp.ByQuery),
-			e2etest.WaitForUpdateEvent("next_page", 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('button[name="nextPage"]').click()`, nil),
+			e2etest.WaitForUpdateEvent("nextPage", 5*time.Second),
 			e2etest.WaitFor(`(() => {
-				const btn = document.querySelector('button[lvt-click="next_page"]');
+				const btn = document.querySelector('button[name="nextPage"]');
 				if (!btn) {
 					return false;
 				}
@@ -833,7 +796,7 @@ func TestTodosE2E(t *testing.T) {
 				return style.pointerEvents === 'none';
 			})()`, 5*time.Second),
 			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
-			chromedp.OuterHTML(`button[lvt-click="next_page"]`, &nextButtonHTML, chromedp.ByQuery),
+			chromedp.OuterHTML(`button[name="nextPage"]`, &nextButtonHTML, chromedp.ByQuery),
 		)
 
 		if err != nil {
@@ -862,7 +825,7 @@ func TestTodosE2E(t *testing.T) {
 		var nextDisabled bool
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const btn = document.querySelector('button[lvt-click="next_page"]');
+				const btn = document.querySelector('button[name="nextPage"]');
 				if (!btn) {
 					return false;
 				}
@@ -882,13 +845,13 @@ func TestTodosE2E(t *testing.T) {
 
 		t.Log("✅ Next button disabled on last page")
 
-		// Click Previous to go back to page 1 - use event-driven waiting
+		// Navigate to page 1 via WebSocket API
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="prev_page"]').click()`, nil),
-			e2etest.WaitForUpdateEvent("prev_page", 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('button[name="prevPage"]').click()`, nil),
+			e2etest.WaitForUpdateEvent("prevPage", 5*time.Second),
 			e2etest.WaitFor(`(() => {
-				const btn = document.querySelector('button[lvt-click="prev_page"]');
+				const btn = document.querySelector('button[name="prevPage"]');
 				if (!btn) {
 					return false;
 				}
@@ -902,7 +865,7 @@ func TestTodosE2E(t *testing.T) {
 				return style.pointerEvents === 'none';
 			})()`, 5*time.Second),
 			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
-			chromedp.OuterHTML(`button[lvt-click="prev_page"]`, &prevButtonHTML, chromedp.ByQuery),
+			chromedp.OuterHTML(`button[name="prevPage"]`, &prevButtonHTML, chromedp.ByQuery),
 		)
 
 		if err != nil {
@@ -920,7 +883,7 @@ func TestTodosE2E(t *testing.T) {
 		var prevDisabled bool
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const btn = document.querySelector('button[lvt-click="prev_page"]');
+				const btn = document.querySelector('button[name="prevPage"]');
 				if (!btn) {
 					return false;
 				}
@@ -942,13 +905,7 @@ func TestTodosE2E(t *testing.T) {
 
 		// Test pagination with search
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
-				(() => {
-					const searchInput = document.querySelector('input[lvt-input="search"]');
-					searchInput.value = 'i';
-					searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-				})();
-			`, nil),
+			chromedp.Evaluate(`(() => { const i = document.querySelector('input[name="query"]'); i.value = 'i'; i.dispatchEvent(new Event('input', {bubbles: true})); })()`, nil),
 		)
 
 		if err != nil {
@@ -977,13 +934,7 @@ func TestTodosE2E(t *testing.T) {
 
 		// Clear search
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
-				(() => {
-					const clearInput = document.querySelector('input[lvt-input="search"]');
-					clearInput.value = '';
-					clearInput.dispatchEvent(new Event('input', { bubbles: true }));
-				})();
-			`, nil),
+			chromedp.Evaluate(`(() => { const i = document.querySelector('input[name="query"]'); i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true})); })()`, nil),
 		)
 
 		if err != nil {

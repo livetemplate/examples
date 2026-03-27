@@ -1,7 +1,7 @@
 {{/* Template Partials */}}
 
 {{define "add-form"}}
-<form lvt-submit="add">
+<form method="POST" name="add">
   <fieldset role="group">
     <label for="new-todo-text" class="visually-hidden">New todo text</label>
     <input
@@ -13,7 +13,7 @@
       aria-required="true"
       {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
     />
-    <button type="submit" lvt-disable-with="Adding...">Add</button>
+    <button type="submit" name="add">Add</button>
   </fieldset>
   {{ if .lvt.HasError "text" }}
     <small style="color: var(--pico-del-color);">{{ .lvt.Error "text" }}</small>
@@ -42,18 +42,16 @@
     name="query"
     placeholder="Search todos..."
     value="{{ .SearchQuery }}"
-    lvt-input="search"
-    lvt-debounce="300"
     style="padding-right: 2rem;"
   />
-  <button type="button" lvt-click="search" lvt-data-query="" onclick="this.previousElementSibling.value=''; this.style.display='none';" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.25rem; color: #9ca3af; font-size: 1.25rem; line-height: 1;{{if not .SearchQuery}} display: none;{{end}}" title="Clear search">&times;</button>
+  <button type="button" name="search" onclick="var input=this.previousElementSibling; input.value=''; input.dispatchEvent(new Event('input', { bubbles: true })); this.style.display='none';" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.25rem; color: #9ca3af; font-size: 1.25rem; line-height: 1;{{if not .SearchQuery}} display: none;{{end}}" title="Clear search">&times;</button>
 </div>
 {{end}}
 
 {{define "sort-select"}}
 <div>
   <label for="sort_by">Sort by:</label>
-  <select name="sort_by" id="sort_by" lvt-change="sort">
+  <select name="sort_by" id="sort_by">
     <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
       Newest First
     </option>
@@ -73,26 +71,27 @@
 {{define "todo-item"}}
 <tr data-key="{{ .ID }}">
   <td>
-    <input
-      type="checkbox"
-      {{ if .Completed }}checked{{ end }}
-      lvt-change="toggle"
-      lvt-data-id="{{ .ID }}"
-      aria-label="Toggle completion"
-    />
+    <form method="POST" name="toggle" style="margin:0;">
+      <input type="hidden" name="id" value="{{ .ID }}">
+      <input
+        type="checkbox"
+        {{ if .Completed }}checked{{ end }}
+        onchange="this.form.requestSubmit()"
+        aria-label="Toggle completion"
+      />
+      <button type="submit" name="toggle" hidden>Toggle</button>
+    </form>
   </td>
   <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
     {{ .Text }}
   </td>
   <td>
-    <button
-      lvt-click="delete"
-      lvt-data-id="{{ .ID }}"
-      class="secondary"
-      aria-label="Delete this todo"
-    >
-      Delete
-    </button>
+    <form method="POST" name="delete" style="margin:0;">
+      <input type="hidden" name="id" value="{{ .ID }}">
+      <button type="submit" name="delete" class="secondary" aria-label="Delete this todo">
+        Delete
+      </button>
+    </form>
   </td>
 </tr>
 {{end}}
@@ -108,7 +107,7 @@
   <ul style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;">
     <li>
       <button
-        lvt-click="prev_page"
+        name="prevPage"
         data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
         {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
         class="secondary"
@@ -122,7 +121,7 @@
     </li>
     <li>
       <button
-        lvt-click="next_page"
+        name="nextPage"
         data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
         {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
         class="secondary"
@@ -204,7 +203,7 @@
           {{template "pagination" .}}
 
           {{ if gt .CompletedCount 0 }}
-            <button lvt-click="clear_completed" class="secondary">
+            <button name="clearCompleted" class="secondary">
               Clear Completed ({{ .CompletedCount }})
             </button>
           {{ end }}

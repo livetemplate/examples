@@ -8,9 +8,9 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/livetemplate/livetemplate v0.8.6-0.20260326080534-a4fac4c2b17e
-	github.com/livetemplate/lvt v0.0.0-20260110064539-b9afb9e6df26
-	github.com/livetemplate/lvt/components v0.0.0-20260228153051-c00a45caae95
+	github.com/livetemplate/livetemplate v0.8.7
+	github.com/livetemplate/lvt v0.0.0-20260327182801-53d6d40e692e
+	github.com/livetemplate/lvt/components v0.0.0-20260327182801-53d6d40e692e
 	modernc.org/sqlite v1.43.0
 )
 
@@ -36,14 +36,12 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/tdewolff/minify/v2 v2.24.8 // indirect
 	github.com/tdewolff/parse/v2 v2.8.5 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
-	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
 	modernc.org/libc v1.67.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect

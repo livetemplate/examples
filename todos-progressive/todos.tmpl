@@ -31,7 +31,7 @@
     <!-- Auto-submit form: routes to Submit() -->
     <form method="POST" class="add-form">
         <input type="text" name="Title" placeholder="What needs to be done?" required>
-        <button type="submit">Add</button>
+        <button type="submit" name="submit">Add</button>
     </form>
     {{if .lvt.HasError "title"}}
         <div class="error">{{.lvt.Error "title"}}</div>
