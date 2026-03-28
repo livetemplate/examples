@@ -14,9 +14,9 @@
             </header>
             <p>Counter: {{.Counter}}</p>
             <div class="grid">
-                <button name="increment">+1</button>
-                <button name="decrement" class="secondary">-1</button>
-                <button name="reset" class="contrast">Reset</button>
+                <form method="POST" name="increment"><button type="submit" name="increment">+1</button></form>
+                <form method="POST" name="decrement"><button type="submit" name="decrement" class="secondary">-1</button></form>
+                <form method="POST" name="reset"><button type="submit" name="reset" class="contrast">Reset</button></form>
             </div>
             <footer>
                 <small>Last updated: {{.LastUpdated}}</small>

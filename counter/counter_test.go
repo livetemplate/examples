@@ -94,8 +94,28 @@ func TestCounterE2E(t *testing.T) {
 		t.Log("✅ Initial page load verified")
 	})
 
-	// Note: Increment/Decrement tests removed due to chromedp timing issues
-	// Core functionality is verified by TestWebSocketBasic
+	t.Run("Button_Click_Increment", func(t *testing.T) {
+		var counterText string
+
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
+			// Click the increment button
+			chromedp.Evaluate(`document.querySelector('button[name="increment"]').click()`, nil),
+			// Wait for counter to update from 0 to 1
+			e2etest.WaitFor(`document.body.innerText.includes('Counter: 1')`, 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('p').textContent`, &counterText),
+		)
+
+		if err != nil {
+			t.Fatalf("Failed to click increment button: %v", err)
+		}
+
+		if !strings.Contains(counterText, "Counter: 1") {
+			t.Errorf("Expected 'Counter: 1', got %q", counterText)
+		}
+
+		t.Log("✅ Button click increment works")
+	})
 
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		// Check for console errors

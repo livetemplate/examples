@@ -106,29 +106,35 @@
 >
   <ul style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;">
     <li>
-      <button
-        name="prevPage"
-        data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
-        {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
-        class="secondary"
-        aria-label="Go to previous page"
-      >
-        Previous
-      </button>
+      <form method="POST" name="prevPage">
+        <button
+          type="submit"
+          name="prevPage"
+          data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
+          {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
+          class="secondary"
+          aria-label="Go to previous page"
+        >
+          Previous
+        </button>
+      </form>
     </li>
     <li>
       <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
     </li>
     <li>
-      <button
-        name="nextPage"
-        data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
-        {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
-        class="secondary"
-        aria-label="Go to next page"
-      >
-        Next
-      </button>
+      <form method="POST" name="nextPage">
+        <button
+          type="submit"
+          name="nextPage"
+          data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
+          {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
+          class="secondary"
+          aria-label="Go to next page"
+        >
+          Next
+        </button>
+      </form>
     </li>
   </ul>
 </nav>
@@ -203,9 +209,11 @@
           {{template "pagination" .}}
 
           {{ if gt .CompletedCount 0 }}
-            <button name="clearCompleted" class="secondary">
-              Clear Completed ({{ .CompletedCount }})
-            </button>
+            <form method="POST" name="clearCompleted">
+              <button type="submit" name="clearCompleted" class="secondary">
+                Clear Completed ({{ .CompletedCount }})
+              </button>
+            </form>
           {{ end }}
         </section>
 
