@@ -74,7 +74,7 @@
         {{if .Todos}}
         <footer>
             <small>{{len .Todos}} todo{{if gt (len .Todos) 1}}s{{end}}</small>
-            <form method="POST" name="clearCompleted"><button type="submit" name="clearCompleted" class="outline secondary">Clear completed</button></form>
+            <button name="clearCompleted" class="outline secondary">Clear completed</button>
         </footer>
         {{end}}
     </main>
