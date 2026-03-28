@@ -2,11 +2,16 @@
 <html>
 <head>
 	<title>{{.Title}}</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 </head>
 <body>
-	<h1>{{.Title}}</h1>
-	<p>{{.Message}}</p>
-	<p>Count: {{.Count}}</p>
+	<main class="container">
+		<h1>{{.Title}}</h1>
+		<p>{{.Message}}</p>
+		<p>Count: {{.Count}}</p>
+	</main>
 	{{if .lvt.DevMode}}
 	<script src="/livetemplate-client.js"></script>
 	{{else}}

@@ -10,11 +10,7 @@
         body {
             padding: 1rem;
         }
-        .stats {
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-            opacity: 0.8;
-        }
+        /* Stats bar uses Pico's <small> but needs spacing */
         .messages {
             border: 1px solid var(--pico-muted-border-color);
             border-radius: var(--pico-border-radius);
@@ -46,25 +42,13 @@
         .message-time {
             float: right;
         }
-        .input-form {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 0.5rem;
-        }
-        .input-form input {
-            margin-bottom: 0;
-        }
-        .empty-state {
-            text-align: center;
-            opacity: 0.6;
-            padding: 3rem;
-        }
+        /* Empty state */
     </style>
 </head>
 <body>
     <main class="container">
-        <h1>💬 LiveTemplate Chat</h1>
-        <div class="stats">
+        <h1>LiveTemplate Chat</h1>
+        <small>
             {{if .CurrentUser}}
                 Logged in as <strong>{{.CurrentUser}}</strong> •
                 {{.OnlineCount}} user{{if ne .OnlineCount 1}}s{{end}} online •
@@ -72,7 +56,7 @@
             {{else}}
                 Welcome! Please login to join the chat
             {{end}}
-        </div>
+        </small>
 
         {{if not .CurrentUser}}
         <form method="POST" name="join">
@@ -85,9 +69,7 @@
         {{else}}
         <div class="messages" id="messages" lvt-scroll="bottom-sticky">
             {{if eq (len .Messages) 0}}
-            <div class="empty-state">
-                No messages yet. Be the first to send one!
-            </div>
+            <p><small>No messages yet. Be the first to send one!</small></p>
             {{else}}
             {{range .Messages}}
             <div class="message {{if eq .Username $.CurrentUser}}mine{{end}}">
@@ -101,7 +83,7 @@
             {{end}}
         </div>
 
-        <form class="input-form" method="POST" name="send">
+        <form method="POST" name="send" role="group">
             <input type="text" name="message" placeholder="Type your message..." autocomplete="off" autofocus>
             <button type="submit">Send</button>
         </form>

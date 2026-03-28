@@ -4,215 +4,84 @@
     <title>{{.Title}}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 0 20px;
-            background: #f5f5f5;
-        }
-        h1 { color: #333; }
-
-        /* Flash message styles */
-        .flash {
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-weight: 500;
-        }
-        .flash-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .flash-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .flash-warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
-        .flash-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        /* Field error styles */
-        .field-error {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 4px;
-        }
-
-        /* Form styles */
-        .form-group {
-            margin-bottom: 16px;
-        }
-        input[type="text"] {
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 200px;
-        }
-        input.error {
-            border-color: #dc3545;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 8px;
-            margin-bottom: 8px;
-        }
-        button[type="submit"] {
-            background: #007bff;
-            color: white;
-        }
-        button[type="submit"]:hover {
-            background: #0056b3;
-        }
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-danger:hover {
-            background: #c82333;
-        }
-        .btn-warning {
-            background: #ffc107;
-            color: #212529;
-        }
-        .btn-warning:hover {
-            background: #e0a800;
-        }
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        /* List styles */
-        .item-list {
-            background: white;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        .item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .item:last-child {
-            border-bottom: none;
-        }
-        .item-name {
-            font-size: 16px;
-        }
-        .remove-btn {
-            padding: 4px 12px;
-            font-size: 14px;
-        }
-
-        /* Info box */
-        .info-box {
-            background: #e9ecef;
-            padding: 16px;
-            border-radius: 8px;
-            margin-top: 24px;
-            font-size: 14px;
-            color: #495057;
-        }
-        code {
-            background: #f8f9fa;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 </head>
 <body>
-    <h1>{{.Title}}</h1>
+    <main class="container">
+        <h1>{{.Title}}</h1>
 
-    <!-- Flash Messages Section -->
-    {{if .lvt.HasAnyFlash}}
-    <div id="flash-messages">
-        {{if .lvt.HasFlash "success"}}
-        <div class="flash flash-success" data-flash="success">{{.lvt.Flash "success"}}</div>
+        <!-- Flash Messages Section -->
+        {{if .lvt.HasAnyFlash}}
+        <div id="flash-messages">
+            {{if .lvt.HasFlash "success"}}
+            <ins style="display:block;text-decoration:none" data-flash="success">{{.lvt.Flash "success"}}</ins>
+            {{end}}
+            {{if .lvt.HasFlash "error"}}
+            <del style="display:block;text-decoration:none" data-flash="error">{{.lvt.Flash "error"}}</del>
+            {{end}}
+            {{if .lvt.HasFlash "warning"}}
+            <ins style="display:block;text-decoration:none" data-flash="warning">{{.lvt.Flash "warning"}}</ins>
+            {{end}}
+            {{if .lvt.HasFlash "info"}}
+            <ins style="display:block;text-decoration:none" data-flash="info">{{.lvt.Flash "info"}}</ins>
+            {{end}}
+        </div>
         {{end}}
-        {{if .lvt.HasFlash "error"}}
-        <div class="flash flash-error" data-flash="error">{{.lvt.Flash "error"}}</div>
-        {{end}}
-        {{if .lvt.HasFlash "warning"}}
-        <div class="flash flash-warning" data-flash="warning">{{.lvt.Flash "warning"}}</div>
-        {{end}}
-        {{if .lvt.HasFlash "info"}}
-        <div class="flash flash-info" data-flash="info">{{.lvt.Flash "info"}}</div>
-        {{end}}
-    </div>
-    {{end}}
 
-    <!-- Add Item Form -->
-    <div class="form-group">
+        <!-- Add Item Form -->
         <form method="POST" name="addItem">
             <input type="text"
                    name="item"
                    placeholder="Enter item name"
-                   class="{{if .lvt.HasError "item"}}error{{end}}" />
+                   {{if .lvt.HasError "item"}}aria-invalid="true"{{end}} />
             <button type="submit" name="addItem">Add Item</button>
             {{if .lvt.HasError "item"}}
-            <div class="field-error">{{.lvt.Error "item"}}</div>
+            <small>{{.lvt.Error "item"}}</small>
             {{end}}
         </form>
-    </div>
 
-    <!-- Action Buttons -->
-    <div class="form-group">
-        <button name="clearItems" class="btn-warning">Clear All</button>
-        <button name="simulateError" class="btn-danger">Simulate Error</button>
-    </div>
-
-    <!-- Items List -->
-    <div class="item-list">
-        <h3>Items ({{.ItemCount}})</h3>
-        {{if .Items}}
-        {{range .Items}}
-        <div class="item">
-            <span class="item-name">{{.}}</span>
-            <form method="POST" name="removeItem" style="display:inline; margin:0;">
-                <input type="hidden" name="item" value="{{.}}">
-                <button type="submit" name="removeItem" class="remove-btn btn-secondary">Remove</button>
-            </form>
+        <!-- Action Buttons -->
+        <div>
+            <button name="clearItems" class="secondary">Clear All</button>
+            <button name="simulateError" class="contrast">Simulate Error</button>
         </div>
-        {{end}}
-        {{else}}
-        <p style="color: #6c757d;">No items. Add some above!</p>
-        {{end}}
-    </div>
 
-    <!-- Info Box -->
-    <div class="info-box">
-        <strong>About Flash Messages:</strong>
-        <ul>
-            <li>Flash messages show once and clear after each action</li>
-            <li>They don't affect <code>ResponseMetadata.Success</code></li>
-            <li>Types: <code>success</code>, <code>error</code>, <code>warning</code>, <code>info</code></li>
-            <li>Set via: <code>ctx.SetFlash("success", "message")</code></li>
-            <li>Read via: <code>.lvt.Flash "success"</code>, <code>.lvt.HasFlash "success"</code></li>
-        </ul>
-    </div>
+        <!-- Items List -->
+        <article>
+            <h3>Items ({{.ItemCount}})</h3>
+            {{if .Items}}
+            <table>
+                <tbody>
+                {{range .Items}}
+                <tr>
+                    <td>{{.}}</td>
+                    <td>
+                        <form method="POST" name="removeItem">
+                            <input type="hidden" name="item" value="{{.}}">
+                            <button type="submit" name="removeItem" class="secondary outline">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <small>No items. Add some above!</small>
+            {{end}}
+        </article>
+
+        <!-- Info Box -->
+        <blockquote>
+            <strong>About Flash Messages:</strong>
+            <ul>
+                <li>Flash messages show once and clear after each action</li>
+                <li>They don't affect <code>ResponseMetadata.Success</code></li>
+                <li>Types: <code>success</code>, <code>error</code>, <code>warning</code>, <code>info</code></li>
+                <li>Set via: <code>ctx.SetFlash("success", "message")</code></li>
+                <li>Read via: <code>.lvt.Flash "success"</code>, <code>.lvt.HasFlash "success"</code></li>
+            </ul>
+        </blockquote>
+    </main>
 
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>

@@ -122,7 +122,7 @@ func TestChatE2E(t *testing.T) {
 
 		err := chromedp.Run(browserCtx,
 			// Capture initial state
-			chromedp.Text(".stats", &initialStatsText, chromedp.ByQuery),
+			chromedp.Text("small", &initialStatsText, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('form[name="join"]') !== null`, &initialFormVisible),
 
 			// Fill and submit join form
@@ -131,7 +131,7 @@ func TestChatE2E(t *testing.T) {
 			waitFor(`document.querySelector('.messages') !== null`, 5*time.Second),
 
 			// Capture after-join state
-			chromedp.Text(".stats", &afterStatsText, chromedp.ByQuery),
+			chromedp.Text("small", &afterStatsText, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('.messages') !== null`, &afterChatVisible),
 			chromedp.Evaluate(`document.querySelector('form[name="join"]') !== null`, &afterFormVisible),
 		)

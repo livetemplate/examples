@@ -59,9 +59,9 @@ func TestFlash_ShowsInTemplate(t *testing.T) {
 		t.Errorf("Expected success flash 'Added item: Test Item' in response, got:\n%s", body)
 	}
 
-	// Should have flash-success class
-	if !strings.Contains(body, "flash-success") {
-		t.Errorf("Expected flash-success class in response")
+	// Should have data-flash="success" attribute
+	if !strings.Contains(body, `data-flash="success"`) {
+		t.Errorf("Expected data-flash=\"success\" attribute in response")
 	}
 }
 
@@ -149,36 +149,36 @@ func TestFlash_DifferentTypes(t *testing.T) {
 		name      string
 		action    string
 		item      string
-		wantClass string
+		wantAttr  string
 		wantText  string
 	}{
 		{
-			name:      "success flash",
-			action:    "addItem",
-			item:      "New Item",
-			wantClass: "flash-success",
-			wantText:  "Added item: New Item",
+			name:     "success flash",
+			action:   "addItem",
+			item:     "New Item",
+			wantAttr: `data-flash="success"`,
+			wantText: "Added item: New Item",
 		},
 		{
-			name:      "warning flash (duplicate)",
-			action:    "addItem",
-			item:      "New Item", // Same item = duplicate
-			wantClass: "flash-warning",
-			wantText:  "Item already exists",
+			name:     "warning flash (duplicate)",
+			action:   "addItem",
+			item:     "New Item", // Same item = duplicate
+			wantAttr: `data-flash="warning"`,
+			wantText: "Item already exists",
 		},
 		{
-			name:      "info flash",
-			action:    "removeItem",
-			item:      "New Item",
-			wantClass: "flash-info",
-			wantText:  "Removed item: New Item",
+			name:     "info flash",
+			action:   "removeItem",
+			item:     "New Item",
+			wantAttr: `data-flash="info"`,
+			wantText: "Removed item: New Item",
 		},
 		{
-			name:      "error flash",
-			action:    "simulateError",
-			item:      "",
-			wantClass: "flash-error",
-			wantText:  "Something went wrong",
+			name:     "error flash",
+			action:   "simulateError",
+			item:     "",
+			wantAttr: `data-flash="error"`,
+			wantText: "Something went wrong",
 		},
 	}
 
@@ -197,8 +197,8 @@ func TestFlash_DifferentTypes(t *testing.T) {
 			body := readBody(t, resp)
 			resp.Body.Close()
 
-			if !strings.Contains(body, tt.wantClass) {
-				t.Errorf("Expected %s in response", tt.wantClass)
+			if !strings.Contains(body, tt.wantAttr) {
+				t.Errorf("Expected %s in response", tt.wantAttr)
 			}
 			if !strings.Contains(body, tt.wantText) {
 				t.Errorf("Expected '%s' in response, got:\n%s", tt.wantText, body)
@@ -243,8 +243,8 @@ func TestFlash_FieldErrorsStillWork(t *testing.T) {
 	if !strings.Contains(body, "Item name is required") {
 		t.Error("Expected field error 'Item name is required'")
 	}
-	if !strings.Contains(body, "field-error") {
-		t.Error("Expected field-error class")
+	if !strings.Contains(body, "<small>Item name is required</small>") {
+		t.Error("Expected field error in <small> element")
 	}
 }
 

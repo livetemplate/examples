@@ -6,25 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
-        /* JS/no-JS mode indicator visibility */
+        /* Functional: JS/no-JS mode indicator visibility */
         .js-mode { display: none; }
-
-        /* Completed todo item */
-        .completed { text-decoration: line-through; opacity: 0.6; }
-
-        /* Empty state centering */
-        .empty-state { text-align: center; }
-
-        /* Todo item layout */
-        .todo-item { display: flex; align-items: center; gap: var(--pico-spacing); }
-        .todo-item form { margin: 0; }
-        .todo-title { flex: 1; }
     </style>
 </head>
 <body>
     <main class="container">
-        <h1>{{.Title}}</h1>
-        <p><small>This app works with or without JavaScript enabled</small></p>
+        <hgroup>
+            <h1>{{.Title}}</h1>
+            <p>This app works with or without JavaScript enabled</p>
+        </hgroup>
 
         <!-- Mode indicator (no-JS version shown by default) -->
         <noscript>
@@ -40,15 +31,13 @@
 
         <!-- Flash messages -->
         {{if .lvt.Flash "success"}}
-        <ins style="display:block; text-decoration:none;">{{.lvt.Flash "success"}}</ins>
+        <ins style="display:block;text-decoration:none">{{.lvt.Flash "success"}}</ins>
         {{end}}
         {{if .lvt.Flash "error"}}
-        <del style="display:block; text-decoration:none;">{{.lvt.Flash "error"}}</del>
+        <del style="display:block;text-decoration:none">{{.lvt.Flash "error"}}</del>
         {{end}}
 
         <!-- Add todo form -->
-        <!-- Works with JS: client intercepts form and routes via WebSocket/fetch -->
-        <!-- Works without JS: method="POST" triggers HTTP form submission -->
         <article>
             <form method="POST" name="add">
                 <input
@@ -69,29 +58,32 @@
         <!-- Todo list -->
         <article>
             {{if not .Items}}
-            <div class="empty-state">
-                <p>No todos yet. Add one above!</p>
-            </div>
+            <p><small>No todos yet. Add one above!</small></p>
             {{else}}
-            {{range .Items}}
-            {{/* No explicit data-key needed - library auto-generates content-based keys */}}
-            <div class="todo-item{{if .Completed}} completed{{end}}">
-                <!-- Toggle form -->
-                <form method="POST" name="toggle">
-                    <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" name="toggle" class="secondary outline" title="Toggle completed">
-                        {{if .Completed}}&#10003;{{else}}&#9675;{{end}}
-                    </button>
-                </form>
-                <span class="todo-title">{{.Title}}</span>
-                <small>{{.CreatedAt}}</small>
-                <!-- Delete form -->
-                <form method="POST" name="delete">
-                    <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" name="delete" class="contrast outline" title="Delete">&#10005;</button>
-                </form>
-            </div>
-            {{end}}
+            <table>
+                <tbody>
+                {{range .Items}}
+                <tr>
+                    <td>
+                        <form method="POST" name="toggle">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <button type="submit" name="toggle" class="secondary outline" title="Toggle completed">
+                                {{if .Completed}}&#10003;{{else}}&#9675;{{end}}
+                            </button>
+                        </form>
+                    </td>
+                    <td>{{if .Completed}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}</td>
+                    <td><small>{{.CreatedAt}}</small></td>
+                    <td>
+                        <form method="POST" name="delete">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <button type="submit" name="delete" class="contrast outline" title="Delete">&#10005;</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
             {{end}}
         </article>
     </main>

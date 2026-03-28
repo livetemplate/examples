@@ -4,20 +4,25 @@
     <title>{{.Title}}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 </head>
 <body>
-    <h1>{{.Title}}</h1>
-    <div>
-        <p>Counter: {{.Counter}}</p>
-        <div>
-            <button name="increment">+1</button>
-            <button name="decrement">-1</button>
-            <button name="reset">Reset</button>
-        </div>
-    </div>
-    <footer>
-        <p>Last updated: {{.LastUpdated}}</p>
-    </footer>
+    <main class="container">
+        <article>
+            <header>
+                <h1>{{.Title}}</h1>
+            </header>
+            <p>Counter: {{.Counter}}</p>
+            <div class="grid">
+                <button name="increment">+1</button>
+                <button name="decrement" class="secondary">-1</button>
+                <button name="reset" class="contrast">Reset</button>
+            </div>
+            <footer>
+                <small>Last updated: {{.LastUpdated}}</small>
+            </footer>
+        </article>
+    </main>
 
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>

@@ -10,13 +10,6 @@
     {{else}}
     <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
     {{end}}
-    <style>
-        /* Minimal custom styles - Pico handles most styling */
-        .todo-item { display: flex; align-items: center; gap: 0.5rem; }
-        .todo-item label { flex: 1; margin: 0; }
-        .todo-item.completed label { text-decoration: line-through; opacity: 0.6; }
-        .delete-btn { --pico-background-color: transparent; --pico-border-color: transparent; width: auto; padding: 0.25rem 0.5rem; margin: 0; }
-    </style>
 </head>
 <body>
     <main class="container">
@@ -36,34 +29,42 @@
         {{/* Todo List */}}
         <article>
             {{if .Todos}}
-            <div>
+            <table>
+                <tbody>
                 {{range .Todos}}
-                <div class="todo-item{{if .Completed.Checked}} completed{{end}}" data-key="{{.ID}}">
-                    <form method="POST" name="toggleTodo" style="display:inline; margin:0;">
-                        <input type="hidden" name="id" value="{{.ID}}">
-                        <input
-                            type="checkbox"
-                            id="todo-checkbox-{{.ID}}"
-                            {{if .Completed.Checked}}checked{{end}}
-                            onchange="this.form.requestSubmit()"
-                        />
-                        <button type="submit" name="toggleTodo" hidden>Toggle</button>
-                    </form>
-                    <label for="todo-checkbox-{{.ID}}">{{if .Completed.Checked}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}</label>
-                    <form method="POST" name="confirmDelete" style="display:inline; margin:0;">
-                        <input type="hidden" name="id" value="{{.ID}}">
-                        <button
-                            type="submit"
-                            name="confirmDelete"
-                            class="delete-btn outline secondary"
-                            title="Delete todo"
-                        >
-                            &times;
-                        </button>
-                    </form>
-                </div>
+                <tr data-key="{{.ID}}">
+                    <td>
+                        <form method="POST" name="toggleTodo">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <input
+                                type="checkbox"
+                                id="todo-checkbox-{{.ID}}"
+                                {{if .Completed.Checked}}checked{{end}}
+                                onchange="this.form.requestSubmit()"
+                            />
+                            <button type="submit" name="toggleTodo" hidden>Toggle</button>
+                        </form>
+                    </td>
+                    <td>
+                        <label for="todo-checkbox-{{.ID}}">{{if .Completed.Checked}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}</label>
+                    </td>
+                    <td>
+                        <form method="POST" name="confirmDelete">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <button
+                                type="submit"
+                                name="confirmDelete"
+                                class="outline contrast"
+                                title="Delete todo"
+                            >
+                                &times;
+                            </button>
+                        </form>
+                    </td>
+                </tr>
                 {{end}}
-            </div>
+                </tbody>
+            </table>
             {{else}}
             <p><small>No todos yet. Add one above!</small></p>
             {{end}}

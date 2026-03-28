@@ -67,3 +67,20 @@ When a form is submitted, the framework resolves the action in this order:
 - `profile-progressive/` — Simple Tier 1 form with validation
 - `live-preview/` — Tier 1 with `Change()` method for live updates
 - `chat/` — Tier 1+2 (uses `lvt-scroll` for auto-scroll)
+
+## CSS
+
+All examples use [Pico CSS](https://picocss.com/docs) exclusively:
+
+- Include via CDN: `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">`
+- Use semantic HTML — Pico auto-styles: `<article>` (cards), `<dialog>` (modals), `<details>` (accordions), `<table>`, `<nav>`, `<progress>`
+- Use Pico classes sparingly: `.container`, `.grid`, `.secondary`, `.contrast`, `.outline`
+- Use `aria-invalid="true"` for form validation errors, `<small>` for helper/error text
+- Use `<ins>` for success messages, `<del>` for error messages (with `style="display:block;text-decoration:none"`)
+- Use `<mark>` for highlighted/badge text
+- Use `<progress>` for progress bars
+- Use `<hgroup>` for title + subtitle groupings
+- Use `<fieldset role="group">` for inline input+button groups
+- Use `<blockquote>` for callout/info boxes
+- Do NOT write custom CSS. If Pico cannot express a style, ask before adding custom CSS.
+- Pico CSS variables (`--pico-*`) may be used for theming when semantic markup is insufficient

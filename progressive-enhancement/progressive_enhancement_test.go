@@ -154,7 +154,7 @@ func TestProgressiveEnhancement_JSFormSubmission(t *testing.T) {
 	// Count initial todos
 	var initialTodoCount int
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialTodoCount),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &initialTodoCount),
 	)
 	if err != nil {
 		t.Fatalf("Failed to count initial todos: %v", err)
@@ -192,7 +192,7 @@ func TestProgressiveEnhancement_JSFormSubmission(t *testing.T) {
 	// Count todos after submission
 	var finalTodoCount int
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &finalTodoCount),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &finalTodoCount),
 	)
 	if err != nil {
 		t.Fatalf("Failed to count final todos: %v", err)
@@ -524,7 +524,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 		chromedp.Navigate(server.URL),
 		chromedp.WaitReady(`body`, chromedp.ByQuery),
 		e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &initialCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 1 (navigate) error: %v", err)
@@ -537,8 +537,8 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
 		chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
 		// Wait for DOM to update with new item
-		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterAdd), 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterAddCount),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('tbody tr').length === %d`, expectedAfterAdd), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &afterAddCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 2 (add) error: %v", err)
@@ -552,11 +552,11 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 3: Toggle the last todo (mark as complete)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child button[name="toggle"]').click()`, nil),
 		// Wait for the completed class to appear
-		e2etest.WaitFor(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClass),
+		e2etest.WaitFor(`document.querySelector('tbody tr:last-child').querySelector('s') !== null`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &afterToggleCount),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClass),
 	)
 	if err != nil {
 		t.Fatalf("Step 3 (toggle) error: %v", err)
@@ -573,11 +573,11 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 4: Toggle again (mark as incomplete)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child button[name="toggle"]').click()`, nil),
 		// Wait for the completed class to be removed
-		e2etest.WaitFor(`!document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterUntoggleCount),
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClassAfterUntoggle),
+		e2etest.WaitFor(`document.querySelector('tbody tr:last-child').querySelector('s') === null`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &afterUntoggleCount),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClassAfterUntoggle),
 	)
 	if err != nil {
 		t.Fatalf("Step 4 (untoggle) error: %v", err)
@@ -594,10 +594,10 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 5: Delete the last todo (the one we just added)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="delete"]').click()`, nil),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child button[name="delete"]').click()`, nil),
 		// Wait for DOM to update with deleted item
-		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, initialCount), 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('tbody tr').length === %d`, initialCount), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &afterDeleteCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 5 (delete) error: %v", err)
@@ -641,7 +641,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 		chromedp.Navigate(server.URL),
 		chromedp.WaitReady(`body`, chromedp.ByQuery),
 		e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &initialCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 1 (navigate) error: %v", err)
@@ -655,10 +655,10 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	// Step 2: Delete the FIRST todo
 	expectedAfterDelete := initialCount - 1
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:first-child button[name="delete"]').click()`, nil),
+		chromedp.Evaluate(`document.querySelector('tbody tr:first-child button[name="delete"]').click()`, nil),
 		// Wait for DOM to update with deleted item
-		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterDelete), 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('tbody tr').length === %d`, expectedAfterDelete), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &afterDeleteCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 2 (delete) error: %v", err)
@@ -674,7 +674,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	// Check if it has completed class before toggle
 	var hasCompletedClassBefore bool
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClassBefore),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClassBefore),
 	)
 	if err != nil {
 		t.Fatalf("Step 3 (check before toggle) error: %v", err)
@@ -682,17 +682,17 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	t.Logf("Last item has completed class before toggle: %v", hasCompletedClassBefore)
 
 	// Build the wait condition based on whether we expect completed class or not
-	toggleWaitCondition := `document.querySelector('.todo-item:last-child').classList.contains('completed')`
+	toggleWaitCondition := `document.querySelector('tbody tr:last-child').querySelector('s') !== null`
 	if hasCompletedClassBefore {
-		toggleWaitCondition = `!document.querySelector('.todo-item:last-child').classList.contains('completed')`
+		toggleWaitCondition = `document.querySelector('tbody tr:last-child').querySelector('s') === null`
 	}
 
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child button[name="toggle"]').click()`, nil),
 		// Wait for the completed class to change
 		e2etest.WaitFor(toggleWaitCondition, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClass),
+		chromedp.Evaluate(`document.querySelectorAll('tbody tr').length`, &afterToggleCount),
+		chromedp.Evaluate(`document.querySelector('tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClass),
 	)
 	if err != nil {
 		t.Fatalf("Step 3 (toggle) error: %v", err)
