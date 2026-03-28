@@ -90,13 +90,14 @@ func TestTodosProgressiveE2E(t *testing.T) {
 			t.Errorf("Expected 3 items, got %d", count)
 		}
 		if !hasDone {
-			t.Error("Third item should have 'done' class")
+			t.Error("Third item should be struck through")
 		}
 	})
 
 	t.Run("AddTodo", func(t *testing.T) {
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'submit', data: {Title: 'Buy groceries'}})`, nil),
+			chromedp.SendKeys(`input[name="Title"]`, "Buy groceries", chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('button[name="submit"]').click()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr').length === 4`, 5*time.Second),
 		)
 		if err != nil {
@@ -116,14 +117,9 @@ func TestTodosProgressiveE2E(t *testing.T) {
 	})
 
 	t.Run("ToggleDone", func(t *testing.T) {
-		var itemID string
-		if err := chromedp.Run(ctx, chromedp.Evaluate(
-			`document.querySelector('tbody tr:nth-child(1) input[name="id"]').value`, &itemID)); err != nil {
-			t.Fatalf("Failed to get item ID: %v", err)
-		}
-
+		// Click the toggle button on the first row
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(fmt.Sprintf(`window.liveTemplateClient.send({action: 'toggle', data: {id: '%s'}})`, itemID), nil),
+			chromedp.Evaluate(`document.querySelector('tbody tr:nth-child(1) button[name="toggle"]').click()`, nil),
 			e2etest.WaitFor(`document.querySelector('tbody tr:nth-child(1) s') !== null`, 5*time.Second),
 		)
 		if err != nil {
@@ -140,14 +136,9 @@ func TestTodosProgressiveE2E(t *testing.T) {
 	})
 
 	t.Run("ToggleUndo", func(t *testing.T) {
-		var itemID string
-		if err := chromedp.Run(ctx, chromedp.Evaluate(
-			`document.querySelector('tbody tr:nth-child(1) input[name="id"]').value`, &itemID)); err != nil {
-			t.Fatalf("Failed to get item ID: %v", err)
-		}
-
+		// Click the toggle button on the first row again to undo
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(fmt.Sprintf(`window.liveTemplateClient.send({action: 'toggle', data: {id: '%s'}})`, itemID), nil),
+			chromedp.Evaluate(`document.querySelector('tbody tr:nth-child(1) button[name="toggle"]').click()`, nil),
 			e2etest.WaitFor(`document.querySelector('tbody tr:nth-child(1) s') === null`, 5*time.Second),
 		)
 		if err != nil {
@@ -164,14 +155,9 @@ func TestTodosProgressiveE2E(t *testing.T) {
 	})
 
 	t.Run("DeleteTodo", func(t *testing.T) {
-		var itemID string
-		if err := chromedp.Run(ctx, chromedp.Evaluate(
-			`document.querySelector('tbody tr:last-child input[name="id"]').value`, &itemID)); err != nil {
-			t.Fatalf("Failed to get item ID: %v", err)
-		}
-
+		// Click delete on the last row (Buy groceries)
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(fmt.Sprintf(`window.liveTemplateClient.send({action: 'delete', data: {id: '%s'}})`, itemID), nil),
+			chromedp.Evaluate(`document.querySelector('tbody tr:last-child button[name="delete"]').click()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr').length === 3`, 5*time.Second),
 		)
 		if err != nil {
@@ -188,8 +174,9 @@ func TestTodosProgressiveE2E(t *testing.T) {
 	})
 
 	t.Run("FilterActive", func(t *testing.T) {
+		// Click the "Active" filter button
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'filter', data: {filter: 'active'}})`, nil),
+			chromedp.Evaluate(`(() => { const btn = Array.from(document.querySelectorAll('form[name="filter"] button')).find(b => b.textContent.trim() === 'Active'); btn.click(); })()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr').length === 2`, 5*time.Second),
 		)
 		if err != nil {
@@ -206,8 +193,9 @@ func TestTodosProgressiveE2E(t *testing.T) {
 	})
 
 	t.Run("FilterDone", func(t *testing.T) {
+		// Click the "Done" filter button
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'filter', data: {filter: 'done'}})`, nil),
+			chromedp.Evaluate(`(() => { const btn = Array.from(document.querySelectorAll('form[name="filter"] button')).find(b => b.textContent.trim() === 'Done'); btn.click(); })()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr').length === 1`, 5*time.Second),
 		)
 		if err != nil {
@@ -224,8 +212,9 @@ func TestTodosProgressiveE2E(t *testing.T) {
 	})
 
 	t.Run("FilterAll", func(t *testing.T) {
+		// Click the "All" filter button
 		err := chromedp.Run(ctx,
-			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'filter', data: {filter: 'all'}})`, nil),
+			chromedp.Evaluate(`(() => { const btn = Array.from(document.querySelectorAll('form[name="filter"] button')).find(b => b.textContent.trim() === 'All'); btn.click(); })()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr').length === 3`, 5*time.Second),
 		)
 		if err != nil {

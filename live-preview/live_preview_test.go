@@ -219,6 +219,27 @@ func TestLivePreviewE2E(t *testing.T) {
 		}
 	})
 
+	t.Run("Live_Input_Updates_Preview", func(t *testing.T) {
+		// Type in the name field — Change() method auto-fires with 300ms debounce
+		err := chromedp.Run(ctx,
+			chromedp.Clear(`input[name="Name"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="Name"]`, "Alice", chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('#preview').textContent.includes('Hello, Alice!')`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to type and see preview update: %v", err)
+		}
+
+		var preview string
+		if err := chromedp.Run(ctx, chromedp.Text(`#preview`, &preview, chromedp.ByQuery)); err != nil {
+			t.Fatalf("Failed to get preview text: %v", err)
+		}
+		if !strings.Contains(preview, "Hello, Alice!") {
+			t.Errorf("Expected preview 'Hello, Alice!', got %q", preview)
+		}
+		t.Log("✅ Live input updates preview in real-time")
+	})
+
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 3*time.Second),
