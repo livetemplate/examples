@@ -148,7 +148,7 @@ func TestTodosProgressiveE2E(t *testing.T) {
 
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(fmt.Sprintf(`window.liveTemplateClient.send({action: 'toggle', data: {id: '%s'}})`, itemID), nil),
-			e2etest.WaitFor(`!document.querySelector('tbody tr:nth-child(1) s') !== null`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('tbody tr:nth-child(1) s') === null`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to undo toggle: %v", err)

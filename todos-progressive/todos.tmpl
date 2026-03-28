@@ -29,12 +29,7 @@
             <tbody>
             {{range .FilteredItems}}
                 <tr data-key="{{.ID}}">
-                    <td>
-                        <form method="POST">
-                            <input type="hidden" name="id" value="{{.ID}}">
-                            {{if .Done}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}
-                        </form>
-                    </td>
+                    <td>{{if .Done}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}</td>
                     <td>
                         <form method="POST">
                             <input type="hidden" name="id" value="{{.ID}}">
