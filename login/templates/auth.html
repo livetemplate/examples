@@ -141,8 +141,8 @@
             <p class="login-time">Logged in at: {{.LoginTime.Format "15:04:05"}}</p>
             {{end}}
         </div>
-        <!-- HTTP logout (deletes session cookie) -->
-        <form method="POST">
+        <!-- HTTP logout (deletes session cookie) — lvt-no-intercept forces real HTTP POST -->
+        <form method="POST" lvt-no-intercept>
             <button type="submit" name="logout" class="btn-danger">Logout</button>
         </form>
         {{else}}
@@ -151,8 +151,8 @@
         {{if .Error}}
         <div class="error">{{.Error}}</div>
         {{end}}
-        <!-- HTTP login form (sets HttpOnly cookie, redirects to dashboard) -->
-        <form method="POST">
+        <!-- HTTP login form (sets HttpOnly cookie, redirects to dashboard) — lvt-no-intercept forces real HTTP POST -->
+        <form method="POST" lvt-no-intercept>
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" placeholder="Enter username" required>

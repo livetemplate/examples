@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shared Notepad — {{.Username}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <article>
+            <header>
+                <hgroup>
+                    <h1>Shared Notepad</h1>
+                    <p>Logged in as <strong>{{.Username}}</strong> — Save syncs across all your tabs</p>
+                </hgroup>
+            </header>
+
+            <form method="POST" lvt-preserve>
+                <label for="content">Your notes
+                    <textarea id="content" name="content" rows="12" placeholder="Start typing..."
+                        oninput="document.getElementById('charcount').textContent = this.value.length + ' characters'">{{.Content}}</textarea>
+                </label>
+                <footer>
+                    <div class="grid">
+                        <small id="charcount">{{.CharCount}} characters{{if .SavedAt}} — saved at {{.SavedAt}}{{end}}</small>
+                        <button type="submit" name="save">Save</button>
+                    </div>
+                </footer>
+            </form>
+        </article>
+
+        <article>
+            <header><strong>How it works</strong></header>
+            <ul>
+                <li><strong>BasicAuth</strong> — each user gets an isolated session (alice's notes are separate from bob's)</li>
+                <li><strong>WithSharedState</strong> — all tabs of the same user share state (Save in one tab updates all)</li>
+                <li>Notes persist across page refreshes within the same server session</li>
+            </ul>
+            <small>Demo credentials: any username, password <strong>demo</strong></small>
+        </article>
+    </main>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>

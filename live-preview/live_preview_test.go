@@ -242,4 +242,43 @@ func TestLivePreviewE2E(t *testing.T) {
 			t.Error("LiveTemplate wrapper not found")
 		}
 	})
+
+	t.Run("Auto-Wire Input", func(t *testing.T) {
+		// Type into the auto-wired input and verify the preview updates.
+		// The client should detect capabilities: ["change"], analyze statics to
+		// find name="Name" adjacent to a dynamic value slot, and auto-wire
+		// a debounced input listener that sends {action: "change", data: {Name: "..."}}
+		err := chromedp.Run(ctx,
+			// Clear the input first, then type
+			chromedp.Clear(`#name-input`, chromedp.ByQuery),
+			chromedp.SendKeys(`#name-input`, "World", chromedp.ByQuery),
+			// Wait for debounce (300ms) + server round-trip + DOM update
+			e2etest.WaitForText("#preview", "Hello, World!", 5*time.Second),
+		)
+		if err != nil {
+			// Capture debug info on failure
+			var html string
+			var consoleOutput string
+			chromedp.Run(ctx,
+				chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
+				chromedp.Evaluate(`JSON.stringify(window.__wsMessages || [], null, 2)`, &consoleOutput),
+			)
+			t.Logf("=== PAGE HTML ===\n%s", html)
+			t.Logf("=== WS MESSAGES ===\n%s", consoleOutput)
+			t.Fatalf("Auto-wire input test failed: %v", err)
+		}
+
+		// Verify the preview contains the expected text
+		var previewText string
+		err = chromedp.Run(ctx,
+			chromedp.TextContent(`#preview`, &previewText, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to get preview text: %v", err)
+		}
+
+		if !strings.Contains(previewText, "Hello, World!") {
+			t.Errorf("Expected preview to contain 'Hello, World!', got: %q", previewText)
+		}
+	})
 }

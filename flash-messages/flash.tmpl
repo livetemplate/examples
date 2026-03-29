@@ -21,6 +21,9 @@
             margin-bottom: 16px;
             font-weight: 500;
         }
+        .flash:empty {
+            display: none;
+        }
         .flash-success {
             background: #d4edda;
             color: #155724;
@@ -146,23 +149,11 @@
 <body>
     <h1>{{.Title}}</h1>
 
-    <!-- Flash Messages Section -->
-    {{if .lvt.HasAnyFlash}}
-    <div id="flash-messages">
-        {{if .lvt.HasFlash "success"}}
-        <div class="flash flash-success" data-flash="success">{{.lvt.Flash "success"}}</div>
-        {{end}}
-        {{if .lvt.HasFlash "error"}}
-        <div class="flash flash-error" data-flash="error">{{.lvt.Flash "error"}}</div>
-        {{end}}
-        {{if .lvt.HasFlash "warning"}}
-        <div class="flash flash-warning" data-flash="warning">{{.lvt.Flash "warning"}}</div>
-        {{end}}
-        {{if .lvt.HasFlash "info"}}
-        <div class="flash flash-info" data-flash="info">{{.lvt.Flash "info"}}</div>
-        {{end}}
-    </div>
-    {{end}}
+    <!-- Flash Messages — always in DOM so tree diff can update content -->
+    <div class="flash flash-success" data-flash="success">{{.lvt.Flash "success"}}</div>
+    <div class="flash flash-error" data-flash="error">{{.lvt.Flash "error"}}</div>
+    <div class="flash flash-warning" data-flash="warning">{{.lvt.Flash "warning"}}</div>
+    <div class="flash flash-info" data-flash="info">{{.lvt.Flash "info"}}</div>
 
     <!-- Add Item Form -->
     <div class="form-group">

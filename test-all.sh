@@ -34,12 +34,16 @@ WORKING_EXAMPLES=(
     "graceful-shutdown"
     "testing/01_basic"
     "ws-disabled"
-)
-
-# Disabled examples (require internal/observe package)
-DISABLED_EXAMPLES=(
+    "login"
+    "todos-components"
+    "shared-notepad"
+    "flash-messages"
     "observability"
     "production/single-host"
+)
+
+# Disabled examples
+DISABLED_EXAMPLES=(
 )
 
 echo "================================================"
