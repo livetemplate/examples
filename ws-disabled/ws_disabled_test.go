@@ -202,20 +202,22 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			t.Fatalf("Add failed: %v", err)
 		}
 
-		var htmlAfterDelete string
 		err = chromedp.Run(ctx,
-			// Wait for Delete button to appear in the DOM after the Add state update
 			chromedp.WaitReady(`button[name="delete"]`, chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="delete"]').click()`, nil),
-			e2etest.WaitFor(`document.body.innerText.includes('No bookmarks yet')`, 5*time.Second),
-			chromedp.OuterHTML("html", &htmlAfterDelete),
+			chromedp.Evaluate(`(() => { const btn = document.querySelector('button[name="delete"]'); btn.closest('form').requestSubmit(btn); })()`, nil),
+			chromedp.Sleep(2*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Delete failed: %v", err)
+			t.Fatalf("Delete click failed: %v", err)
 		}
 
-		if strings.Contains(htmlAfterDelete, "To Delete") {
-			t.Error("Bookmark should be removed after delete")
+		var noBookmarks bool
+		chromedp.Run(ctx,
+			chromedp.Evaluate(`document.body.innerText.includes('No bookmarks yet')`, &noBookmarks),
+		)
+
+		if !noBookmarks {
+			t.Error("Expected 'No bookmarks yet' after delete")
 		}
 	})
 }
