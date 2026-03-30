@@ -21,7 +21,6 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 | `live-preview/` | 1 | Change() live updates | None |
 | `login/` | 1 | Authentication + sessions | None |
 | `shared-notepad/` | 1 | BasicAuth + SharedState | None |
-| `testing/01_basic/` | 1 | E2E test patterns | None |
 
 ## Examples
 

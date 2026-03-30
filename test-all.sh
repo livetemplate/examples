@@ -31,7 +31,6 @@ WORKING_EXAMPLES=(
     "live-preview"
     "todos-progressive"
     "profile-progressive"
-    "testing/01_basic"
     "ws-disabled"
     "login"
     "todos-components"
