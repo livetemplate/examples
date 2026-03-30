@@ -21,7 +21,7 @@ jobs:
         go-version: '1.26'
 
     - name: Run test script
-      run: ./test-all.sh --skip-disabled
+      run: ./test-all.sh
       env:
         CGO_ENABLED: 1
 
@@ -37,8 +37,14 @@ jobs:
           - counter
           - chat
           - todos
-          - graceful-shutdown
-          - testing/01_basic
+          - live-preview
+          - todos-progressive
+          - profile-progressive
+          - ws-disabled
+          - login
+          - todos-components
+          - shared-notepad
+          - flash-messages
 
     steps:
     - name: Checkout code
@@ -49,45 +55,13 @@ jobs:
       with:
         go-version: '1.26'
 
-    - name: Install dependencies
-      working-directory: ${{ matrix.example }}
-      run: go mod download
-
     - name: Build
-      working-directory: ${{ matrix.example }}
-      run: go build -v .
+      run: go build -v ./...
+      env:
+        CGO_ENABLED: 1
 
     - name: Test
       working-directory: ${{ matrix.example }}
       run: go test -v -race -timeout=5m ./...
       env:
         CGO_ENABLED: 1
-
-  # Check that disabled examples at least download dependencies correctly
-  check-disabled:
-    name: Check ${{ matrix.example }} (disabled)
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        example:
-          - observability
-          - production/single-host
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.26'
-
-    - name: Check dependencies
-      working-directory: ${{ matrix.example }}
-      run: |
-        echo "⚠️ This example is currently disabled"
-        echo "Reason: Uses internal/observe package which needs to be exported"
-        go mod download
-        echo "✓ Dependencies download successfully"
