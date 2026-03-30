@@ -211,11 +211,13 @@ func main() {
 		NextID: 2,
 	}
 
-	// Create toast container with component's own CSS (position: fixed)
+	// Create toast container (unstyled — Pico CSS handles base styling,
+	// template adds position:fixed via inline style below)
 	toasts := toast.New("notifications",
 		toast.WithPosition(toast.TopRight),
 		toast.WithMaxVisible(3),
 	)
+	toasts.SetStyled(false)
 	initialState.Toasts = toasts
 
 	// Create confirmation modal (unstyled for Pico CSS)

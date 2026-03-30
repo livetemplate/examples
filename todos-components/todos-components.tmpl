@@ -16,6 +16,14 @@
         .todo-item label { flex: 1; margin: 0; }
         .todo-item.completed label { text-decoration: line-through; opacity: 0.6; }
         .delete-btn { --pico-background-color: transparent; --pico-border-color: transparent; width: auto; padding: 0.25rem 0.5rem; margin: 0; }
+        /* Toast positioning and styling — components use unstyled mode with Pico */
+        [data-toast-container] { position: fixed; top: 1rem; right: 1rem; z-index: 50; display: flex; flex-direction: column; gap: 0.5rem; width: 400px; }
+        [data-toast-container] [role="alert"] { background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.75rem 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: flex-start; gap: 0.5rem; }
+        [data-toast-container] [role="alert"] > div { flex: 1; }
+        [data-toast-container] [role="alert"] button[lvt-click^="dismiss"] { width: auto; min-width: auto; margin: 0; padding: 0.25rem; --pico-background-color: transparent; --pico-border-color: transparent; color: var(--pico-muted-color); line-height: 1; }
+        [data-toast-container] [role="alert"] button[lvt-click^="dismiss"]:hover { color: var(--pico-color); }
+        [data-toast-container] [role="alert"] svg { width: 1rem; height: 1rem; }
+        [data-modal] { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>

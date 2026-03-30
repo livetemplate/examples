@@ -39,10 +39,7 @@ avatar-upload/avatar-upload
 avatar-upload/uploads/
 # Library creates .uploads/ unconditionally (livetemplate/livetemplate#286)
 **/.uploads/
-graceful-shutdown/graceful-shutdown
 login/login
-observability/observability
-production/single-host/single-host
 testing/01_basic/basic
 todos-components/todos-components
 todos-components/.uploads/

@@ -1,9 +1,12 @@
 package main
 
 import (
-	"log"
+	"context"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/livetemplate/livetemplate"
@@ -11,15 +14,7 @@ import (
 )
 
 // CounterController demonstrates the Controller+State pattern.
-//
 // The Controller is a singleton that holds dependencies (none in this simple example).
-// Action methods receive state as first parameter and return modified state:
-//
-//   - "increment" → Increment(state, ctx) (state, error)
-//   - "decrement" → Decrement(state, ctx) (state, error)
-//   - "reset"     → Reset(state, ctx) (state, error)
-//
-// Actions are matched case-insensitively and support both camelCase and snake_case.
 type CounterController struct{}
 
 // CounterState is pure data, cloned per session.
@@ -29,21 +24,18 @@ type CounterState struct {
 	LastUpdated string `json:"last_updated"`
 }
 
-// Increment handles the "increment" action
 func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
 	state.Counter++
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 
-// Decrement handles the "decrement" action
 func (c *CounterController) Decrement(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
 	state.Counter--
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 
-// Reset handles the "reset" action
 func (c *CounterController) Reset(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
 	state.Counter = 0
 	state.LastUpdated = formatTime()
@@ -55,48 +47,97 @@ func formatTime() string {
 }
 
 func main() {
-	log.Println("LiveTemplate Counter Server starting...")
-
-	// Load configuration from environment variables
+	// --- Observability: structured logging ---
 	envConfig, err := livetemplate.LoadEnvConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
-
-	// Validate configuration
 	if err := envConfig.Validate(); err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+		slog.Error("Invalid configuration", "error", err)
+		os.Exit(1)
 	}
 
-	// Create controller (singleton, holds dependencies)
-	controller := &CounterController{}
+	var level slog.Level
+	switch envConfig.LogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
 
-	// Create initial state (pure data, cloned per session)
+	var handler slog.Handler
+	if os.Getenv("ENV") == "production" {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	}
+	slog.SetDefault(slog.New(handler))
+
+	// --- Application setup ---
+	controller := &CounterController{}
 	initialState := &CounterState{
 		Title:       "Live Counter",
 		Counter:     0,
 		LastUpdated: formatTime(),
 	}
 
-	// Create template with environment-based configuration
-	// Configuration is loaded from LVT_* environment variables
 	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
+	liveHandler := tmpl.Handle(controller, livetemplate.AsState(initialState))
 
-	// Mount handler with Controller+State pattern
-	// - Controller: singleton with dependencies
-	// - State: wrapped with AsState() for per-session cloning
-	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
-
-	// Serve client library (development only - use CDN in production)
-	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	mux := http.NewServeMux()
+	mux.Handle("/", liveHandler)
+	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Server starting on http://localhost:%s", port)
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	// --- Graceful shutdown ---
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		slog.Info("Server starting", "url", "http://localhost:"+port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-quit
+
+	shutdownTimeout := envConfig.ShutdownTimeout
+	if shutdownTimeout == 0 {
+		shutdownTimeout = 30 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	slog.Info("Shutting down HTTP server...")
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("HTTP shutdown error", "error", err)
+	}
+
+	if s, ok := liveHandler.(interface{ Shutdown(context.Context) error }); ok {
+		slog.Info("Shutting down WebSocket connections...")
+		if err := s.Shutdown(ctx); err != nil {
+			slog.Error("LiveHandler shutdown error", "error", err)
+		}
+	}
+
+	slog.Info("Shutdown complete")
 }

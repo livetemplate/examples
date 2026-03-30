@@ -8,22 +8,20 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 
 | Example | Tier | Description | Tier 2 Attributes |
 |---------|------|-------------|--------------------|
-| `counter/` | 1 | Simple state management | None |
+| `counter/` | 1 | Counter with logging + graceful shutdown | None |
 | `chat/` | 1+2 | Real-time multi-user chat | `lvt-scroll` |
 | `todos/` | 1 | Full CRUD with SQLite | None |
 | `todos-progressive/` | 1 | Zero-attribute CRUD demo | None |
 | `todos-components/` | 1+2 | Component library (modal, toast) | Component-internal |
 | `flash-messages/` | 1 | Flash notification patterns | None |
 | `avatar-upload/` | 1+2 | File upload with progress | `lvt-upload` |
-| `graceful-shutdown/` | 1 | Server shutdown patterns | None |
-| `observability/` | 1 | Logging, metrics, tracing | None |
 | `progressive-enhancement/` | 1 | Works with/without JS | None |
 | `profile-progressive/` | 1 | Form validation | None |
 | `ws-disabled/` | 1 | HTTP-only mode | None |
 | `live-preview/` | 1 | Change() live updates | None |
 | `login/` | 1 | Authentication + sessions | None |
+| `shared-notepad/` | 1 | BasicAuth + SharedState | None |
 | `testing/01_basic/` | 1 | E2E test patterns | None |
-| `production/single-host/` | 1 | Production deployment | None |
 
 ## Examples
 
