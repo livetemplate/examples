@@ -50,11 +50,11 @@
         </table>
 
         <!-- Form name="filter" routes to Filter(). Active filter is highlighted. -->
-        <fieldset role="group">
+        <div class="grid">
             <form method="POST" name="filter"><input type="hidden" name="filter" value="all"><button type="submit" {{if or (eq .ActiveFilter "") (eq .ActiveFilter "all")}}class="primary"{{else}}class="secondary outline"{{end}}>All</button></form>
             <form method="POST" name="filter"><input type="hidden" name="filter" value="active"><button type="submit" {{if eq .ActiveFilter "active"}}class="primary"{{else}}class="secondary outline"{{end}}>Active</button></form>
             <form method="POST" name="filter"><input type="hidden" name="filter" value="done"><button type="submit" {{if eq .ActiveFilter "done"}}class="primary"{{else}}class="secondary outline"{{end}}>Done</button></form>
-        </fieldset>
+        </div>
     </main>
 
     {{if .lvt.DevMode}}
