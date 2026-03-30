@@ -94,8 +94,43 @@ func TestCounterE2E(t *testing.T) {
 		t.Log("✅ Initial page load verified")
 	})
 
-	// Note: Increment/Decrement tests removed due to chromedp timing issues
-	// Core functionality is verified by TestWebSocketBasic
+	t.Run("Button_Click_Increment", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('button[name="increment"]').click()`, nil),
+			e2etest.WaitFor(`document.body.innerText.includes('Counter: 1')`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to click increment: %v", err)
+		}
+		t.Log("✅ Button click increment works")
+	})
+
+	t.Run("State_Persists_On_Refresh", func(t *testing.T) {
+		// Counter should be 1 from the previous test. Refresh and verify it's still 1.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`h1`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to reload: %v", err)
+		}
+
+		var html string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &html, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to get HTML: %v", err)
+		}
+
+		if strings.Contains(html, "Counter: 0") {
+			t.Error("BUG: Counter reset to 0 on refresh — state was not persisted")
+		}
+		if !strings.Contains(html, "Counter: 1") {
+			t.Errorf("Expected 'Counter: 1' after refresh, got HTML containing neither 0 nor 1")
+		}
+		t.Log("✅ State persists on page refresh")
+	})
 
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		// Check for console errors
