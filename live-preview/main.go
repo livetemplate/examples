@@ -53,7 +53,8 @@ func main() {
 	controller := &PreviewController{}
 	initialState := &PreviewState{Preview: preview("")}
 
-	tmpl := livetemplate.Must(livetemplate.New("preview", envConfig.ToOptions()...))
+	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	tmpl := livetemplate.Must(livetemplate.New("preview", opts...))
 	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
 

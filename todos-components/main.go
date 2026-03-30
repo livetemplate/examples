@@ -246,6 +246,7 @@ func main() {
 		ltSets[i] = convertTemplateSet(set)
 	}
 	opts = append(opts, livetemplate.WithComponentTemplates(ltSets...))
+	opts = append(opts, livetemplate.WithStatePersistence())
 
 	// Create template with component templates registered
 	tmpl := livetemplate.Must(livetemplate.New("todos-components", opts...))

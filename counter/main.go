@@ -86,7 +86,8 @@ func main() {
 		LastUpdated: formatTime(),
 	}
 
-	tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
+	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	tmpl := livetemplate.Must(livetemplate.New("counter", opts...))
 	liveHandler := tmpl.Handle(controller, livetemplate.AsState(initialState))
 
 	mux := http.NewServeMux()

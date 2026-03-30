@@ -60,7 +60,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tmpl, err := livetemplate.New("profile", envConfig.ToOptions()...)
+	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	tmpl, err := livetemplate.New("profile", opts...)
 	if err != nil {
 		log.Fatal(err)
 	}

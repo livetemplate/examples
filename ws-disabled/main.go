@@ -94,6 +94,7 @@ func main() {
 
 	opts := envConfig.ToOptions()
 	opts = append(opts, livetemplate.WithWebSocketDisabled())
+	opts = append(opts, livetemplate.WithStatePersistence())
 
 	tmpl := livetemplate.Must(livetemplate.New("ws-disabled", opts...))
 
