@@ -211,12 +211,11 @@ func main() {
 		NextID: 2,
 	}
 
-	// Create toast container (unstyled for Pico CSS)
+	// Create toast container with component's own CSS (position: fixed)
 	toasts := toast.New("notifications",
 		toast.WithPosition(toast.TopRight),
 		toast.WithMaxVisible(3),
 	)
-	toasts.SetStyled(false)
 	initialState.Toasts = toasts
 
 	// Create confirmation modal (unstyled for Pico CSS)
@@ -227,7 +226,6 @@ func main() {
 		modal.WithConfirmText("Delete"),
 		modal.WithCancelText("Cancel"),
 	)
-	deleteConfirm.SetStyled(false)
 	initialState.DeleteConfirm = deleteConfirm
 
 	// Get options from env config

@@ -281,4 +281,37 @@ func TestLivePreviewE2E(t *testing.T) {
 			t.Errorf("Expected preview to contain 'Hello, World!', got: %q", previewText)
 		}
 	})
+
+	t.Run("Cursor_Position_Preserved", func(t *testing.T) {
+		// After Auto-Wire Input, input has "World" and preview has "Hello, World!"
+		// Type additional characters and verify they append (not prepend due to cursor reset)
+		err := chromedp.Run(ctx,
+			// Input should still have focus from previous test; type "XY"
+			chromedp.Click(`#name-input`, chromedp.ByQuery),
+			chromedp.SendKeys(`#name-input`, "XY", chromedp.ByQuery),
+			// Wait for debounce + round-trip — preview should show "Hello, WorldXY!"
+			e2etest.WaitForText("#preview", "Hello, WorldXY!", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to type additional characters: %v", err)
+		}
+
+		var inputValue string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.getElementById('name-input').value`, &inputValue),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read input: %v", err)
+		}
+		t.Logf("Input value: %q", inputValue)
+
+		// If cursor was reset to 0, "XY" would be prepended: "XYWorld"
+		// If cursor was preserved, "XY" appends: "WorldXY"
+		if inputValue == "XYWorld" {
+			t.Error("BUG: Cursor was reset to position 0 — characters prepended instead of appended")
+		}
+		if inputValue != "WorldXY" {
+			t.Errorf("Expected 'WorldXY', got %q", inputValue)
+		}
+	})
 }

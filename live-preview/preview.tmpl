@@ -4,15 +4,22 @@
     <title>Live Preview</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 </head>
 <body>
-    <h1>Live Preview</h1>
-    <form method="POST">
-        <label for="name-input">Name</label>
-        <input id="name-input" name="Name" value="{{.Name}}" placeholder="Type your name...">
-        <button type="submit">Save</button>
-    </form>
-    <div id="preview">{{.Preview}}</div>
+    <main class="container">
+        <article>
+            <header>
+                <h1>Live Preview</h1>
+            </header>
+            <form method="POST">
+                <label for="name-input">Name</label>
+                <input id="name-input" name="Name" value="{{.Name}}" placeholder="Type your name...">
+                <button type="submit" name="submit">Save</button>
+            </form>
+            <blockquote id="preview">{{.Preview}}</blockquote>
+        </article>
+    </main>
 
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>

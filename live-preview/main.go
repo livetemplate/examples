@@ -24,8 +24,11 @@ func preview(name string) string {
 }
 
 func (c *PreviewController) Change(state PreviewState, ctx *livetemplate.Context) (PreviewState, error) {
-	state.Name = ctx.GetString("Name")
-	state.Preview = preview(state.Name)
+	// Only update Preview, not Name. The input value is managed by the browser
+	// while the user types. Setting state.Name would cause the tree diff to
+	// patch the input's value attribute, resetting the cursor position.
+	name := ctx.GetString("Name")
+	state.Preview = preview(name)
 	return state, nil
 }
 

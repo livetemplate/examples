@@ -53,12 +53,12 @@
     {{end}}
     </ul>
 
-    <!-- Button name routing: button name="filter" → Filter() -->
-    <div class="filters">
-        <form method="POST" style="display:inline"><input type="hidden" name="filter" value="all"><button type="submit" name="filter">All</button></form>
-        <form method="POST" style="display:inline"><input type="hidden" name="filter" value="active"><button type="submit" name="filter">Active</button></form>
-        <form method="POST" style="display:inline"><input type="hidden" name="filter" value="done"><button type="submit" name="filter">Done</button></form>
-    </div>
+    <!-- Form name="filter" routes to Filter(). Active filter is highlighted. -->
+    <fieldset role="group">
+        <form method="POST" name="filter"><input type="hidden" name="filter" value="all"><button type="submit" {{if or (eq .ActiveFilter "") (eq .ActiveFilter "all")}}class="primary"{{else}}class="secondary outline"{{end}}>All</button></form>
+        <form method="POST" name="filter"><input type="hidden" name="filter" value="active"><button type="submit" {{if eq .ActiveFilter "active"}}class="primary"{{else}}class="secondary outline"{{end}}>Active</button></form>
+        <form method="POST" name="filter"><input type="hidden" name="filter" value="done"><button type="submit" {{if eq .ActiveFilter "done"}}class="primary"{{else}}class="secondary outline"{{end}}>Done</button></form>
+    </fieldset>
 
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>

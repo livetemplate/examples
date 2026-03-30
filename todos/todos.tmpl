@@ -49,9 +49,9 @@
 {{end}}
 
 {{define "sort-select"}}
-<form method="POST" name="sort">
+<div>
   <label for="sort_by">Sort by:</label>
-  <select name="sort_by" id="sort_by" onchange="this.form.requestSubmit()">
+  <select name="sort_by" id="sort_by">
     <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
       Newest First
     </option>
@@ -65,7 +65,7 @@
       Oldest First
     </option>
   </select>
-</form>
+</div>
 {{end}}
 
 {{define "todo-item"}}
