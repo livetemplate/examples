@@ -67,8 +67,8 @@ func TestProfileProgressiveE2E(t *testing.T) {
 		var previewHTML string
 		err := chromedp.Run(ctx,
 			chromedp.OuterHTML("body", &html, chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('.success') !== null`, &hasSuccess),
-			chromedp.OuterHTML(".preview", &previewHTML, chromedp.ByQuery),
+			chromedp.Evaluate(`document.querySelector('ins') !== null`, &hasSuccess),
+			chromedp.OuterHTML("article", &previewHTML, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("Failed to get initial state: %v", err)
@@ -100,7 +100,7 @@ func TestProfileProgressiveE2E(t *testing.T) {
 			chromedp.Clear(`textarea[name="Bio"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="Bio"]`, "Updated bio text.", chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('button[type="submit"]').click()`, nil),
-			e2etest.WaitFor(`document.querySelector('.success') !== null`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('ins') !== null`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to save profile: %v", err)
@@ -115,7 +115,7 @@ func TestProfileProgressiveE2E(t *testing.T) {
 		}
 
 		var previewHTML string
-		if err := chromedp.Run(ctx, chromedp.OuterHTML(".preview", &previewHTML, chromedp.ByQuery)); err != nil {
+		if err := chromedp.Run(ctx, chromedp.OuterHTML("article", &previewHTML, chromedp.ByQuery)); err != nil {
 			t.Fatalf("Failed to get preview: %v", err)
 		}
 		if !strings.Contains(previewHTML, "John Smith") {
@@ -129,14 +129,14 @@ func TestProfileProgressiveE2E(t *testing.T) {
 	t.Run("UpdateProfile", func(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'submit', data: {DisplayName: 'Jane Updated', Email: 'jane.updated@example.com', Bio: 'Fixed and saved.'}})`, nil),
-			e2etest.WaitFor(`document.querySelector('.success') !== null`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('ins') !== null`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to update profile: %v", err)
 		}
 
 		var previewHTML string
-		if err := chromedp.Run(ctx, chromedp.OuterHTML(".preview", &previewHTML, chromedp.ByQuery)); err != nil {
+		if err := chromedp.Run(ctx, chromedp.OuterHTML("article", &previewHTML, chromedp.ByQuery)); err != nil {
 			t.Fatalf("Failed to get preview: %v", err)
 		}
 		if !strings.Contains(previewHTML, "Jane Updated") {

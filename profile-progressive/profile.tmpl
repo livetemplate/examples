@@ -2,60 +2,55 @@
 <html>
 <head>
     <title>Progressive Complexity: Profile Demo</title>
-    <style>
-        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-        h1 { color: #333; }
-        .subtitle { color: #666; font-size: 14px; margin-top: -10px; }
-        label { display: block; font-weight: 600; margin-top: 16px; margin-bottom: 4px; }
-        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
-        input.error-input, textarea.error-input { border-color: #dc3545; background: #fff5f5; }
-        .error { color: #dc3545; font-size: 13px; margin-top: 4px; }
-        button[type="submit"] { margin-top: 20px; padding: 10px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button[type="submit"]:hover { background: #0056b3; }
-        .success { background: #d4edda; color: #155724; padding: 12px; border-radius: 4px; margin-top: 16px; }
-        .preview { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 30px; }
-        .preview h2 { margin-top: 0; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 </head>
 <body>
-    <h1>Edit Profile</h1>
-    <p class="subtitle">Zero <code>lvt-*</code> attributes &mdash; Tier 1 only</p>
+    <main class="container">
+        <hgroup>
+            <h1>Edit Profile</h1>
+            <p>Zero <code>lvt-*</code> attributes &mdash; Tier 1 only</p>
+        </hgroup>
 
-    {{if .Saved}}
-        <div class="success">Profile saved successfully!</div>
-    {{end}}
-
-    <!-- Form auto-submits to Submit() method. No lvt-* needed. -->
-    <form method="POST">
-        <label for="name">Display Name</label>
-        <input type="text" id="name" name="DisplayName" value="{{.DisplayName}}"
-               class="{{if .lvt.HasError "display_name"}}error-input{{end}}">
-        {{if .lvt.HasError "display_name"}}
-            <div class="error">{{.lvt.Error "display_name"}}</div>
+        {{if .Saved}}
+            <ins style="display:block;text-decoration:none">Profile saved successfully!</ins>
         {{end}}
 
-        <label for="email">Email</label>
-        <input type="email" id="email" name="Email" value="{{.Email}}"
-               class="{{if .lvt.HasError "email"}}error-input{{end}}">
-        {{if .lvt.HasError "email"}}
-            <div class="error">{{.lvt.Error "email"}}</div>
-        {{end}}
+        <form method="POST">
+            <label for="name">Display Name
+                <input type="text" id="name" name="DisplayName" value="{{.DisplayName}}"
+                       {{if .lvt.HasError "display_name"}}aria-invalid="true"{{end}}>
+                {{if .lvt.HasError "display_name"}}
+                    <small>{{.lvt.Error "display_name"}}</small>
+                {{end}}
+            </label>
 
-        <label for="bio">Bio</label>
-        <textarea id="bio" name="Bio" rows="4">{{.Bio}}</textarea>
-        {{if .lvt.HasError "bio"}}
-            <div class="error">{{.lvt.Error "bio"}}</div>
-        {{end}}
+            <label for="email">Email
+                <input type="email" id="email" name="Email" value="{{.Email}}"
+                       {{if .lvt.HasError "email"}}aria-invalid="true"{{end}}>
+                {{if .lvt.HasError "email"}}
+                    <small>{{.lvt.Error "email"}}</small>
+                {{end}}
+            </label>
 
-        <button type="submit" name="submit">Save Profile</button>
-    </form>
+            <label for="bio">Bio
+                <textarea id="bio" name="Bio" rows="4">{{.Bio}}</textarea>
+                {{if .lvt.HasError "bio"}}
+                    <small>{{.lvt.Error "bio"}}</small>
+                {{end}}
+            </label>
 
-    <div class="preview">
-        <h2>Preview</h2>
-        <p><strong>Name:</strong> {{.DisplayName}}</p>
-        <p><strong>Email:</strong> {{.Email}}</p>
-        <p><strong>Bio:</strong> {{.Bio}}</p>
-    </div>
+            <button type="submit" name="submit">Save Profile</button>
+        </form>
+
+        <article>
+            <header><strong>Preview</strong></header>
+            <p><strong>Name:</strong> {{.DisplayName}}</p>
+            <p><strong>Email:</strong> {{.Email}}</p>
+            <p><strong>Bio:</strong> {{.Bio}}</p>
+        </article>
+    </main>
 
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>
