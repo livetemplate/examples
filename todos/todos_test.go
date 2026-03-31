@@ -436,14 +436,10 @@ func TestTodosE2E(t *testing.T) {
 				Text    string `json:"text"`
 			}
 			paginationState struct {
-				HiddenAttr  bool   `json:"hiddenAttr"`
-				Display     string `json:"display"`
-				DataVisible string `json:"dataVisible"`
+				HiddenAttr bool `json:"hiddenAttr"`
 			}
 			paginationVisibleState struct {
-				HiddenAttr  bool   `json:"hiddenAttr"`
-				Display     string `json:"display"`
-				DataVisible string `json:"dataVisible"`
+				HiddenAttr bool `json:"hiddenAttr"`
 			}
 			debugInfo   string
 			consoleLogs string
@@ -536,15 +532,8 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`
 				(() => {
 					const nav = document.querySelector('[data-pagination]');
-					if (!nav) {
-						return { hiddenAttr: true, display: 'none', dataVisible: 'false' };
-					}
-					const style = window.getComputedStyle(nav);
-					return {
-						hiddenAttr: nav.hasAttribute('hidden'),
-						display: style.display,
-						dataVisible: nav.dataset.visible || ''
-					};
+					if (!nav) return { hiddenAttr: true };
+					return { hiddenAttr: nav.hasAttribute('hidden') };
 				})();
 			`, &paginationState),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
@@ -594,11 +583,8 @@ func TestTodosE2E(t *testing.T) {
 		if !strings.Contains(emptyState.Text, "No todos found matching \"NonExistent\"") {
 			t.Errorf("Empty state text unexpected: %q", emptyState.Text)
 		}
-		if paginationState.Display != "none" {
-			t.Errorf("Pagination controls should be hidden (display none) when no todos match search. State: %+v", paginationState)
-		}
-		if paginationState.DataVisible != "false" {
-			t.Errorf("Pagination data-visible should be 'false' when hidden. State: %+v", paginationState)
+		if !paginationState.HiddenAttr {
+			t.Errorf("Pagination should have hidden attribute when no todos match search. State: %+v", paginationState)
 		}
 
 		t.Log("✅ Empty search results handled correctly")
@@ -619,26 +605,16 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`
 				(() => {
 					const nav = document.querySelector('[data-pagination]');
-					if (!nav) {
-						return { hiddenAttr: true, display: 'none', dataVisible: 'false' };
-					}
-					const style = window.getComputedStyle(nav);
-					return {
-						hiddenAttr: nav.hasAttribute('hidden'),
-						display: style.display,
-						dataVisible: nav.dataset.visible || ''
-					};
+					if (!nav) return { hiddenAttr: true };
+					return { hiddenAttr: nav.hasAttribute('hidden') };
 				})();
 			`, &paginationVisibleState),
 		)
 		if err != nil {
 			t.Fatalf("Failed to verify pagination visibility after clearing search: %v", err)
 		}
-		if paginationVisibleState.Display != "block" {
-			t.Errorf("Pagination controls should be visible (display block) after clearing search. State: %+v", paginationVisibleState)
-		}
-		if paginationVisibleState.DataVisible != "true" {
-			t.Errorf("Pagination data-visible should be 'true' after clearing search. State: %+v", paginationVisibleState)
+		if paginationVisibleState.HiddenAttr {
+			t.Errorf("Pagination should NOT have hidden attribute after clearing search. State: %+v", paginationVisibleState)
 		}
 
 		t.Log("✅ Search cleared successfully")

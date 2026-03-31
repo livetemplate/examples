@@ -1,140 +1,156 @@
 {{/* Template Partials */}}
 
-{{define "add-form"}}
-<form method="POST" name="add">
-  <fieldset role="group">
-    <label for="new-todo-text" class="visually-hidden">New todo text</label>
-    <input
-      type="text"
-      id="new-todo-text"
-      name="text"
-      placeholder="What needs to be done?"
-      required
-      aria-required="true"
-      {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
-    />
-    <button type="submit" name="add">Add</button>
-  </fieldset>
-  {{ if .lvt.HasError "text" }}
-    <small style="color: var(--pico-del-color);">{{ .lvt.Error "text" }}</small>
-  {{ end }}
-</form>
-{{end}}
-
-{{define "stats"}}
-<!-- Statistics -->
-<p>
-  <small>
-    Total: <strong>{{ .TotalCount }}</strong> •
-    Completed: <strong>{{ .CompletedCount }}</strong> •
-    Remaining: <strong>{{ .RemainingCount }}</strong>
-  </small>
-</p>
-{{end}}
-
-{{define "search-form"}}
-<div style="position: relative;">
-  <style>input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }</style>
-  <label for="search-todos" class="visually-hidden">Search todos</label>
-  <input
-    type="search"
-    id="search-todos"
-    name="query"
-    placeholder="Search todos..."
-    value="{{ .SearchQuery }}"
-    style="padding-right: 2rem;"
-  />
-  <button type="button" name="search" onclick="var input=this.previousElementSibling; input.value=''; input.dispatchEvent(new Event('input', { bubbles: true })); this.style.display='none';" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.25rem; color: #9ca3af; font-size: 1.25rem; line-height: 1;{{if not .SearchQuery}} display: none;{{end}}" title="Clear search">&times;</button>
-</div>
-{{end}}
-
-{{define "sort-select"}}
-<div>
-  <label for="sort_by">Sort by:</label>
-  <select name="sort_by" id="sort_by">
-    <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
-      Newest First
-    </option>
-    <option value="alphabetical" {{ if eq .SortBy "alphabetical" }}selected{{ end }}>
-      Alphabetical (A-Z)
-    </option>
-    <option value="reverse_alphabetical" {{ if eq .SortBy "reverse_alphabetical" }}selected{{ end }}>
-      Alphabetical (Z-A)
-    </option>
-    <option value="oldest_first" {{ if eq .SortBy "oldest_first" }}selected{{ end }}>
-      Oldest First
-    </option>
-  </select>
-</div>
-{{end}}
-
-{{define "todo-item"}}
-<tr data-key="{{ .ID }}">
-  <td>
-    <form method="POST" name="toggle" style="margin:0;">
-      <input type="hidden" name="id" value="{{ .ID }}">
+{{ define "add-form" }}
+  <form method="POST" name="add">
+    <fieldset role="group">
+      <label for="new-todo-text" class="visually-hidden">New todo text</label>
       <input
-        type="checkbox"
-        {{ if .Completed }}checked{{ end }}
-        onchange="this.form.requestSubmit()"
-        aria-label="Toggle completion"
+        type="text"
+        id="new-todo-text"
+        name="text"
+        placeholder="What needs to be done?"
+        required
+        aria-required="true"
+        {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
       />
-      <button type="submit" name="toggle" hidden>Toggle</button>
-    </form>
-  </td>
-  <td style="{{ if .Completed }}text-decoration: line-through; opacity: 0.6;{{ end }}">
-    {{ .Text }}
-  </td>
-  <td>
-    <form method="POST" name="delete" style="margin:0;">
-      <input type="hidden" name="id" value="{{ .ID }}">
-      <button type="submit" name="delete" class="secondary" aria-label="Delete this todo">
-        Delete
-      </button>
-    </form>
-  </td>
-</tr>
-{{end}}
+      <button type="submit" name="add">Add</button>
+    </fieldset>
+    {{ if .lvt.HasError "text" }}
+      <del style="display:block;text-decoration:none">{{ .lvt.Error "text" }}</del>
+    {{ end }}
+  </form>
+{{ end }}
 
-{{define "pagination"}}
-<nav
-  data-pagination
-  aria-label="Page navigation"
-  data-visible="{{ if .ShowPagination }}true{{ else }}false{{ end }}"
-  style="display: {{ if .ShowPagination }}block{{ else }}none{{ end }};"
-  {{ if not .ShowPagination }}hidden{{ end }}
->
-  <ul style="display: flex; justify-content: center; align-items: center; gap: 1rem; list-style: none; padding: 0;">
-    <li>
-      <button
-        name="prevPage"
-        data-disabled="{{ if .PrevDisabled }}true{{ else }}false{{ end }}"
-        {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
-        class="secondary"
-        aria-label="Go to previous page"
+{{ define "stats" }}
+  <!-- Statistics -->
+  <p>
+    <small>
+      Total: <strong>{{ .TotalCount }}</strong> • Completed:
+      <strong>{{ .CompletedCount }}</strong> • Remaining:
+      <strong>{{ .RemainingCount }}</strong>
+    </small>
+  </p>
+{{ end }}
+
+{{ define "search-form" }}
+  <div>
+    <label for="search-todos" class="visually-hidden">Search todos</label>
+    <input
+      type="search"
+      id="search-todos"
+      name="query"
+      placeholder="Search todos..."
+      value="{{ .SearchQuery }}"
+    />
+  </div>
+{{ end }}
+
+{{ define "sort-select" }}
+  <div>
+    <label for="sort_by">Sort by:</label>
+    <select name="sort_by" id="sort_by">
+      <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
+        Newest First
+      </option>
+      <option
+        value="alphabetical"
+        {{ if eq .SortBy "alphabetical" }}selected{{ end }}
       >
-        Previous
-      </button>
-    </li>
-    <li>
-      <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
-    </li>
-    <li>
-      <button
-        name="nextPage"
-        data-disabled="{{ if .NextDisabled }}true{{ else }}false{{ end }}"
-        {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
-        class="secondary"
-        aria-label="Go to next page"
+        Alphabetical (A-Z)
+      </option>
+      <option
+        value="reverse_alphabetical"
+        {{ if eq .SortBy "reverse_alphabetical" }}selected{{ end }}
       >
-        Next
-      </button>
-    </li>
-  </ul>
-</nav>
-{{end}}
+        Alphabetical (Z-A)
+      </option>
+      <option
+        value="oldest_first"
+        {{ if eq .SortBy "oldest_first" }}selected{{ end }}
+      >
+        Oldest First
+      </option>
+    </select>
+  </div>
+{{ end }}
+
+{{ define "todo-item" }}
+  <tr data-key="{{ .ID }}">
+    <td>
+      <form method="POST" name="toggle">
+        <input type="hidden" name="id" value="{{ .ID }}" />
+        <input
+          type="checkbox"
+          {{ if .Completed }}checked{{ end }}
+          onchange="this.form.requestSubmit()"
+          aria-label="Toggle completion"
+        />
+        <button type="submit" name="toggle" hidden>Toggle</button>
+      </form>
+    </td>
+    <td>
+      {{ if .Completed }}<s>{{ .Text }}</s>{{ else }}{{ .Text }}{{ end }}
+    </td>
+    <td>
+      <form method="POST" name="delete">
+        <input type="hidden" name="id" value="{{ .ID }}" />
+        <button
+          type="submit"
+          name="delete"
+          class="secondary"
+          aria-label="Delete this todo"
+        >
+          Delete
+        </button>
+      </form>
+    </td>
+  </tr>
+{{ end }}
+
+{{ define "pagination" }}
+  <nav
+    data-pagination
+    aria-label="Page navigation"
+    {{ if not .ShowPagination }}hidden{{ end }}
+  >
+    <ul>
+      <li>
+        <form method="POST">
+          <button
+            type="submit"
+            name="prevPage"
+            data-disabled="{{- if .PrevDisabled -}}true{{- else -}}false{{- end -}}"
+            {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
+            class="secondary"
+            aria-label="Go to previous page"
+          >
+            Previous
+          </button>
+        </form>
+      </li>
+      <li>
+        <small>Page {{ .CurrentPage }} of {{ .TotalPages }}</small>
+      </li>
+      <li>
+        <form method="POST">
+          <button
+            type="submit"
+            name="nextPage"
+            data-disabled="{{- if .NextDisabled -}}true{{- else -}}false{{- end -}}"
+            {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
+            class="secondary"
+            aria-label="Go to next page"
+          >
+            Next
+          </button>
+        </form>
+      </li>
+    </ul>
+  </nav>
+{{ end }}
 
 {{/* Main Template */}}
+
 
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -167,20 +183,24 @@
         <header>
           <h1>{{ .Title }}</h1>
           <p>A simple todo app with real-time updates</p>
-          {{ if .Username }}<p><small>Logged in as: <strong>{{ .Username }}</strong></small></p>{{ end }}
+          {{ if .Username }}
+            <p>
+              <small>Logged in as: <strong>{{ .Username }}</strong></small>
+            </p>
+          {{ end }}
         </header>
 
         {{/* Add Todo Form */}}
-        {{template "add-form" .}}
+        {{ template "add-form" . }}
 
         {{/* Statistics */}}
-        {{template "stats" .}}
+        {{ template "stats" . }}
 
         {{/* Search */}}
-        {{template "search-form" .}}
+        {{ template "search-form" . }}
 
         {{/* Sort */}}
-        {{template "sort-select" .}}
+        {{ template "sort-select" . }}
 
         {{/* Todo List */}}
         <section>
@@ -188,11 +208,14 @@
           <table>
             <tbody>
               {{ range .PaginatedTodos }}
-                {{template "todo-item" .}}
+                {{ template "todo-item" . }}
               {{ end }}
             </tbody>
           </table>
-          <p data-empty-state {{ if gt (len .PaginatedTodos) 0 }}hidden{{ end }}>
+          <p
+            data-empty-state
+            {{ if gt (len .PaginatedTodos) 0 }}hidden{{ end }}
+          >
             {{ if ne .SearchQuery "" }}
               <small>No todos found matching "{{ .SearchQuery }}"</small>
             {{ else }}
@@ -201,12 +224,14 @@
           </p>
 
           {{/* Pagination Controls */}}
-          {{template "pagination" .}}
+          {{ template "pagination" . }}
 
           {{ if gt .CompletedCount 0 }}
-            <button name="clearCompleted" class="secondary">
-              Clear Completed ({{ .CompletedCount }})
-            </button>
+            <form method="POST">
+              <button type="submit" name="clearCompleted" class="secondary">
+                Clear Completed ({{ .CompletedCount }})
+              </button>
+            </form>
           {{ end }}
         </section>
 
@@ -216,10 +241,10 @@
       </article>
     </main>
 
-    {{if .lvt.DevMode}}
-    <script src="/livetemplate-client.js"></script>
-    {{else}}
-    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
-    {{end}}
+    {{ if .lvt.DevMode }}
+      <script src="/livetemplate-client.js"></script>
+    {{ else }}
+      <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{ end }}
   </body>
 </html>
