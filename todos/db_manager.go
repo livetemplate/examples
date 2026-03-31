@@ -43,16 +43,16 @@ func InitDB(dbPath string) (*db.Queries, error) {
 }
 
 // runMigrations creates the database schema, handling upgrades from older versions.
-func runMigrations(database *sql.DB) error {
+func runMigrations(db *sql.DB) error {
 	// Check if the todos table exists with an outdated schema (missing user_id column).
 	// CREATE TABLE IF NOT EXISTS won't modify an existing table, so we must detect
-	// and drop the old schema before recreating.
-	if needsRecreate, err := hasOutdatedSchema(database); err != nil {
+	// and migrate the old schema before ensuring the current one.
+	if needsMigration, err := hasOutdatedSchema(db); err != nil {
 		return fmt.Errorf("checking schema: %w", err)
-	} else if needsRecreate {
-		log.Println("Detected outdated todos table (missing user_id column), recreating...")
-		if _, err := database.Exec("DROP TABLE IF EXISTS todos"); err != nil {
-			return fmt.Errorf("dropping outdated table: %w", err)
+	} else if needsMigration {
+		log.Println("Detected outdated todos table (missing user_id column), adding column...")
+		if _, err := db.Exec(`ALTER TABLE todos ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("adding user_id column: %w", err)
 		}
 	}
 
@@ -69,13 +69,13 @@ CREATE INDEX IF NOT EXISTS idx_todos_created_at ON todos(created_at);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
 `
-	_, err := database.Exec(schema)
+	_, err := db.Exec(schema)
 	return err
 }
 
 // hasOutdatedSchema returns true if the todos table exists but lacks the user_id column.
-func hasOutdatedSchema(database *sql.DB) (bool, error) {
-	rows, err := database.Query("PRAGMA table_info(todos)")
+func hasOutdatedSchema(db *sql.DB) (bool, error) {
+	rows, err := db.Query("PRAGMA table_info(todos)")
 	if err != nil {
 		return false, err
 	}

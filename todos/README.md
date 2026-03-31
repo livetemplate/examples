@@ -19,7 +19,7 @@ A real-time todo application demonstrating LiveTemplate's controller pattern wit
 ## Quick Start
 
 ```bash
-cd examples/todos
+cd todos
 go run .
 ```
 
