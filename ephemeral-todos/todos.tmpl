@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ephemeral Todos</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <article>
+            <header>
+                <h1>Ephemeral Todos</h1>
+                <p><small>Database is the source of truth. State is rebuilt from DB on every page load.</small></p>
+            </header>
+
+            <form>
+                <fieldset role="group">
+                    <input type="text" name="title" placeholder="What needs to be done?" required>
+                    <button type="submit">Add</button>
+                </fieldset>
+                {{if .lvt.HasError "title"}}
+                <small class="error">{{.lvt.Error "title"}}</small>
+                {{end}}
+            </form>
+
+            {{if .Items}}
+            <ul>
+                {{range .Items}}
+                <li>
+                    <label>
+                        <input type="checkbox" name="toggle" value="{{.ID}}" {{if .Done}}checked{{end}}>
+                        {{if .Done}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}
+                    </label>
+                    <button name="delete" value="{{.ID}}" class="outline secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Delete</button>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p>No todos yet. Add one above!</p>
+            {{end}}
+        </article>
+    </main>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>
