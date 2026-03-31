@@ -167,6 +167,7 @@
         <header>
           <h1>{{ .Title }}</h1>
           <p>A simple todo app with real-time updates</p>
+          {{ if .Username }}<p><small>Logged in as: <strong>{{ .Username }}</strong></small></p>{{ end }}
         </header>
 
         {{/* Add Todo Form */}}

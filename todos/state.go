@@ -61,6 +61,7 @@ type PaginationInput struct {
 type TodoState struct {
 	// Display metadata
 	Title       string `json:"title"`
+	Username    string `json:"username"`
 	LastUpdated string `json:"last_updated"`
 
 	// Filter and sort settings

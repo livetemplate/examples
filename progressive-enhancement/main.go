@@ -160,7 +160,7 @@ func main() {
 
 	// Create template with configuration
 	// Progressive enhancement is enabled by default
-	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	opts := envConfig.ToOptions()
 	tmpl := livetemplate.Must(livetemplate.New("progressive-enhancement", opts...))
 
 	// Mount handler

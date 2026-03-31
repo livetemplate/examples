@@ -4,18 +4,18 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// NotepadController is a stateless singleton — all state lives in NotepadState
-// and is shared across tabs via WithSharedState.
-type NotepadController struct{}
+type NotepadController struct {
+	mu    sync.RWMutex
+	notes map[string]NotepadState // userID -> latest state
+}
 
-// NotepadState is shared across all tabs of the same authenticated user.
-// WithSharedState means any change auto-broadcasts to all other tabs.
 type NotepadState struct {
 	Username  string `json:"username"`
 	Content   string `json:"content"`
@@ -23,18 +23,38 @@ type NotepadState struct {
 	CharCount int    `json:"char_count"`
 }
 
-// Mount initializes the notepad for a new session.
 func (c *NotepadController) Mount(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
 	state.Username = ctx.UserID()
+	c.mu.RLock()
+	if saved, ok := c.notes[ctx.UserID()]; ok {
+		state.Content = saved.Content
+		state.CharCount = saved.CharCount
+		state.SavedAt = saved.SavedAt
+	}
+	c.mu.RUnlock()
 	return state, nil
 }
 
-// Save persists the note (triggered by the Save button).
-// WithSharedState auto-broadcasts to all other tabs of this user.
 func (c *NotepadController) Save(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
 	state.Content = ctx.GetString("content")
 	state.CharCount = len([]rune(state.Content))
 	state.SavedAt = time.Now().Format("15:04:05")
+
+	c.mu.Lock()
+	c.notes[ctx.UserID()] = state
+	c.mu.Unlock()
+
+	return state, nil
+}
+
+func (c *NotepadController) Sync(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
+	c.mu.RLock()
+	if saved, ok := c.notes[ctx.UserID()]; ok {
+		state.Content = saved.Content
+		state.CharCount = saved.CharCount
+		state.SavedAt = saved.SavedAt
+	}
+	c.mu.RUnlock()
 	return state, nil
 }
 
@@ -49,21 +69,16 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
-	// BasicAuth: each user gets their own isolated session group.
-	// The library's ChallengeAuthenticator sends WWW-Authenticate header
-	// automatically, triggering the browser's login dialog.
 	auth := livetemplate.NewBasicAuthenticator(func(username, password string) (bool, error) {
-		// Demo: accept any username with password "demo"
 		return password == "demo", nil
 	})
 
 	opts := envConfig.ToOptions()
-	opts = append(opts,
-		livetemplate.WithAuthenticator(auth),
-		livetemplate.WithSharedState(), // All tabs of the same user share state
-	)
+	opts = append(opts, livetemplate.WithAuthenticator(auth))
 
-	controller := &NotepadController{}
+	controller := &NotepadController{
+		notes: make(map[string]NotepadState),
+	}
 	initialState := &NotepadState{}
 
 	tmpl := livetemplate.Must(livetemplate.New("notepad", opts...))

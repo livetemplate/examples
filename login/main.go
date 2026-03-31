@@ -165,7 +165,7 @@ func main() {
 	initialState := &AuthState{}
 
 	// Create template with environment-based configuration
-	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	opts := envConfig.ToOptions()
 	tmpl := livetemplate.Must(livetemplate.New("auth", opts...))
 
 	// Set up handler with Controller+State pattern

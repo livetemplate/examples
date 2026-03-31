@@ -47,4 +47,4 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 )
 
-replace github.com/livetemplate/livetemplate => ../livetemplate/.worktrees/per-connection-persist
+replace github.com/livetemplate/livetemplate => ../livetemplate

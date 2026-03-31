@@ -118,7 +118,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	opts := envConfig.ToOptions()
 	tmpl, err := livetemplate.New("todos", opts...)
 	if err != nil {
 		log.Fatal(err)
