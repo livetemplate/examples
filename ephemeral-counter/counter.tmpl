@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ephemeral Counter</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <article>
+            <header>
+                <h1>Ephemeral Counter</h1>
+                <p><small>Database is the source of truth. State is rebuilt from DB on every page load.</small></p>
+            </header>
+            <p>Count: {{.Count}}</p>
+            <div class="grid">
+                <button name="increment">+1</button>
+                <button name="decrement" class="secondary">-1</button>
+                <button name="reset" class="contrast">Reset</button>
+            </div>
+        </article>
+    </main>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>
