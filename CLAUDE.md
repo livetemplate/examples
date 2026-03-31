@@ -68,6 +68,18 @@ When a form is submitted, the framework resolves the action in this order:
 - `live-preview/` — Tier 1 with `Change()` method for live updates
 - `chat/` — Tier 1+2 (uses `lvt-scroll` for auto-scroll)
 
+## Framework Documentation
+
+Before writing code, always consult the LiveTemplate reference docs and guides:
+
+- **References:** `https://github.com/livetemplate/livetemplate/docs/references/` — client attributes, server API, action routing
+- **Guides:** `https://github.com/livetemplate/livetemplate/docs/guides/` — progressive complexity, patterns, best practices
+
+Use framework-native solutions instead of custom JavaScript. Common patterns:
+- `input type="search"` has a browser-native clear button; the framework handles the `search` event automatically (no custom JS needed)
+- The `Change()` method auto-wires input/change/search events on named form fields with 300ms debounce
+- Use `hidden` HTML attribute for visibility toggling (not `style="display:none"`)
+
 ## CSS
 
 All examples use [Pico CSS](https://picocss.com/docs) exclusively:
@@ -77,10 +89,12 @@ All examples use [Pico CSS](https://picocss.com/docs) exclusively:
 - Use Pico classes sparingly: `.container`, `.grid`, `.secondary`, `.contrast`, `.outline`
 - Use `aria-invalid="true"` for form validation errors, `<small>` for helper/error text
 - Use `<ins>` for success messages, `<del>` for error messages (with `style="display:block;text-decoration:none"`)
+- Use `<s>` for strikethrough text (e.g., completed todos), `<del>` for removed/error content
 - Use `<mark>` for highlighted/badge text
 - Use `<progress>` for progress bars
 - Use `<hgroup>` for title + subtitle groupings
 - Use `<fieldset role="group">` for inline input+button groups
 - Use `<blockquote>` for callout/info boxes
+- Do NOT write inline `style` attributes. Use Pico semantic elements instead (e.g., `<s>` not `style="text-decoration:line-through"`, `<nav>` not `style="display:flex"`, `hidden` not `style="display:none"`)
 - Do NOT write custom CSS. If Pico cannot express a style, ask before adding custom CSS.
 - Pico CSS variables (`--pico-*`) may be used for theming when semantic markup is insufficient

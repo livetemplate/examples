@@ -42,8 +42,20 @@ func InitDB(dbPath string) (*db.Queries, error) {
 	return queries, nil
 }
 
-// runMigrations creates the database schema
-func runMigrations(db *sql.DB) error {
+// runMigrations creates the database schema, handling upgrades from older versions.
+func runMigrations(database *sql.DB) error {
+	// Check if the todos table exists with an outdated schema (missing user_id column).
+	// CREATE TABLE IF NOT EXISTS won't modify an existing table, so we must detect
+	// and drop the old schema before recreating.
+	if needsRecreate, err := hasOutdatedSchema(database); err != nil {
+		return fmt.Errorf("checking schema: %w", err)
+	} else if needsRecreate {
+		log.Println("Detected outdated todos table (missing user_id column), recreating...")
+		if _, err := database.Exec("DROP TABLE IF EXISTS todos"); err != nil {
+			return fmt.Errorf("dropping outdated table: %w", err)
+		}
+	}
+
 	schema := `
 CREATE TABLE IF NOT EXISTS todos (
   id TEXT PRIMARY KEY,
@@ -57,8 +69,35 @@ CREATE INDEX IF NOT EXISTS idx_todos_created_at ON todos(created_at);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
 `
-	_, err := db.Exec(schema)
+	_, err := database.Exec(schema)
 	return err
+}
+
+// hasOutdatedSchema returns true if the todos table exists but lacks the user_id column.
+func hasOutdatedSchema(database *sql.DB) (bool, error) {
+	rows, err := database.Query("PRAGMA table_info(todos)")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	var hasTable, hasUserID bool
+	for rows.Next() {
+		hasTable = true
+		var cid int
+		var name, ctype string
+		var notnull int
+		var dfltValue sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
+			return false, err
+		}
+		if name == "user_id" {
+			hasUserID = true
+		}
+	}
+
+	return hasTable && !hasUserID, rows.Err()
 }
 
 // CloseDB closes the database connection
