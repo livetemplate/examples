@@ -8,7 +8,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/livetemplate/livetemplate v0.8.9
+	github.com/livetemplate/livetemplate v0.8.10
 	github.com/livetemplate/lvt v0.0.0-20260327182801-53d6d40e692e
 	github.com/livetemplate/lvt/components v0.0.0-20260327182801-53d6d40e692e
 	modernc.org/sqlite v1.43.0
@@ -46,5 +46,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-replace github.com/livetemplate/livetemplate => ../livetemplate
