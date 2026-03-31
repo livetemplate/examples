@@ -86,7 +86,7 @@ func main() {
 		LastUpdated: formatTime(),
 	}
 
-	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	opts := envConfig.ToOptions()
 	tmpl := livetemplate.Must(livetemplate.New("counter", opts...))
 	liveHandler := tmpl.Handle(controller, livetemplate.AsState(initialState))
 

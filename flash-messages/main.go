@@ -130,7 +130,7 @@ func main() {
 	initialState := &FlashState{}
 
 	// Create template with environment-based configuration
-	opts := append(envConfig.ToOptions(), livetemplate.WithStatePersistence())
+	opts := envConfig.ToOptions()
 	tmpl := livetemplate.Must(livetemplate.New("flash", opts...))
 
 	// Mount handler

@@ -128,7 +128,6 @@ func main() {
 	lt := livetemplate.Must(livetemplate.New("avatar-upload",
 		livetemplate.WithParseFiles("avatar-upload.tmpl"),
 		livetemplate.WithDevMode(true),
-		livetemplate.WithStatePersistence(),
 		// Configure upload using WithUpload option
 		livetemplate.WithUpload("avatar", livetemplate.UploadConfig{
 			Accept:      []string{"image/jpeg", "image/png", "image/gif"},

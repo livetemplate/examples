@@ -12,11 +12,11 @@ import (
 
 const countCompletedTodos = `-- name: CountCompletedTodos :one
 SELECT COUNT(*) FROM todos
-WHERE completed = 1
+WHERE completed = 1 AND user_id = ?
 `
 
-func (q *Queries) CountCompletedTodos(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countCompletedTodos)
+func (q *Queries) CountCompletedTodos(ctx context.Context, userID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCompletedTodos, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -24,23 +24,25 @@ func (q *Queries) CountCompletedTodos(ctx context.Context) (int64, error) {
 
 const countTodos = `-- name: CountTodos :one
 SELECT COUNT(*) FROM todos
+WHERE user_id = ?
 `
 
-func (q *Queries) CountTodos(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countTodos)
+func (q *Queries) CountTodos(ctx context.Context, userID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTodos, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const createTodo = `-- name: CreateTodo :one
-INSERT INTO todos (id, text, completed, created_at)
-VALUES (?, ?, ?, ?)
-RETURNING id, text, completed, created_at
+INSERT INTO todos (id, user_id, text, completed, created_at)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id, user_id, text, completed, created_at
 `
 
 type CreateTodoParams struct {
 	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
 	Text      string    `json:"text"`
 	Completed bool      `json:"completed"`
 	CreatedAt time.Time `json:"created_at"`
@@ -49,6 +51,7 @@ type CreateTodoParams struct {
 func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, error) {
 	row := q.db.QueryRowContext(ctx, createTodo,
 		arg.ID,
+		arg.UserID,
 		arg.Text,
 		arg.Completed,
 		arg.CreatedAt,
@@ -56,6 +59,7 @@ func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, e
 	var i Todo
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Text,
 		&i.Completed,
 		&i.CreatedAt,
@@ -65,31 +69,37 @@ func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, e
 
 const deleteCompletedTodos = `-- name: DeleteCompletedTodos :exec
 DELETE FROM todos
-WHERE completed = 1
+WHERE completed = 1 AND user_id = ?
 `
 
-func (q *Queries) DeleteCompletedTodos(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, deleteCompletedTodos)
+func (q *Queries) DeleteCompletedTodos(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteCompletedTodos, userID)
 	return err
 }
 
 const deleteTodo = `-- name: DeleteTodo :exec
 DELETE FROM todos
-WHERE id = ?
+WHERE id = ? AND user_id = ?
 `
 
-func (q *Queries) DeleteTodo(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteTodo, id)
+type DeleteTodoParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) DeleteTodo(ctx context.Context, arg DeleteTodoParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTodo, arg.ID, arg.UserID)
 	return err
 }
 
 const getAllTodos = `-- name: GetAllTodos :many
-SELECT id, text, completed, created_at FROM todos
+SELECT id, user_id, text, completed, created_at FROM todos
+WHERE user_id = ?
 ORDER BY created_at DESC
 `
 
-func (q *Queries) GetAllTodos(ctx context.Context) ([]Todo, error) {
-	rows, err := q.db.QueryContext(ctx, getAllTodos)
+func (q *Queries) GetAllTodos(ctx context.Context, userID string) ([]Todo, error) {
+	rows, err := q.db.QueryContext(ctx, getAllTodos, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +109,7 @@ func (q *Queries) GetAllTodos(ctx context.Context) ([]Todo, error) {
 		var i Todo
 		if err := rows.Scan(
 			&i.ID,
+			&i.UserID,
 			&i.Text,
 			&i.Completed,
 			&i.CreatedAt,
@@ -117,16 +128,22 @@ func (q *Queries) GetAllTodos(ctx context.Context) ([]Todo, error) {
 }
 
 const getTodoByID = `-- name: GetTodoByID :one
-SELECT id, text, completed, created_at FROM todos
-WHERE id = ?
+SELECT id, user_id, text, completed, created_at FROM todos
+WHERE id = ? AND user_id = ?
 LIMIT 1
 `
 
-func (q *Queries) GetTodoByID(ctx context.Context, id string) (Todo, error) {
-	row := q.db.QueryRowContext(ctx, getTodoByID, id)
+type GetTodoByIDParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetTodoByID(ctx context.Context, arg GetTodoByIDParams) (Todo, error) {
+	row := q.db.QueryRowContext(ctx, getTodoByID, arg.ID, arg.UserID)
 	var i Todo
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Text,
 		&i.Completed,
 		&i.CreatedAt,
@@ -137,15 +154,16 @@ func (q *Queries) GetTodoByID(ctx context.Context, id string) (Todo, error) {
 const updateTodoCompleted = `-- name: UpdateTodoCompleted :exec
 UPDATE todos
 SET completed = ?
-WHERE id = ?
+WHERE id = ? AND user_id = ?
 `
 
 type UpdateTodoCompletedParams struct {
 	Completed bool   `json:"completed"`
 	ID        string `json:"id"`
+	UserID    string `json:"user_id"`
 }
 
 func (q *Queries) UpdateTodoCompleted(ctx context.Context, arg UpdateTodoCompletedParams) error {
-	_, err := q.db.ExecContext(ctx, updateTodoCompleted, arg.Completed, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateTodoCompleted, arg.Completed, arg.ID, arg.UserID)
 	return err
 }

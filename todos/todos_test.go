@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -74,7 +75,9 @@ func TestTodosE2E(t *testing.T) {
 	var lastErr error
 
 	for i := 0; i < 50; i++ { // 10 seconds max (50 * 200ms)
-		resp, err := http.Get(serverURL)
+		req, _ := http.NewRequest("GET", serverURL, nil)
+		req.SetBasicAuth("alice", "password")
+		resp, err := http.DefaultClient.Do(req)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == 200 {
@@ -120,7 +123,7 @@ func TestTodosE2E(t *testing.T) {
 		var initialHTML string
 
 		err := chromedp.Run(ctx,
-			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
+			chromedp.Navigate(fmt.Sprintf("http://alice:password@host.docker.internal:%d/", serverPort)),
 			e2etest.WaitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`h1`, chromedp.ByQuery),
 			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
@@ -986,7 +989,9 @@ func TestWebSocketBasic(t *testing.T) {
 	// Wait for server
 	time.Sleep(2 * time.Second)
 	for i := 0; i < 30; i++ {
-		if resp, err := http.Get(serverURL); err == nil {
+		req, _ := http.NewRequest("GET", serverURL, nil)
+		req.SetBasicAuth("alice", "password")
+		if resp, err := http.DefaultClient.Do(req); err == nil {
 			resp.Body.Close()
 			break
 		}
@@ -995,9 +1000,11 @@ func TestWebSocketBasic(t *testing.T) {
 
 	t.Log("Server is up, trying to connect WebSocket...")
 
-	// Try to connect
+	// Try to connect with auth
+	authHeader := http.Header{}
+	authHeader.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("alice:password")))
 	dialer := websocket.Dialer{}
-	conn, resp, err := dialer.Dial(wsURL, nil)
+	conn, resp, err := dialer.Dial(wsURL, authHeader)
 	if err != nil {
 		t.Fatalf("Failed to connect: %v, response: %v", err, resp)
 	}
