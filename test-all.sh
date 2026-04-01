@@ -29,11 +29,8 @@ WORKING_EXAMPLES=(
     "chat"
     "todos"
     "live-preview"
-    "todos-progressive"
-    "profile-progressive"
     "ws-disabled"
     "login"
-    "todos-components"
     "shared-notepad"
     "flash-messages"
 )

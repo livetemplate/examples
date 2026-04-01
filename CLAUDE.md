@@ -63,8 +63,7 @@ When a form is submitted, the framework resolves the action in this order:
 
 ### Reference Examples
 
-- `todos-progressive/` — Canonical Tier 1 example (zero `lvt-*` attributes)
-- `profile-progressive/` — Simple Tier 1 form with validation
+- `todos/` — Canonical Tier 1 example: CRUD, auth, pagination, modal + toast components
 - `live-preview/` — Tier 1 with `Change()` method for live updates
 - `chat/` — Tier 1+2 (uses `lvt-scroll` for auto-scroll)
 

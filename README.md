@@ -10,13 +10,10 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 |---------|------|-------------|--------------------|
 | `counter/` | 1 | Counter with logging + graceful shutdown | None |
 | `chat/` | 1+2 | Real-time multi-user chat | `lvt-scroll` |
-| `todos/` | 1 | Full CRUD with SQLite | None |
-| `todos-progressive/` | 1 | Zero-attribute CRUD demo | None |
-| `todos-components/` | 1+2 | Component library (modal, toast) | Component-internal |
+| `todos/` | 1+2 | Full CRUD with SQLite, auth, modal + toast components | Component-internal |
 | `flash-messages/` | 1 | Flash notification patterns | None |
 | `avatar-upload/` | 1+2 | File upload with progress | `lvt-upload` |
 | `progressive-enhancement/` | 1 | Works with/without JS | None |
-| `profile-progressive/` | 1 | Form validation | None |
 | `ws-disabled/` | 1 | HTTP-only mode | None |
 | `live-preview/` | 1 | Change() live updates | None |
 | `login/` | 1 | Authentication + sessions | None |

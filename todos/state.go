@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/livetemplate/examples/todos/db"
+	"github.com/livetemplate/lvt/components/modal"
+	"github.com/livetemplate/lvt/components/toast"
 )
 
 // Default configuration constants for the todo application.
@@ -84,4 +86,9 @@ type TodoState struct {
 	ShowPagination bool `json:"show_pagination"`
 	PrevDisabled   bool `json:"prev_disabled"`
 	NextDisabled   bool `json:"next_disabled"`
+
+	// Component state (non-persistent, re-initialized in Mount)
+	Toasts        *toast.Container
+	DeleteConfirm *modal.ConfirmModal
+	DeleteID      string `json:"delete_id" lvt:"persist"`
 }
