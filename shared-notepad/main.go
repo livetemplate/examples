@@ -18,9 +18,9 @@ type NotepadController struct {
 
 type NotepadState struct {
 	Username  string `json:"username"`
-	Content   string `json:"content"`
-	SavedAt   string `json:"saved_at"`
-	CharCount int    `json:"char_count"`
+	Content   string `json:"content" lvt:"persist"`
+	SavedAt   string `json:"saved_at" lvt:"persist"`
+	CharCount int    `json:"char_count" lvt:"persist"`
 }
 
 func (c *NotepadController) Mount(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {

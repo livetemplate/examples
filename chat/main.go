@@ -25,7 +25,7 @@ type ChatController struct {
 // CurrentUser is never shared across tabs.
 type ChatState struct {
 	Messages      []Message `json:"messages"`
-	CurrentUser   string    `json:"current_user"`
+	CurrentUser   string    `json:"current_user" lvt:"persist"`
 	OnlineCount   int       `json:"online_count"`
 	TotalMessages int       `json:"total_messages"`
 }

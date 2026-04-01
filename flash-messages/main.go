@@ -21,8 +21,8 @@ type FlashController struct{}
 // FlashState holds the demo data.
 type FlashState struct {
 	Title     string   `json:"title"`
-	Items     []string `json:"items"`
-	ItemCount int      `json:"item_count"`
+	Items     []string `json:"items" lvt:"persist"`
+	ItemCount int      `json:"item_count" lvt:"persist"`
 }
 
 // AddItem handles the "add_item" action - demonstrates success flash.

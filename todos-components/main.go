@@ -24,12 +24,12 @@ type Todo struct {
 // TodoState holds the application state.
 type TodoState struct {
 	Title         string
-	Todos         []Todo
-	NewTodoTitle  string
+	Todos         []Todo             `lvt:"persist"`
+	NewTodoTitle  string             `lvt:"persist"`
 	Toasts        *toast.Container
 	DeleteConfirm *modal.ConfirmModal
-	DeleteID      int // ID of todo pending deletion
-	NextID        int // Must be exported for JSON serialization
+	DeleteID      int                // ID of todo pending deletion
+	NextID        int                `lvt:"persist"`
 }
 
 // TodoController handles todo actions.

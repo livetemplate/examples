@@ -65,8 +65,8 @@ type TodoState struct {
 	LastUpdated string `json:"last_updated"`
 
 	// Filter and sort settings
-	SearchQuery string `json:"search_query"`
-	SortBy      string `json:"sort_by"`
+	SearchQuery string `json:"search_query" lvt:"persist"`
+	SortBy      string `json:"sort_by" lvt:"persist"`
 
 	// Todo data
 	FilteredTodos  []TodoItem `json:"filtered_todos"`  // After search filter applied
@@ -78,8 +78,8 @@ type TodoState struct {
 	RemainingCount int `json:"remaining_count"`
 
 	// Pagination state
-	CurrentPage    int  `json:"current_page"`
-	PageSize       int  `json:"page_size"`
+	CurrentPage    int  `json:"current_page" lvt:"persist"`
+	PageSize       int  `json:"page_size" lvt:"persist"`
 	TotalPages     int  `json:"total_pages"`
 	ShowPagination bool `json:"show_pagination"`
 	PrevDisabled   bool `json:"prev_disabled"`

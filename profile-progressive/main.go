@@ -20,10 +20,10 @@ import (
 var validate = validator.New()
 
 type ProfileState struct {
-	DisplayName string
-	Email       string
-	Bio         string
-	Saved       bool
+	DisplayName string `lvt:"persist"`
+	Email       string `lvt:"persist"`
+	Bio         string `lvt:"persist"`
+	Saved       bool   `lvt:"persist"`
 }
 
 type ProfileController struct {

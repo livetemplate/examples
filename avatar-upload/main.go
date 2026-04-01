@@ -20,10 +20,10 @@ type ProfileController struct{}
 
 // ProfileState is pure data, cloned per session.
 type ProfileState struct {
-	Name       string
-	Email      string
-	AvatarPath string
-	AvatarURL  string
+	Name       string `lvt:"persist"`
+	Email      string `lvt:"persist"`
+	AvatarPath string `lvt:"persist"`
+	AvatarURL  string `lvt:"persist"`
 }
 
 // UpdateProfile handles the "UpdateProfile" action for profile update form submission

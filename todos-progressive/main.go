@@ -35,8 +35,8 @@ type Todo struct {
 }
 
 type TodoState struct {
-	Items        []Todo
-	ActiveFilter string
+	Items        []Todo `lvt:"persist"`
+	ActiveFilter string `lvt:"persist"`
 }
 
 func (s TodoState) ActiveCount() int {
