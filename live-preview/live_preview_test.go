@@ -300,6 +300,13 @@ func TestLivePreviewE2E(t *testing.T) {
 			e2etest.WaitForText("#preview", "Hello, WorldXY!", 5*time.Second),
 		)
 		if err != nil {
+			// Capture actual state for CI debugging
+			var inputVal, previewText string
+			_ = chromedp.Run(ctx,
+				chromedp.Evaluate(`document.getElementById('name-input').value`, &inputVal),
+				chromedp.TextContent(`#preview`, &previewText, chromedp.ByQuery),
+			)
+			t.Logf("DEBUG input value: %q, preview text: %q", inputVal, previewText)
 			t.Fatalf("Failed to type additional characters: %v", err)
 		}
 
