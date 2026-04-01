@@ -23,17 +23,39 @@ type Todo struct {
 
 // TodoState holds the application state.
 type TodoState struct {
-	Title         string
-	Todos         []Todo
-	NewTodoTitle  string
+	Title         string             `lvt:"persist"`
+	Todos         []Todo             `lvt:"persist"`
+	NewTodoTitle  string             `lvt:"persist"`
 	Toasts        *toast.Container
 	DeleteConfirm *modal.ConfirmModal
-	DeleteID      int // ID of todo pending deletion
-	NextID        int // Must be exported for JSON serialization
+	DeleteID      int                // ID of todo pending deletion
+	NextID        int                `lvt:"persist"`
 }
 
 // TodoController handles todo actions.
 type TodoController struct{}
+
+// Mount re-initializes non-serializable component objects on every request.
+func (c *TodoController) Mount(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	if state.Toasts == nil {
+		toasts := toast.New("notifications",
+			toast.WithPosition(toast.TopRight),
+			toast.WithMaxVisible(3),
+		)
+		toasts.SetStyled(false)
+		state.Toasts = toasts
+	}
+	if state.DeleteConfirm == nil {
+		state.DeleteConfirm = modal.NewConfirm("delete_confirm",
+			modal.WithConfirmTitle("Delete Todo"),
+			modal.WithConfirmMessage("Are you sure you want to delete this todo?"),
+			modal.WithConfirmDestructive(true),
+			modal.WithConfirmText("Delete"),
+			modal.WithCancelText("Cancel"),
+		)
+	}
+	return state, nil
+}
 
 // AddTodo handles the "add_todo" action.
 func (c *TodoController) AddTodo(state TodoState, ctx *livetemplate.Context) (TodoState, error) {

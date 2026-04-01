@@ -23,11 +23,11 @@ type AuthController struct {
 // AuthState is pure data, cloned per session.
 // Contains only serializable fields for the auth UI.
 type AuthState struct {
-	Username      string
-	IsLoggedIn    bool
+	Username      string    `lvt:"persist"`
+	IsLoggedIn    bool      `lvt:"persist"`
 	Error         string
-	ServerMessage string    // Message sent from server via WebSocket
-	LoginTime     time.Time // When user logged in
+	ServerMessage string
+	LoginTime     time.Time `lvt:"persist"`
 }
 
 // Login handles the "login" action

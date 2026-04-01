@@ -36,8 +36,6 @@ WORKING_EXAMPLES=(
     "todos-components"
     "shared-notepad"
     "flash-messages"
-    "ephemeral-counter"
-    "ephemeral-todos"
 )
 
 # Disabled examples

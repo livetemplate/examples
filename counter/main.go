@@ -19,9 +19,9 @@ type CounterController struct{}
 
 // CounterState is pure data, cloned per session.
 type CounterState struct {
-	Title       string `json:"title"`
-	Counter     int    `json:"counter"`
-	LastUpdated string `json:"last_updated"`
+	Title       string `json:"title" lvt:"persist"`
+	Counter     int    `json:"counter" lvt:"persist"`
+	LastUpdated string `json:"last_updated" lvt:"persist"`
 }
 
 func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {

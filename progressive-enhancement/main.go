@@ -23,9 +23,9 @@ type TodoController struct {
 // It contains all the state needed to render the template.
 type TodoState struct {
 	Title string `json:"title"`
-	Items []Todo `json:"items"`
+	Items []Todo `json:"items" lvt:"persist"`
 	// Form input values (preserved on validation errors)
-	InputTitle string `json:"input_title"`
+	InputTitle string `json:"input_title" lvt:"persist"`
 }
 
 // Todo represents a single todo item.

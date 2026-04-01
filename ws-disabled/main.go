@@ -18,8 +18,8 @@ type BookmarkController struct{}
 // BookmarkState is pure data, cloned per session.
 type BookmarkState struct {
 	Title     string     `json:"title"`
-	Bookmarks []Bookmark `json:"bookmarks"`
-	Count     int        `json:"count"`
+	Bookmarks []Bookmark `json:"bookmarks" lvt:"persist"`
+	Count     int        `json:"count" lvt:"persist"`
 }
 
 // Bookmark represents a single bookmark.

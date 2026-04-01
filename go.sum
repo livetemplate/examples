@@ -96,6 +96,10 @@ github.com/livetemplate/livetemplate v0.8.10 h1:Lg62gb297Iq3/EShPnEUyqDFN8aeyTYc
 github.com/livetemplate/livetemplate v0.8.10/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
 github.com/livetemplate/livetemplate v0.8.11 h1:s7yFfHp53tv5W7WNViQUK7EBq6ZmBth+mGA34+/zL9s=
 github.com/livetemplate/livetemplate v0.8.11/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
+github.com/livetemplate/livetemplate v0.8.12-0.20260401033655-c6263289f218 h1:qOcImuTin52xJefrRBm/vJfOaYrRYG+GnU1gB6/47aw=
+github.com/livetemplate/livetemplate v0.8.12-0.20260401033655-c6263289f218/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
+github.com/livetemplate/livetemplate v0.8.12 h1:OeGWVFgLzFOUBGnTFSGSlJKAgIZVyuEjlaWYoBT8iqI=
+github.com/livetemplate/livetemplate v0.8.12/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
 github.com/livetemplate/lvt v0.0.0-20260327182801-53d6d40e692e h1:nAV7BaOatFcbSaP6m9CgLrRsGPeWtbjPDZ8dOI6Zb+c=
 github.com/livetemplate/lvt v0.0.0-20260327182801-53d6d40e692e/go.mod h1:17cFl500ntymD3gx8h+ZODnVnTictHgG8Wmz/By75sU=
 github.com/livetemplate/lvt/components v0.0.0-20260327182801-53d6d40e692e h1:vuR0pQtEQHZOD2/HvTJfHPKEdoD77XUs1mq1kdjgVig=
