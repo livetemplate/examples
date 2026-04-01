@@ -274,5 +274,72 @@
     {{ else }}
       <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
     {{ end }}
+
+    <script>
+      // Toast auto-dismiss and click-outside dismiss
+      (function () {
+        var dismissed = new Set();
+
+        function sendDismiss(toastID) {
+          if (dismissed.has(toastID)) return;
+          dismissed.add(toastID);
+          window.liveTemplateClient.send({
+            action: "dismiss_toast_notifications",
+            data: { toast: toastID },
+          });
+        }
+
+        function scheduleAutoDismiss(el) {
+          var delay = parseInt(el.getAttribute("data-auto-dismiss"), 10);
+          var id = el.getAttribute("data-toast");
+          if (!delay || !id || dismissed.has(id)) return;
+          setTimeout(function () {
+            sendDismiss(id);
+          }, delay);
+        }
+
+        function observeToasts() {
+          var container = document.querySelector("[data-toast-container]");
+          if (!container) return;
+          // Schedule auto-dismiss for any already-present toasts
+          container
+            .querySelectorAll('[role="alert"][data-auto-dismiss]')
+            .forEach(scheduleAutoDismiss);
+          // Watch for new toasts added by server re-renders
+          var observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (m) {
+              m.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) return;
+                var alerts = node.matches('[role="alert"]')
+                  ? [node]
+                  : Array.from(node.querySelectorAll('[role="alert"]'));
+                alerts.forEach(function (el) {
+                  if (el.hasAttribute("data-auto-dismiss"))
+                    scheduleAutoDismiss(el);
+                });
+              });
+            });
+          });
+          observer.observe(container, { childList: true, subtree: true });
+        }
+
+        // Click outside toast container to dismiss all visible toasts
+        document.addEventListener("click", function (e) {
+          if (e.target.closest("[data-toast-container]")) return;
+          var container = document.querySelector("[data-toast-container]");
+          if (!container) return;
+          container.querySelectorAll('[role="alert"][data-toast]').forEach(function (el) {
+            sendDismiss(el.getAttribute("data-toast"));
+          });
+        });
+
+        // Start observing once the DOM is ready
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", observeToasts);
+        } else {
+          observeToasts();
+        }
+      })();
+    </script>
   </body>
 </html>
