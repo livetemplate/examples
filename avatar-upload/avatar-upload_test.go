@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -92,172 +90,103 @@ func TestAvatarUploadE2E(t *testing.T) {
 		t.Log("✅ Initial page load verified")
 	})
 
-	t.Run("Upload Avatar - Live Update", func(t *testing.T) {
-		t.Skip("SKIP: chromedp.SetUploadFiles() doesn't populate input.files in DOM, making programmatic file upload testing unreliable. Upload functionality verified via manual browser testing.")
+	t.Run("Upload Avatar and Verify", func(t *testing.T) {
+		// Create a test PNG in JavaScript memory via DataTransfer API,
+		// assign it to the file input, and submit the form.
+		// The LiveTemplate client handles: upload_start → chunks → upload_complete → action.
 
-		// Create a test image file
-		testImagePath, err := createTestImage(t)
-		if err != nil {
-			t.Fatalf("Failed to create test image: %v", err)
-		}
-		defer os.Remove(testImagePath)
-
-		var successText string
-
-		// Read the test image file
-		imageData, err := os.ReadFile(testImagePath)
-		if err != nil {
-			t.Fatalf("Failed to read test image: %v", err)
-		}
-
-		err = chromedp.Run(ctx,
-			// Wait for the file input to be ready
-			chromedp.WaitReady(`input[type="file"][lvt-upload="avatar"]`, chromedp.ByQuery),
-
-			// Simulate file selection by creating a File object and triggering the upload handler directly
-			// chromedp.SetUploadFiles doesn't populate input.files, so we need to do this programmatically
-			chromedp.Evaluate(fmt.Sprintf(`
-				(() => {
-					// Create a File object from base64 data
-					const base64Data = '%s';
-					const binaryData = atob(base64Data);
-					const bytes = new Uint8Array(binaryData.length);
-					for (let i = 0; i < binaryData.length; i++) {
-						bytes[i] = binaryData.charCodeAt(i);
-					}
-					const blob = new Blob([bytes], { type: 'image/png' });
-					const file = new File([blob], 'test-avatar.png', { type: 'image/png' });
-
-					// Get the file input and create a FileList-like object
-					const input = document.querySelector('input[type="file"][lvt-upload="avatar"]');
-					if (!input) {
-						console.error('[TEST] File input not found!');
-						return;
-					}
-					const dataTransfer = new DataTransfer();
-					dataTransfer.items.add(file);
-					input.files = dataTransfer.files;
-
-					// Trigger the change event
-					input.dispatchEvent(new Event('change', { bubbles: true }));
-
-					console.log('[TEST] File upload simulated, files:', input.files.length);
-				})();
-			`, base64.StdEncoding.EncodeToString(imageData)), nil),
-
-			// Small delay to let the event propagate
-			chromedp.Sleep(500*time.Millisecond),
-
-			// Wait for the upload entry to appear (indicates upload_start response received)
-			// This shows the file is ready but not yet uploading (progress at 0%)
-			chromedp.WaitVisible(`.upload-entry`, chromedp.ByQuery),
-
-			// Click the "Save Profile" button to trigger upload (AutoUpload is false)
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-
-			// Wait for the "Upload complete!" message to appear LIVE (not after reload!)
-			// This is the key test - it should appear immediately via WebSocket update
-			chromedp.WaitVisible(`.success`, chromedp.ByQuery),
-
-			// Get the success message text to verify it's correct
-			chromedp.TextContent(`.success`, &successText, chromedp.ByQuery),
-		)
-
-		if err != nil {
-			t.Fatalf("Failed to upload and verify: %v", err)
-		}
-
-		// Verify the success message text
-		if !strings.Contains(successText, "Upload complete") {
-			t.Errorf("Expected success message to contain 'Upload complete', got: %s", successText)
-		}
-
-		t.Log("✅ Upload live update verified - message appeared without page reload")
-	})
-
-	t.Run("Upload Progress Display", func(t *testing.T) {
-		t.Skip("SKIP: chromedp file upload limitation - see Upload Avatar test for details")
-
-		// Create another test image
-		testImagePath, err := createTestImage(t)
-		if err != nil {
-			t.Fatalf("Failed to create test image: %v", err)
-		}
-		defer os.Remove(testImagePath)
-
-		var progressHTML string
-
-		// Read the test image file
-		imageData, err := os.ReadFile(testImagePath)
-		if err != nil {
-			t.Fatalf("Failed to read test image: %v", err)
-		}
-
-		err = chromedp.Run(ctx,
-			// Clear any previous uploads by reloading
+		var fileCount int
+		err := chromedp.Run(ctx,
+			// Fresh page load to avoid stale state from Initial Load subtest
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
-			e2etest.WaitForWebSocketReady(3*time.Second),
+			e2etest.WaitForWebSocketReady(5*time.Second),
 			chromedp.WaitReady(`input[type="file"][lvt-upload="avatar"]`, chromedp.ByQuery),
 
-			// Simulate file selection programmatically
-			chromedp.Evaluate(fmt.Sprintf(`
+			// Programmatically create a File and assign it to the upload input
+			chromedp.Evaluate(`
 				(() => {
-					const base64Data = '%s';
-					const binaryData = atob(base64Data);
-					const bytes = new Uint8Array(binaryData.length);
-					for (let i = 0; i < binaryData.length; i++) {
-						bytes[i] = binaryData.charCodeAt(i);
-					}
-					const blob = new Blob([bytes], { type: 'image/png' });
-					const file = new File([blob], 'test-avatar.png', { type: 'image/png' });
-
+					// 1x1 red PNG as raw byte values
+					const bytes = new Uint8Array([
+						0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,
+						0x00,0x00,0x00,0x0D,0x49,0x48,0x44,0x52,
+						0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,
+						0x08,0x02,0x00,0x00,0x00,0x90,0x77,0x53,
+						0xDE,0x00,0x00,0x00,0x0C,0x49,0x44,0x41,
+						0x54,0x08,0x99,0x63,0xF8,0x0F,0x00,0x00,
+						0x01,0x01,0x00,0x05,0x18,0x0D,0xA8,0xDB,
+						0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,
+						0xAE,0x42,0x60,0x82
+					]);
+					const file = new File([bytes], 'test-avatar.png', { type: 'image/png' });
 					const input = document.querySelector('input[type="file"][lvt-upload="avatar"]');
-					if (!input) {
-						console.error('[TEST] File input not found!');
-						return;
-					}
-					const dataTransfer = new DataTransfer();
-					dataTransfer.items.add(file);
-					input.files = dataTransfer.files;
-
+					const dt = new DataTransfer();
+					dt.items.add(file);
+					input.files = dt.files;
 					input.dispatchEvent(new Event('change', { bubbles: true }));
-
-					console.log('[TEST] File upload simulated, files:', input.files.length);
-				})();
-			`, base64.StdEncoding.EncodeToString(imageData)), nil),
-
-			// Small delay to let the event propagate
-			chromedp.Sleep(500*time.Millisecond),
-
-			// Wait for the upload entry to appear (indicates upload_start response received)
-			chromedp.WaitVisible(`.upload-entry`, chromedp.ByQuery),
-
-			// Click the "Save Profile" button to trigger upload (AutoUpload is false)
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-
-			// Wait for upload to complete
-			chromedp.WaitVisible(`.success`, chromedp.ByQuery),
-
-			// Get the upload preview HTML
-			chromedp.OuterHTML(`.upload-preview`, &progressHTML, chromedp.ByQuery),
+					return input.files.length;
+				})()
+			`, &fileCount),
 		)
-
 		if err != nil {
-			t.Fatalf("Failed to check progress display: %v", err)
+			t.Fatalf("Failed to set file on input: %v", err)
+		}
+		if fileCount != 1 {
+			t.Fatalf("Expected 1 file on input, got %d", fileCount)
 		}
 
-		// Verify progress elements are present
-		if !strings.Contains(progressHTML, "upload-entry") {
-			t.Error("Upload entry not found")
-		}
-		if !strings.Contains(progressHTML, "100%") {
-			t.Error("100% progress not found")
-		}
-		if !strings.Contains(progressHTML, "✅ Upload complete!") {
-			t.Error("Success message not found in HTML")
+		// Small delay to let the client library process the change event
+		err = chromedp.Run(ctx, chromedp.Sleep(300*time.Millisecond))
+		if err != nil {
+			t.Fatalf("Sleep failed: %v", err)
 		}
 
-		t.Log("✅ Upload progress display verified")
+		// Submit the form — this triggers the upload flow then the updateProfile action
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('button[type="submit"]').click()`, nil),
+
+			// Wait for the <ins> "Upload complete!" message to appear via live WebSocket update
+			e2etest.WaitFor(`document.querySelector('ins') !== null`, 15*time.Second),
+		)
+		if err != nil {
+			var debugHTML string
+			_ = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &debugHTML, chromedp.ByQuery))
+			t.Logf("Page HTML at failure:\n%s", debugHTML)
+			t.Fatalf("Upload flow failed: %v", err)
+		}
+
+		// Verify the success message
+		var successText string
+		err = chromedp.Run(ctx,
+			chromedp.TextContent(`ins`, &successText, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read success message: %v", err)
+		}
+		if !strings.Contains(successText, "Upload complete") {
+			t.Errorf("Expected 'Upload complete' in success message, got: %q", successText)
+		}
+
+		// Verify the avatar image appeared (server moved the file and set AvatarURL)
+		err = chromedp.Run(ctx,
+			e2etest.WaitFor(`document.querySelector('img[alt="Avatar"]') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Avatar image did not appear after upload: %v", err)
+		}
+
+		// Verify the progress bar shows 100%
+		var progressVal string
+		err = chromedp.Run(ctx,
+			chromedp.AttributeValue(`progress`, "value", &progressVal, nil, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read progress bar value: %v", err)
+		}
+		if progressVal != "100" {
+			t.Errorf("Expected progress value 100, got: %s", progressVal)
+		}
+
+		t.Log("Upload complete, success message shown, avatar image rendered, progress at 100%")
 	})
 
 	t.Run("WebSocket Connection", func(t *testing.T) {
@@ -275,39 +204,6 @@ func TestAvatarUploadE2E(t *testing.T) {
 	})
 }
 
-// createTestImage creates a small test PNG image file
-func createTestImage(t *testing.T) (string, error) {
-	// Simple 1x1 PNG (red pixel)
-	// PNG signature + IHDR + IDAT + IEND
-	pngData := []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
-		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, // IDAT chunk
-		0x54, 0x08, 0x99, 0x63, 0xF8, 0x0F, 0x00, 0x00,
-		0x01, 0x01, 0x00, 0x05, 0x18, 0x0D, 0xA8, 0xDB,
-		0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
-		0xAE, 0x42, 0x60, 0x82,
-	}
-
-	tmpFile, err := os.CreateTemp("", "test-avatar-*.png")
-	if err != nil {
-		return "", err
-	}
-	defer tmpFile.Close()
-
-	if _, err := tmpFile.Write(pngData); err != nil {
-		return "", err
-	}
-
-	absPath, err := filepath.Abs(tmpFile.Name())
-	if err != nil {
-		return "", err
-	}
-
-	return absPath, nil
-}
 
 // ========== WebSocket Tests ==========
 
