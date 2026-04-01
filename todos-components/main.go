@@ -23,7 +23,7 @@ type Todo struct {
 
 // TodoState holds the application state.
 type TodoState struct {
-	Title         string
+	Title         string             `lvt:"persist"`
 	Todos         []Todo             `lvt:"persist"`
 	NewTodoTitle  string             `lvt:"persist"`
 	Toasts        *toast.Container

@@ -60,8 +60,8 @@ type PaginationInput struct {
 // The state is serializable and can be safely passed to templates.
 type TodoState struct {
 	// Display metadata
-	Title       string `json:"title"`
-	Username    string `json:"username"`
+	Title       string `json:"title" lvt:"persist"`
+	Username    string `json:"username" lvt:"persist"`
 	LastUpdated string `json:"last_updated"`
 
 	// Filter and sort settings

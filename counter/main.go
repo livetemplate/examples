@@ -19,7 +19,7 @@ type CounterController struct{}
 
 // CounterState is pure data, cloned per session.
 type CounterState struct {
-	Title       string `json:"title"`
+	Title       string `json:"title" lvt:"persist"`
 	Counter     int    `json:"counter" lvt:"persist"`
 	LastUpdated string `json:"last_updated" lvt:"persist"`
 }
