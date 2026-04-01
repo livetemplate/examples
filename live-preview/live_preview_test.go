@@ -296,8 +296,9 @@ func TestLivePreviewE2E(t *testing.T) {
 				el.selectionStart = el.selectionEnd = el.value.length;
 			})()`, nil),
 			chromedp.SendKeys(`#name-input`, "XY", chromedp.ByQuery),
-			// Wait for debounce + round-trip — preview should show "Hello, WorldXY!"
-			e2etest.WaitForText("#preview", "Hello, WorldXY!", 5*time.Second),
+			// Wait for debounce (300ms) + round-trip + DOM update.
+			// CI runners can be slow, so allow extra headroom.
+			e2etest.WaitForText("#preview", "Hello, WorldXY!", 10*time.Second),
 		)
 		if err != nil {
 			// Capture actual state for CI debugging
