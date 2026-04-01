@@ -35,6 +35,28 @@ type TodoState struct {
 // TodoController handles todo actions.
 type TodoController struct{}
 
+// Mount re-initializes non-serializable component objects on every request.
+func (c *TodoController) Mount(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	if state.Toasts == nil {
+		toasts := toast.New("notifications",
+			toast.WithPosition(toast.TopRight),
+			toast.WithMaxVisible(3),
+		)
+		toasts.SetStyled(false)
+		state.Toasts = toasts
+	}
+	if state.DeleteConfirm == nil {
+		state.DeleteConfirm = modal.NewConfirm("delete_confirm",
+			modal.WithConfirmTitle("Delete Todo"),
+			modal.WithConfirmMessage("Are you sure you want to delete this todo?"),
+			modal.WithConfirmDestructive(true),
+			modal.WithConfirmText("Delete"),
+			modal.WithCancelText("Cancel"),
+		)
+	}
+	return state, nil
+}
+
 // AddTodo handles the "add_todo" action.
 func (c *TodoController) AddTodo(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	title := ctx.GetString("title")
