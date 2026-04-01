@@ -175,13 +175,28 @@
         white-space: nowrap;
         border: 0;
       }
-      /* Toast container: fixed top-right overlay (required for component positioning) */
+      /* ── Toast (component: unstyled mode, all class="" — must target by structure) ── */
       [data-toast-container] { position: fixed; top: 1rem; right: 1rem; z-index: 50; display: flex; flex-direction: column; gap: 0.5rem; width: 360px; }
-      [data-toast-container] [role="alert"] { background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.75rem 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: flex-start; gap: 0.5rem; }
-      [data-toast-container] [role="alert"] > div { flex: 1; }
-      [data-toast-container] [role="alert"] button { width: auto; min-width: auto; margin: 0; padding: 0.25rem; --pico-background-color: transparent; --pico-border-color: transparent; color: var(--pico-muted-color); line-height: 1; }
-      /* Modal overlay (required for component positioning) */
-      [data-modal] { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
+      [data-toast-container] [role="alert"] { background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.75rem 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+      /* ToastInner → ToastLayout: flex row so dismiss sits on the right */
+      [data-toast-container] [role="alert"] > div { display: flex; }
+      [data-toast-container] [role="alert"] > div > div { display: flex; align-items: flex-start; gap: 0.75rem; flex: 1; }
+      /* ContentWrap fills available space; DismissWrap stays right */
+      [data-toast-container] [role="alert"] > div > div > div:first-child { flex: 1; }
+      [data-toast-container] [role="alert"] > div > div > div:last-child { flex-shrink: 0; display: flex; align-items: flex-start; }
+      /* Dismiss button */
+      [data-toast-container] button { width: auto; min-width: auto; margin: 0; padding: 0.25rem; --pico-background-color: transparent; --pico-border-color: transparent; color: var(--pico-muted-color); line-height: 1; }
+      /* SVG icon size — without this the dismiss × is invisible */
+      [data-toast-container] svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+
+      /* ── Modal (component: unstyled mode, all class="" — must target by structure) ── */
+      /* Outer overlay */
+      [data-modal] { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0,0,0,0.5); }
+      /* Panel card: [data-modal] > overlayDiv + containerDiv > panelDiv */
+      [data-modal] > div:last-child > div { background: var(--pico-background-color); border-radius: var(--pico-border-radius); padding: 1.5rem 2rem; max-width: 28rem; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+      /* Action buttons: right-aligned row */
+      [data-modal] > div:last-child > div > div:last-child { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+      [data-modal] button { width: auto; margin: 0; }
     </style>
   </head>
   <body>
