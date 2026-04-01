@@ -21,8 +21,6 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 | `live-preview/` | 1 | Change() live updates | None |
 | `login/` | 1 | Authentication + sessions | None |
 | `shared-notepad/` | 1 | BasicAuth + SharedState | None |
-| `ephemeral-counter/` | 1 | Ephemeral state with in-memory DB | None |
-| `ephemeral-todos/` | 1 | Ephemeral state with SQLite DB | None |
 
 ## Examples
 
