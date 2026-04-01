@@ -286,8 +286,15 @@ func TestLivePreviewE2E(t *testing.T) {
 		// After Auto-Wire Input, input has "World" and preview has "Hello, World!"
 		// Type additional characters and verify they append (not prepend due to cursor reset)
 		err := chromedp.Run(ctx,
-			// Input should still have focus from previous test; type "XY"
+			// Focus the input and move cursor to end. chromedp.Click dispatches at
+			// the element center, which lands mid-text and would insert "XY" in the
+			// middle of "World". Setting selectionStart/End ensures cursor is at the
+			// end regardless of font metrics or click coordinates.
 			chromedp.Click(`#name-input`, chromedp.ByQuery),
+			chromedp.Evaluate(`(() => {
+				const el = document.getElementById('name-input');
+				el.selectionStart = el.selectionEnd = el.value.length;
+			})()`, nil),
 			chromedp.SendKeys(`#name-input`, "XY", chromedp.ByQuery),
 			// Wait for debounce + round-trip — preview should show "Hello, WorldXY!"
 			e2etest.WaitForText("#preview", "Hello, WorldXY!", 5*time.Second),
