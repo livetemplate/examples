@@ -103,6 +103,7 @@ func (c *TodoController) ConfirmDelete(state TodoState, ctx *livetemplate.Contex
 // ConfirmDeleteConfirm executes the deletion after the user confirms the modal.
 func (c *TodoController) ConfirmDeleteConfirm(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	if state.DeleteID == "" {
+		state.DeleteConfirm.Hide()
 		return state, nil
 	}
 
