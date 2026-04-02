@@ -6,11 +6,10 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
 	github.com/chromedp/chromedp v0.14.2
 	github.com/go-playground/validator/v10 v10.30.1
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/livetemplate/livetemplate v0.8.12
-	github.com/livetemplate/lvt v0.0.0-20260327182801-53d6d40e692e
-	github.com/livetemplate/lvt/components v0.0.0-20260327182801-53d6d40e692e
+	github.com/livetemplate/lvt v0.0.0-20260402031847-f267dc4e1614
+	github.com/livetemplate/lvt/components v0.0.0-20260402031847-f267dc4e1614
 	modernc.org/sqlite v1.43.0
 )
 
@@ -26,6 +25,7 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
