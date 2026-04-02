@@ -7,6 +7,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
+	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/modal"
+	"github.com/livetemplate/lvt/components/toast"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
@@ -51,7 +54,19 @@ func main() {
 		LastUpdated: formatTime(),
 	}
 
-	opts := append(envConfig.ToOptions(), livetemplate.WithAuthenticator(auth))
+	componentSets := []*base.TemplateSet{
+		modal.Templates(),
+		toast.Templates(),
+	}
+	ltSets := make([]*livetemplate.TemplateSet, len(componentSets))
+	for i, set := range componentSets {
+		ltSets[i] = convertTemplateSet(set)
+	}
+
+	opts := append(envConfig.ToOptions(),
+		livetemplate.WithAuthenticator(auth),
+		livetemplate.WithComponentTemplates(ltSets...),
+	)
 	tmpl := livetemplate.Must(livetemplate.New("todos", opts...))
 
 	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
@@ -66,5 +81,16 @@ func main() {
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
+	}
+}
+
+// convertTemplateSet converts a base.TemplateSet to livetemplate.TemplateSet.
+// Required because the components library uses its own TemplateSet type to avoid import cycles.
+func convertTemplateSet(set *base.TemplateSet) *livetemplate.TemplateSet {
+	return &livetemplate.TemplateSet{
+		FS:        set.FS,
+		Pattern:   set.Pattern,
+		Namespace: set.Namespace,
+		Funcs:     set.Funcs,
 	}
 }

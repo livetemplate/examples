@@ -92,11 +92,11 @@
       {{ if .Completed }}<s>{{ .Text }}</s>{{ else }}{{ .Text }}{{ end }}
     </td>
     <td>
-      <form method="POST" name="delete">
+      <form method="POST" name="confirmDelete">
         <input type="hidden" name="id" value="{{ .ID }}" />
         <button
           type="submit"
-          name="delete"
+          name="confirmDelete"
           class="secondary"
           aria-label="Delete this todo"
         >
@@ -240,6 +240,12 @@
         </footer>
       </article>
     </main>
+
+    {{/* Delete Confirmation Modal */}}
+    {{ template "lvt:modal:confirm:v1" .DeleteConfirm }}
+
+    {{/* Toast Notifications */}}
+    {{ template "lvt:toast:container:v1" .Toasts }}
 
     {{ if .lvt.DevMode }}
       <script src="/livetemplate-client.js"></script>

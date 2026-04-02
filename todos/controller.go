@@ -8,6 +8,8 @@ import (
 
 	"github.com/livetemplate/examples/todos/db"
 	"github.com/livetemplate/livetemplate"
+	"github.com/livetemplate/lvt/components/modal"
+	"github.com/livetemplate/lvt/components/toast"
 )
 
 type TodoController struct {
@@ -16,15 +18,18 @@ type TodoController struct {
 
 func (c *TodoController) Mount(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	state.Username = ctx.UserID()
+	state = initComponents(state)
 	return c.loadTodos(context.Background(), state, ctx.UserID())
 }
 
 func (c *TodoController) OnConnect(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	state.Username = ctx.UserID()
+	state = initComponents(state)
 	return c.loadTodos(context.Background(), state, ctx.UserID())
 }
 
 func (c *TodoController) Sync(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	state = initComponents(state)
 	return c.loadTodos(context.Background(), state, ctx.UserID())
 }
 
@@ -49,6 +54,7 @@ func (c *TodoController) Add(state TodoState, ctx *livetemplate.Context) (TodoSt
 		return state, fmt.Errorf("failed to create todo: %w", err)
 	}
 
+	state.Toasts.AddSuccess("Added", fmt.Sprintf("%q added", input.Text))
 	state.LastUpdated = formatTime()
 	return c.loadTodos(dbCtx, state, ctx.UserID())
 }
@@ -78,28 +84,50 @@ func (c *TodoController) Toggle(state TodoState, ctx *livetemplate.Context) (Tod
 		return state, fmt.Errorf("failed to update todo: %w", err)
 	}
 
+	if !todo.Completed {
+		state.Toasts.AddInfo("Done", "Todo marked as complete")
+	} else {
+		state.Toasts.AddInfo("Reopened", "Todo marked as incomplete")
+	}
 	state.LastUpdated = formatTime()
 	return c.loadTodos(dbCtx, state, ctx.UserID())
 }
 
-func (c *TodoController) Delete(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
-	var input DeleteInput
-	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return state, err
+// ConfirmDelete shows the delete confirmation modal for the given todo ID.
+func (c *TodoController) ConfirmDelete(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	state.DeleteID = ctx.GetString("id")
+	state.DeleteConfirm.Show()
+	return state, nil
+}
+
+// ConfirmDeleteConfirm executes the deletion after the user confirms the modal.
+func (c *TodoController) ConfirmDeleteConfirm(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	if state.DeleteID == "" {
+		state.DeleteConfirm.Hide()
+		return state, nil
 	}
 
 	dbCtx := context.Background()
-
 	err := c.Queries.DeleteTodo(dbCtx, db.DeleteTodoParams{
-		ID:     input.ID,
+		ID:     state.DeleteID,
 		UserID: ctx.UserID(),
 	})
 	if err != nil {
 		return state, fmt.Errorf("failed to delete todo: %w", err)
 	}
 
+	state.Toasts.AddSuccess("Deleted", "Todo removed")
+	state.DeleteConfirm.Hide()
+	state.DeleteID = ""
 	state.LastUpdated = formatTime()
 	return c.loadTodos(dbCtx, state, ctx.UserID())
+}
+
+// CancelDeleteConfirm dismisses the delete confirmation modal.
+func (c *TodoController) CancelDeleteConfirm(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	state.DeleteConfirm.Hide()
+	state.DeleteID = ""
+	return state, nil
 }
 
 func (c *TodoController) Change(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
@@ -176,6 +204,7 @@ func (c *TodoController) ClearCompleted(state TodoState, ctx *livetemplate.Conte
 		return state, fmt.Errorf("failed to delete completed todos: %w", err)
 	}
 
+	state.Toasts.AddSuccess("Cleared", fmt.Sprintf("%d completed todo(s) removed", state.CompletedCount))
 	state.LastUpdated = formatTime()
 	return c.loadTodos(dbCtx, state, ctx.UserID())
 }
@@ -211,4 +240,27 @@ func (c *TodoController) loadTodos(ctx context.Context, state TodoState, userID 
 	state = applyPagination(state)
 
 	return state, nil
+}
+
+// initComponents initializes non-serializable component objects.
+// Called from Mount/OnConnect/Sync since components can't survive serialization.
+func initComponents(state TodoState) TodoState {
+	if state.Toasts == nil {
+		toasts := toast.New("notifications",
+			toast.WithPosition(toast.TopRight),
+			toast.WithMaxVisible(3),
+		)
+		toasts.SetStyled(false)
+		state.Toasts = toasts
+	}
+	if state.DeleteConfirm == nil {
+		state.DeleteConfirm = modal.NewConfirm("delete_confirm",
+			modal.WithConfirmTitle("Delete Todo"),
+			modal.WithConfirmMessage("Are you sure you want to delete this todo?"),
+			modal.WithConfirmDestructive(true),
+			modal.WithConfirmText("Delete"),
+			modal.WithCancelText("Cancel"),
+		)
+	}
+	return state
 }

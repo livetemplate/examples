@@ -928,6 +928,106 @@ func TestTodosE2E(t *testing.T) {
 		}
 	})
 
+	t.Run("Delete via confirmation modal", func(t *testing.T) {
+		// Add a todo to guarantee at least one exists, then get its ID
+		err := chromedp.Run(ctx,
+			e2etest.SetupUpdateEventListener(),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'add', data: {text: 'Todo to delete'}})`, nil),
+			e2etest.WaitForUpdateEvent("add", 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('tbody tr') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to add todo for delete test: %v", err)
+		}
+
+		// Get the ID of the first row (most recently added)
+		var todoID string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('tbody tr:first-child input[name="id"]').value`, &todoID),
+		)
+		if err != nil {
+			t.Fatalf("Failed to get todo ID: %v", err)
+		}
+		if todoID == "" {
+			t.Fatal("No todo ID found")
+		}
+
+		// Step 1: trigger confirmDelete — should open modal
+		err = chromedp.Run(ctx,
+			e2etest.SetupUpdateEventListener(),
+			chromedp.Evaluate(fmt.Sprintf(`window.liveTemplateClient.send({action: 'confirmDelete', data: {id: %q}})`, todoID), nil),
+			e2etest.WaitForUpdateEvent("confirmDelete", 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('[data-modal]') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to open delete modal: %v", err)
+		}
+		t.Log("✅ Delete confirmation modal opened")
+
+		// Step 2: confirm deletion — the specific row must disappear
+		err = chromedp.Run(ctx,
+			e2etest.SetupUpdateEventListener(),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'confirmDeleteConfirm', data: {}})`, nil),
+			e2etest.WaitForUpdateEvent("confirmDeleteConfirm", 5*time.Second),
+			// Modal should be gone
+			e2etest.WaitFor(`document.querySelector('[data-modal]') === null`, 5*time.Second),
+			// Specific row must be gone (pagination may refill the count, so check by data-key)
+			e2etest.WaitFor(fmt.Sprintf(`document.querySelector('tr[data-key=%q]') === null`, todoID), 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to confirm deletion: %v", err)
+		}
+		t.Log("✅ Todo deleted: row no longer in DOM")
+
+		// Step 3: verify a toast appeared AND is positioned fixed top-right (not in document flow)
+		if err := chromedp.Run(ctx,
+			e2etest.WaitFor(`document.querySelector('[data-lvt-toast-item]') !== null`, 5*time.Second),
+		); err != nil {
+			t.Fatalf("Expected toast notification after delete: %v", err)
+		}
+
+		// Dump the rendered HTML around the toast for debugging
+		var toastDebug string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const stack = document.querySelector('[data-lvt-toast-stack]');
+				const item = document.querySelector('[data-lvt-toast-item]');
+				const styles = document.querySelectorAll('style');
+				const styleTexts = Array.from(styles).map((s,i) => 'style['+i+']: ' + s.textContent.substring(0, 200));
+				let stackCSS = 'no stack';
+				if (stack) {
+					const cs = window.getComputedStyle(stack);
+					stackCSS = 'position=' + cs.position + ' top=' + cs.top + ' right=' + cs.right + ' zIndex=' + cs.zIndex;
+				}
+				let itemCSS = 'no item';
+				if (item) {
+					const cs = window.getComputedStyle(item);
+					itemCSS = 'display=' + cs.display + ' background=' + cs.backgroundColor;
+				}
+				return JSON.stringify({stackCSS, itemCSS, styleTexts, stackHTML: stack ? stack.outerHTML.substring(0, 500) : 'null'}, null, 2);
+			})()`, &toastDebug),
+		); err != nil {
+			t.Logf("Warning: could not read toast debug info: %v", err)
+		} else {
+			t.Logf("Toast debug info: %s", toastDebug)
+		}
+
+		// Assert toast stack is position:fixed (not in document flow at the bottom)
+		var toastPosition string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const stack = document.querySelector('[data-lvt-toast-stack]');
+				return stack ? window.getComputedStyle(stack).position : 'no-stack';
+			})()`, &toastPosition),
+		); err != nil {
+			t.Fatalf("Failed to read toast stack position: %v", err)
+		}
+		if toastPosition != "fixed" {
+			t.Errorf("Toast stack should have position:fixed, got %q", toastPosition)
+		}
+		t.Log("✅ Toast notification shown after delete with correct positioning")
+	})
+
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🎉 All E2E tests passed!")
 	fmt.Println(strings.Repeat("=", 60))

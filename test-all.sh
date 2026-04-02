@@ -15,8 +15,13 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Disable parent go.work if present
-export GOWORK=off
+# Use local go.work when present (dev mode with local module overrides),
+# otherwise disable workspace to force published module versions.
+if [[ -f "$SCRIPT_DIR/go.work" ]]; then
+    export GOWORK="$SCRIPT_DIR/go.work"
+else
+    export GOWORK=off
+fi
 
 # Track results
 declare -a PASSED=()
@@ -29,11 +34,8 @@ WORKING_EXAMPLES=(
     "chat"
     "todos"
     "live-preview"
-    "todos-progressive"
-    "profile-progressive"
     "ws-disabled"
     "login"
-    "todos-components"
     "shared-notepad"
     "flash-messages"
 )

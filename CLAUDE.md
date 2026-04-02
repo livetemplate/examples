@@ -63,8 +63,7 @@ When a form is submitted, the framework resolves the action in this order:
 
 ### Reference Examples
 
-- `todos-progressive/` — Canonical Tier 1 example (zero `lvt-*` attributes)
-- `profile-progressive/` — Simple Tier 1 form with validation
+- `todos/` — Canonical Tier 1 example: CRUD, auth, pagination, modal + toast components
 - `live-preview/` — Tier 1 with `Change()` method for live updates
 - `chat/` — Tier 1+2 (uses `lvt-scroll` for auto-scroll)
 
@@ -74,6 +73,7 @@ Before writing code, always consult the LiveTemplate reference docs and guides:
 
 - **References:** `https://github.com/livetemplate/livetemplate/tree/main/docs/references/` — client attributes, server API, action routing
 - **Guides:** `https://github.com/livetemplate/livetemplate/tree/main/docs/guides/` — progressive complexity, patterns, best practices
+- **Ephemeral Components:** `https://github.com/livetemplate/livetemplate/tree/main/docs/guides/ephemeral-components.md` — implementing client-side toasts, alerts, and banners without server diffs
 
 Use framework-native solutions instead of custom JavaScript. Common patterns:
 - `input type="search"` has a browser-native clear button; the framework handles the `search` event automatically (no custom JS needed)
