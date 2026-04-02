@@ -979,13 +979,53 @@ func TestTodosE2E(t *testing.T) {
 		}
 		t.Log("✅ Todo deleted: row no longer in DOM")
 
-		// Step 3: verify a toast appeared (client-managed toast stack created by JS directive)
+		// Step 3: verify a toast appeared AND is positioned fixed top-right (not in document flow)
 		if err := chromedp.Run(ctx,
 			e2etest.WaitFor(`document.querySelector('[data-lvt-toast-item]') !== null`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("Expected toast notification after delete: %v", err)
 		}
-		t.Log("✅ Toast notification shown after delete")
+
+		// Dump the rendered HTML around the toast for debugging
+		var toastDebug string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const stack = document.querySelector('[data-lvt-toast-stack]');
+				const item = document.querySelector('[data-lvt-toast-item]');
+				const styles = document.querySelectorAll('style');
+				const styleTexts = Array.from(styles).map((s,i) => 'style['+i+']: ' + s.textContent.substring(0, 200));
+				let stackCSS = 'no stack';
+				if (stack) {
+					const cs = window.getComputedStyle(stack);
+					stackCSS = 'position=' + cs.position + ' top=' + cs.top + ' right=' + cs.right + ' zIndex=' + cs.zIndex;
+				}
+				let itemCSS = 'no item';
+				if (item) {
+					const cs = window.getComputedStyle(item);
+					itemCSS = 'display=' + cs.display + ' background=' + cs.backgroundColor;
+				}
+				return JSON.stringify({stackCSS, itemCSS, styleTexts, stackHTML: stack ? stack.outerHTML.substring(0, 500) : 'null'}, null, 2);
+			})()`, &toastDebug),
+		); err != nil {
+			t.Logf("Warning: could not read toast debug info: %v", err)
+		} else {
+			t.Logf("Toast debug info: %s", toastDebug)
+		}
+
+		// Assert toast stack is position:fixed (not in document flow at the bottom)
+		var toastPosition string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const stack = document.querySelector('[data-lvt-toast-stack]');
+				return stack ? window.getComputedStyle(stack).position : 'no-stack';
+			})()`, &toastPosition),
+		); err != nil {
+			t.Fatalf("Failed to read toast stack position: %v", err)
+		}
+		if toastPosition != "fixed" {
+			t.Errorf("Toast stack should have position:fixed, got %q", toastPosition)
+		}
+		t.Log("✅ Toast notification shown after delete with correct positioning")
 	})
 
 	fmt.Println("\n" + strings.Repeat("=", 60))
