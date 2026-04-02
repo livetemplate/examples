@@ -129,12 +129,6 @@ func (c *TodoController) CancelDeleteConfirm(state TodoState, ctx *livetemplate.
 	return state, nil
 }
 
-// DismissToastNotifications handles the dismiss action emitted by the toast component.
-func (c *TodoController) DismissToastNotifications(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
-	state.Toasts.Dismiss(ctx.GetString("toast"))
-	return state, nil
-}
-
 func (c *TodoController) Change(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	if ctx.Has("query") {
 		state.SearchQuery = ctx.GetString("query")

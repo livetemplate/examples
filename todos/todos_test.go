@@ -979,13 +979,11 @@ func TestTodosE2E(t *testing.T) {
 		}
 		t.Log("✅ Todo deleted: row no longer in DOM")
 
-		// Step 3: verify a toast appeared
-		var hasToast bool
-		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelector('[data-toast-container]') !== null`, &hasToast)); err != nil {
-			t.Fatalf("Failed to check toast: %v", err)
-		}
-		if !hasToast {
-			t.Error("Expected toast notification after delete")
+		// Step 3: verify a toast appeared (client-managed toast stack created by JS directive)
+		if err := chromedp.Run(ctx,
+			e2etest.WaitFor(`document.querySelector('[data-lvt-toast-item]') !== null`, 5*time.Second),
+		); err != nil {
+			t.Fatalf("Expected toast notification after delete: %v", err)
 		}
 		t.Log("✅ Toast notification shown after delete")
 	})
