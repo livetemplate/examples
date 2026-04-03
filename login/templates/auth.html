@@ -31,18 +31,18 @@
         <!-- Login View -->
         <article>
             <h1>Login</h1>
-            {{if .Error}}
-            <del style="display:block;text-decoration:none">{{.Error}}</del>
-            {{end}}
+            {{.lvt.FlashTag "error"}}
             <!-- HTTP login — lvt-no-intercept forces real HTTP POST for cookie + redirect -->
             <form method="POST" lvt-no-intercept>
                 <label for="username">Username
-                    <input type="text" id="username" name="username" placeholder="Enter username" required>
+                    <input type="text" id="username" name="username" placeholder="Enter username" required {{.lvt.AriaInvalid "username"}}>
+                    {{.lvt.ErrorTag "username"}}
                 </label>
                 <label for="password">Password
-                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required {{.lvt.AriaInvalid "password"}}>
+                    {{.lvt.ErrorTag "password"}}
                 </label>
-                <button type="submit" name="login">Login</button>
+                <button type="submit" name="login" {{.lvt.AriaDisabled "username" "password"}}>Login</button>
             </form>
             <small>
                 Demo: Use any username with password <strong>secret</strong><br>

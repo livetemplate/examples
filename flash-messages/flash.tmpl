@@ -11,33 +11,19 @@
         <h1>{{.Title}}</h1>
 
         <!-- Flash Messages Section -->
-        {{if .lvt.HasAnyFlash}}
-        <div id="flash-messages">
-            {{if .lvt.HasFlash "success"}}
-            <ins style="display:block;text-decoration:none" data-flash="success">{{.lvt.Flash "success"}}</ins>
-            {{end}}
-            {{if .lvt.HasFlash "error"}}
-            <del style="display:block;text-decoration:none" data-flash="error">{{.lvt.Flash "error"}}</del>
-            {{end}}
-            {{if .lvt.HasFlash "warning"}}
-            <ins style="display:block;text-decoration:none" data-flash="warning">{{.lvt.Flash "warning"}}</ins>
-            {{end}}
-            {{if .lvt.HasFlash "info"}}
-            <ins style="display:block;text-decoration:none" data-flash="info">{{.lvt.Flash "info"}}</ins>
-            {{end}}
-        </div>
-        {{end}}
+        {{.lvt.FlashTag "success"}}
+        {{.lvt.FlashTag "error"}}
+        {{.lvt.FlashTag "warning"}}
+        {{.lvt.FlashTag "info"}}
 
         <!-- Add Item Form -->
         <form method="POST" name="addItem">
             <input type="text"
                    name="item"
                    placeholder="Enter item name"
-                   {{if .lvt.HasError "item"}}aria-invalid="true"{{end}} />
-            <button type="submit" name="addItem">Add Item</button>
-            {{if .lvt.HasError "item"}}
-            <small>{{.lvt.Error "item"}}</small>
-            {{end}}
+                   {{.lvt.AriaInvalid "item"}} />
+            <button type="submit" name="addItem" {{.lvt.AriaDisabled "item"}}>Add Item</button>
+            {{.lvt.ErrorTag "item"}}
         </form>
 
         <!-- Action Buttons -->
@@ -78,7 +64,8 @@
                 <li>They don't affect <code>ResponseMetadata.Success</code></li>
                 <li>Types: <code>success</code>, <code>error</code>, <code>warning</code>, <code>info</code></li>
                 <li>Set via: <code>ctx.SetFlash("success", "message")</code></li>
-                <li>Read via: <code>.lvt.Flash "success"</code>, <code>.lvt.HasFlash "success"</code></li>
+                <li>Render via: <code>.lvt.FlashTag "success"</code> (recommended)</li>
+                <li>Or manually: <code>.lvt.HasFlash "key"</code>, <code>.lvt.Flash "key"</code></li>
             </ul>
         </blockquote>
     </main>
