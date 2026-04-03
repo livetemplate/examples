@@ -39,12 +39,8 @@
         </mark>
 
         <!-- Flash messages -->
-        {{if .lvt.Flash "success"}}
-        <ins style="display:block; text-decoration:none;">{{.lvt.Flash "success"}}</ins>
-        {{end}}
-        {{if .lvt.Flash "error"}}
-        <del style="display:block; text-decoration:none;">{{.lvt.Flash "error"}}</del>
-        {{end}}
+        {{.lvt.FlashTag "success"}}
+        {{.lvt.FlashTag "error"}}
 
         <!-- Add todo form -->
         <!-- Works with JS: client intercepts form and routes via WebSocket/fetch -->
@@ -56,13 +52,11 @@
                     name="title"
                     value="{{.InputTitle}}"
                     placeholder="What needs to be done?"
-                    {{if .lvt.HasError "title"}}aria-invalid="true"{{end}}
+                    {{.lvt.AriaInvalid "title"}}
                     autofocus
                 >
-                {{if .lvt.HasError "title"}}
-                <small>{{.lvt.Error "title"}}</small>
-                {{end}}
-                <button type="submit" name="add">Add Todo</button>
+                {{.lvt.ErrorTag "title"}}
+                <button type="submit" name="add" {{.lvt.AriaDisabled "title"}}>Add Todo</button>
             </form>
         </article>
 

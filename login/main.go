@@ -25,7 +25,6 @@ type AuthController struct {
 type AuthState struct {
 	Username      string    `lvt:"persist"`
 	IsLoggedIn    bool      `lvt:"persist"`
-	Error         string
 	ServerMessage string
 	LoginTime     time.Time `lvt:"persist"`
 }
@@ -35,20 +34,19 @@ func (c *AuthController) Login(state AuthState, ctx *livetemplate.Context) (Auth
 	username := ctx.GetString("username")
 	password := ctx.GetString("password")
 
-	// Simple validation
-	if username == "" || password == "" {
-		state.Error = "Username and password are required"
-		return state, nil
+	// Field-level validation
+	if username == "" {
+		return state, livetemplate.NewFieldError("username", fmt.Errorf("username is required"))
+	}
+	if password == "" {
+		return state, livetemplate.NewFieldError("password", fmt.Errorf("password is required"))
 	}
 
 	// Demo: accept any username with password "secret"
 	if password != "secret" {
-		state.Error = "Invalid credentials"
+		ctx.SetFlash("error", "Invalid credentials")
 		return state, nil
 	}
-
-	// Clear error and set logged in state
-	state.Error = ""
 	state.Username = username
 	state.IsLoggedIn = true
 	state.LoginTime = time.Now()
@@ -76,7 +74,6 @@ func (c *AuthController) Login(state AuthState, ctx *livetemplate.Context) (Auth
 func (c *AuthController) Logout(state AuthState, ctx *livetemplate.Context) (AuthState, error) {
 	state.Username = ""
 	state.IsLoggedIn = false
-	state.Error = ""
 	state.ServerMessage = ""
 
 	// Delete session cookie

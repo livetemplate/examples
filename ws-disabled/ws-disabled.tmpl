@@ -12,12 +12,8 @@
         <p><small>WebSocket is disabled. The client library uses HTTP fetch for all actions
         and applies tree-based DOM updates without page reloads.</small></p>
 
-        {{if .lvt.Flash "success"}}
-        <ins style="display:block; text-decoration:none;">{{.lvt.Flash "success"}}</ins>
-        {{end}}
-        {{if .lvt.Flash "error"}}
-        <del style="display:block; text-decoration:none;">{{.lvt.Flash "error"}}</del>
-        {{end}}
+        {{.lvt.FlashTag "success"}}
+        {{.lvt.FlashTag "error"}}
 
         <article>
             <form method="POST" name="add">
@@ -25,21 +21,17 @@
                     <label>
                         Label
                         <input type="text" name="label" placeholder="My favorite site"
-                            {{if .lvt.HasError "label"}}aria-invalid="true"{{end}}>
-                        {{if .lvt.HasError "label"}}
-                        <small>{{.lvt.Error "label"}}</small>
-                        {{end}}
+                            {{.lvt.AriaInvalid "label"}}>
+                        {{.lvt.ErrorTag "label"}}
                     </label>
                     <label>
                         URL
                         <input type="url" name="url" placeholder="https://example.com"
-                            {{if .lvt.HasError "url"}}aria-invalid="true"{{end}}>
-                        {{if .lvt.HasError "url"}}
-                        <small>{{.lvt.Error "url"}}</small>
-                        {{end}}
+                            {{.lvt.AriaInvalid "url"}}>
+                        {{.lvt.ErrorTag "url"}}
                     </label>
                 </div>
-                <button type="submit" name="add">Add Bookmark</button>
+                <button type="submit" name="add" {{.lvt.AriaDisabled "label" "url"}}>Add Bookmark</button>
             </form>
         </article>
 

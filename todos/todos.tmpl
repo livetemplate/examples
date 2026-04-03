@@ -11,13 +11,11 @@
         placeholder="What needs to be done?"
         required
         aria-required="true"
-        {{ if .lvt.HasError "text" }}aria-invalid="true"{{ end }}
+        {{.lvt.AriaInvalid "text"}}
       />
-      <button type="submit" name="add">Add</button>
+      <button type="submit" name="add" {{.lvt.AriaDisabled "text"}}>Add</button>
     </fieldset>
-    {{ if .lvt.HasError "text" }}
-      <del style="display:block;text-decoration:none">{{ .lvt.Error "text" }}</del>
-    {{ end }}
+    {{.lvt.ErrorTag "text"}}
   </form>
 {{ end }}
 
