@@ -64,7 +64,8 @@
                 <li>They don't affect <code>ResponseMetadata.Success</code></li>
                 <li>Types: <code>success</code>, <code>error</code>, <code>warning</code>, <code>info</code></li>
                 <li>Set via: <code>ctx.SetFlash("success", "message")</code></li>
-                <li>Read via: <code>.lvt.Flash "success"</code>, <code>.lvt.HasFlash "success"</code></li>
+                <li>Render via: <code>.lvt.FlashTag "success"</code> (recommended)</li>
+                <li>Or manually: <code>.lvt.HasFlash "key"</code>, <code>.lvt.Flash "key"</code></li>
             </ul>
         </blockquote>
     </main>
