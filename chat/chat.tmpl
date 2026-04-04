@@ -83,7 +83,7 @@
             <button type="submit">Join Chat</button>
         </form>
         {{else}}
-        <div class="messages" id="messages" lvt-scroll="bottom-sticky">
+        <div class="messages" id="messages" lvt-fx:scroll="bottom-sticky">
             {{if eq (len .Messages) 0}}
             <div class="empty-state">
                 No messages yet. Be the first to send one!

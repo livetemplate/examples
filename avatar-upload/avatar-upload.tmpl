@@ -26,7 +26,7 @@
                 {{end}}
             </div>
 
-            <form method="POST" name="updateProfile">
+            <form method="POST" name="updateProfile" enctype="multipart/form-data">
                 <label for="name">
                     Name
                     <input type="text" id="name" name="name" value="{{.Name}}" required>
@@ -41,7 +41,7 @@
                     Avatar
                     <input type="file"
                            id="avatar"
-                           lvt-upload="avatar"
+                           name="avatar"
                            accept="image/jpeg,image/png,image/gif">
                 </label>
 
@@ -72,25 +72,6 @@
         </article>
     </main>
 
-    <script>
-        // Listen for upload events
-        document.addEventListener('DOMContentLoaded', () => {
-            const wrapper = document.querySelector('[data-lvt-id]');
-            if (wrapper) {
-                wrapper.addEventListener('lvt:upload:progress', (e) => {
-                    console.log('Upload progress:', e.detail.entry.file.name, e.detail.entry.progress + '%');
-                });
-
-                wrapper.addEventListener('lvt:upload:complete', (e) => {
-                    console.log('Upload complete:', e.detail.uploadName);
-                });
-
-                wrapper.addEventListener('lvt:upload:error', (e) => {
-                    console.error('Upload error:', e.detail.error);
-                });
-            }
-        });
-    </script>
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>
     {{else}}

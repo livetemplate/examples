@@ -16,7 +16,7 @@
                 </hgroup>
             </header>
 
-            <form method="POST" lvt-preserve>
+            <form method="POST" lvt-form:preserve>
                 <label for="content">Your notes
                     <textarea id="content" name="content" rows="12" placeholder="Start typing..."
                         oninput="document.getElementById('charcount').textContent = this.value.length + ' characters'">{{.Content}}</textarea>

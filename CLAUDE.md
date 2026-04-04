@@ -22,19 +22,20 @@ All examples follow the **progressive complexity** model introduced in livetempl
 
 | Attribute | Purpose | Example |
 |-----------|---------|---------|
-| `lvt-scroll` | Auto-scroll behavior | Chat message container |
+| `lvt-fx:scroll` | Auto-scroll behavior | Chat message container |
 | `lvt-upload` | Chunked file uploads | Avatar upload |
-| `lvt-debounce` | Custom timing control | Search with custom delay |
-| `lvt-keydown` | Keyboard shortcuts | Global key bindings |
-| `lvt-animate` | Entry/exit animations | Toast notifications |
+| `lvt-mod:debounce` | Custom timing control | Search with custom delay |
+| `lvt-on:keydown` | Keyboard shortcuts | Global key bindings |
+| `lvt-fx:animate` | Entry/exit animations | Toast notifications |
+| `lvt-form:preserve` | Preserve form state across re-renders | Shared notepad |
+| `lvt-form:no-intercept` | Skip WebSocket, use real HTTP POST | Login/logout forms |
 
 ### Action Resolution Order
 
 When a form is submitted, the framework resolves the action in this order:
-1. `lvt-submit` attribute on the form
-2. Clicked button's `name` attribute
-3. Form's `name` attribute
-4. Default: `"submit"`
+1. Clicked button's `name` attribute
+2. Form's `name` attribute
+3. Default: `"submit"`
 
 ## Creating New Examples
 
@@ -65,7 +66,7 @@ When a form is submitted, the framework resolves the action in this order:
 
 - `todos/` — Canonical Tier 1 example: CRUD, auth, pagination, modal + toast components
 - `live-preview/` — Tier 1 with `Change()` method for live updates
-- `chat/` — Tier 1+2 (uses `lvt-scroll` for auto-scroll)
+- `chat/` — Tier 1+2 (uses `lvt-fx:scroll` for auto-scroll)
 
 ## Framework Documentation
 

@@ -13,7 +13,7 @@ This example demonstrates LiveTemplate's `WithWebSocketDisabled()` mode. The cli
 ### Client Library Still Active
 
 The LiveTemplate client library is included and works the same as in WebSocket mode:
-- `lvt-submit`, `lvt-click`, and other `lvt-*` attributes work identically
+- Standard HTML forms with `<button name="action">` and `<form name="action">` work identically
 - DOM updates are applied via tree diffing — no page reloads
 - The only difference is transport: HTTP fetch instead of WebSocket
 
@@ -25,7 +25,7 @@ The client detects WebSocket availability by checking the `X-LiveTemplate-WebSoc
 
 ### Progressive Enhancement
 
-Forms also include `method="POST"` and `lvt-action` hidden fields, so the app still works without JavaScript via the POST-Redirect-GET pattern.
+Forms use `method="POST"` with button `name` routing, so the app still works without JavaScript via the POST-Redirect-GET pattern.
 
 ## Running
 
@@ -39,6 +39,6 @@ Visit http://localhost:8080.
 ## Files
 
 - `main.go` — Controller, state, and action handlers
-- `ws-disabled.tmpl` — Template with `lvt-submit` attributes and client library
+- `ws-disabled.tmpl` — Template with standard HTML forms and client library
 - `ws_disabled_test.go` — Browser and HTTP e2e tests
 - `README.md` — This documentation

@@ -22,8 +22,8 @@
                 <small>Logged in at: {{.LoginTime.Format "15:04:05"}}</small>
                 {{end}}
             </section>
-            <!-- HTTP logout — lvt-no-intercept forces real HTTP POST for cookie deletion -->
-            <form method="POST" lvt-no-intercept>
+            <!-- HTTP logout — lvt-form:no-intercept forces real HTTP POST for cookie deletion -->
+            <form method="POST" lvt-form:no-intercept>
                 <button type="submit" name="logout" class="contrast">Logout</button>
             </form>
         </article>
@@ -32,8 +32,8 @@
         <article>
             <h1>Login</h1>
             {{.lvt.FlashTag "error"}}
-            <!-- HTTP login — lvt-no-intercept forces real HTTP POST for cookie + redirect -->
-            <form method="POST" lvt-no-intercept>
+            <!-- HTTP login — lvt-form:no-intercept forces real HTTP POST for cookie + redirect -->
+            <form method="POST" lvt-form:no-intercept>
                 <label for="username">Username
                     <input type="text" id="username" name="username" placeholder="Enter username" required {{.lvt.AriaInvalid "username"}}>
                     {{.lvt.ErrorTag "username"}}

@@ -85,71 +85,71 @@ For more details, see [CONFIGURATION.md](../../docs/CONFIGURATION.md).
 The server is extremely simple with the new reactive API:
 
 ```go
+// Controller: singleton, holds dependencies (none in this simple example)
+type CounterController struct{}
+
+// State: pure data, cloned per session
 type CounterState struct {
-    Counter     int    `json:"counter"`
-    Status      string `json:"status"`
-    // ... other fields
+    Title       string `json:"title" lvt:"persist"`
+    Counter     int    `json:"counter" lvt:"persist"`
+    LastUpdated string `json:"last_updated" lvt:"persist"`
 }
 
-// Implement the Store interface
-func (s *CounterState) Change(action string, data map[string]interface{}) {
-    switch action {
-    case "increment":
-        s.Counter++
-    case "decrement":
-        s.Counter--
-    case "reset":
-        s.Counter = 0
-    }
+// Named action methods — routed via <button name="increment">
+func (c *CounterController) Increment(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+    state.Counter++
+    state.LastUpdated = formatTime()
+    return state, nil
+}
 
-    // Update derived state
-    s.Status = getStatus(s.Counter)
-    s.LastUpdated = formatTime()
+func (c *CounterController) Decrement(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+    state.Counter--
+    state.LastUpdated = formatTime()
+    return state, nil
+}
+
+func (c *CounterController) Reset(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
+    state.Counter = 0
+    state.LastUpdated = formatTime()
+    return state, nil
 }
 
 func main() {
-    // Load configuration from environment variables
-    envConfig, err := livetemplate.LoadEnvConfig()
-    if err != nil {
-        log.Fatalf("Failed to load configuration: %v", err)
-    }
+    envConfig, _ := livetemplate.LoadEnvConfig()
 
-    state := &CounterState{Counter: 0, Status: "zero"}
+    controller := &CounterController{}
+    initialState := &CounterState{Title: "Live Counter", Counter: 0, LastUpdated: formatTime()}
 
-    // Create template with environment-based configuration
-    // Configuration is loaded from LVT_* environment variables
-    tmpl := livetemplate.New("counter", envConfig.ToOptions()...)
-
-    // Handle() auto-configures: WebSocket, HTTP, state cloning, updates
-    http.Handle("/", tmpl.Handle(state))
+    tmpl := livetemplate.Must(livetemplate.New("counter", envConfig.ToOptions()...))
+    http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
     http.ListenAndServe(":8080", nil)
 }
 ```
 
 **Key concepts:**
-- **Store Interface**: Any struct with a `Change(action string, data map[string]interface{})` method
+- **Controller+State pattern**: Controller holds dependencies, State is pure data cloned per session
+- **Named action methods**: `<button name="increment">` routes to `Increment()` method
 - **Auto-discovery**: Automatically finds and parses `.tmpl`, `.html`, `.gotmpl` files
-- **Auto Updates**: Handle() automatically generates and sends updates after Change() is called
-- **Auto Cloning**: Each WebSocket connection gets its own cloned state
+- **Auto Updates**: Handle() automatically generates and sends updates after action methods return
+- **Auto Cloning**: Each WebSocket connection gets its own cloned state via `AsState()`
 - **Session Management**: HTTP connections automatically get session-based state persistence
-- **Transport Detection**: Auto-detects WebSocket vs HTTP requests
 
 ### Client Side (JavaScript)
 
 **Zero-config integration** - just add one script tag:
 
 ```html
-<!-- In your template -->
-<button lvt-click="increment">+1</button>
-<button lvt-click="decrement">-1</button>
-<button lvt-click="reset">Reset</button>
+<!-- In your template — standard HTML, no special attributes needed -->
+<button name="increment">+1</button>
+<button name="decrement">-1</button>
+<button name="reset">Reset</button>
 
 <!-- Auto-initializing client library -->
 <script src="livetemplate-client.js"></script>
 ```
 
 That's it! No JavaScript code needed. The client library auto-initializes and handles:
-- **Declarative event binding** via `lvt-*` attributes (`lvt-click`, `lvt-submit`, `lvt-change`, `lvt-input`, etc.)
+- **Button name routing**: `<button name="increment">` routes to `Increment()` method
 - **Automatic WebSocket connection** to `/live` endpoint
 - **Automatic reconnection** on disconnect (configurable)
 - **Automatic DOM updates** when updates arrive
@@ -157,46 +157,42 @@ That's it! No JavaScript code needed. The client library auto-initializes and ha
 
 #### Sending Actions with Data
 
-Actions can include multiple values from forms, inputs, and custom data attributes:
+Actions use standard HTML forms with button `name` routing and hidden inputs for data:
 
 ```html
-<!-- Simple action -->
-<button lvt-click="increment">+1</button>
+<!-- Simple action via button name -->
+<button name="increment">+1</button>
 
-<!-- Action with input value -->
-<input type="number" lvt-change="setValue">
-
-<!-- Action with form data (all fields sent in data map) -->
-<form lvt-submit="addTodo">
+<!-- Form with multiple fields -->
+<form method="POST" name="add">
     <input name="title" type="text">
     <input name="priority" type="number">
-    <button>Add</button>
+    <button type="submit">Add</button>
 </form>
 
-<!-- Action with custom data attributes -->
-<button lvt-click="delete" lvt-data-id="123" lvt-data-confirm="true">
-    Delete Item
-</button>
+<!-- Data via hidden inputs -->
+<form method="POST">
+    <input type="hidden" name="id" value="123">
+    <button name="delete">Delete Item</button>
+</form>
 ```
 
-All values are collected into a `data` map and passed to the store's `Change()` method:
+Form field values are accessed in the controller via `ctx.GetString()`, `ctx.GetInt()`, or `ctx.BindAndValidate()`:
 ```go
-func (s *Store) Change(action string, data map[string]interface{}) {
-    id := livetemplate.GetInt(data, "id")
-    title := livetemplate.GetString(data, "title")
+func (c *Controller) Delete(state State, ctx *livetemplate.Context) (State, error) {
+    id := ctx.GetInt("id")
     // ...
 }
 ```
 
-#### Supported lvt-* attributes:
-- `lvt-click` - Handle click events
-- `lvt-submit` - Handle form submissions (prevents default, sends all form fields)
-- `lvt-change` - Handle input change events (sends input value as "value")
-- `lvt-input` - Handle input events for real-time updates (sends input value as "value")
-- `lvt-keydown` - Handle keydown events
-- `lvt-keyup` - Handle keyup events
-- `lvt-data-*` - Include custom data in the data map (e.g., `lvt-data-id="123"`)
-- `lvt-value-*` - Include explicit multiple values (e.g., `lvt-value-quantity="5"`)
+#### Tier 2 attributes (use only when standard HTML can't express it):
+- `lvt-on:click` - Route click events on non-button elements (e.g., table rows)
+- `lvt-on:keydown` - Handle keyboard events
+- `lvt-mod:debounce` - Custom timing control for event routing
+- `lvt-fx:scroll` - Auto-scroll behavior
+- `lvt-fx:animate` - Entry/exit animations
+- `lvt-form:preserve` - Prevent form auto-reset
+- `lvt-form:no-intercept` - Skip WebSocket, use real HTTP POST
 
 ### LiveTemplate Integration
 
@@ -218,10 +214,10 @@ Browser                    WebSocket/HTTP              Go Server
 │ LiveTemplate    │        │          │               │   data)          │
 │ Client JS       │        │          │               │                  │
 │                 │        │          │               │ Handle()         │
-│ lvt-* attrs     │        │ Auto-    │               │ - Clones state   │
-│ - click         │        │ detects  │               │ - Generates      │
-│ - submit        │        │ transport│               │   updates        │
-│ - change        │        │          │               │ - Broadcasts     │
+│ Button name     │        │ Auto-    │               │ - Clones state   │
+│ routing         │        │ detects  │               │ - Generates      │
+│ (Tier 1 HTML)   │        │ transport│               │   updates        │
+│                 │        │          │               │ - Broadcasts     │
 └─────────────────┘        └──────────┘               └──────────────────┘
 ```
 
@@ -274,23 +270,21 @@ The template follows the same pattern as `testdata/e2e/counter/input.tmpl`:
 - **Session Management**: HTTP connections use cookie-based sessions for state persistence
 - **Error Handling**: Automatic WebSocket reconnection and comprehensive error logging
 
-## Multiple Stores
+## Controller+State Pattern
 
-For applications with multiple state objects, pass them to `Handle()`:
+The counter uses the Controller+State pattern introduced in v0.7.0:
 
 ```go
-counter := &CounterState{}
-user := &UserState{}
+// Controller: singleton, holds dependencies
+controller := &CounterController{}
 
-tmpl := livetemplate.New("app")
-http.Handle("/", tmpl.Handle(counter, user))
+// State: pure data, cloned per session
+initialState := &CounterState{Title: "Live Counter", Counter: 0}
+
+tmpl := livetemplate.Must(livetemplate.New("counter"))
+http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 ```
 
-**Store names are auto-derived from struct types** (case-insensitive):
-- `CounterState` → actions use `"counterstate.increment"` or `"CounterState.increment"`
-- `UserState` → actions use `"userstate.logout"` or `"UserState.logout"`
-
-```html
-<button lvt-click="counterstate.increment">+1</button>
-<button lvt-click="userstate.logout">Logout</button>
-```
+- **Controller** holds dependencies (DB, Logger, etc.) — never cloned
+- **State** is pure data — cloned per session, serializable
+- Action methods on the controller receive state and return modified state
