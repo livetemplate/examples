@@ -19,17 +19,16 @@ This example demonstrates how LiveTemplate supports progressive enhancement - al
 
 ### Dual-Mode Forms
 
-Forms work in both modes by including both `lvt-submit` (for JS) and `method="POST"` + `lvt-action` (for no-JS):
+Forms work in both modes using standard HTML with `method="POST"` and button `name` routing:
 
 ```html
-<form method="POST" lvt-submit="add">
-    <input type="hidden" name="lvt-action" value="add">
+<form method="POST" name="add">
     <input type="text" name="title">
-    <button type="submit">Add</button>
+    <button type="submit" name="add">Add</button>
 </form>
 ```
 
-- **With JS**: `lvt-submit` triggers a WebSocket action, preventing form submission
+- **With JS**: The client intercepts the form and routes via WebSocket/fetch
 - **Without JS**: Standard form submission sends POST request to server
 
 ### POST-Redirect-GET (PRG) Pattern

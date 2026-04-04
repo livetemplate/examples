@@ -162,8 +162,8 @@ func (s *ChatState) updateOnlineCount() {
 
 **Key concepts:**
 
-- `ctx.Action` comes from HTML `lvt-submit="action"` attribute
-- `ctx.Bind(&data)` extracts form data
+- Actions route via `<form name="join">` and `<form name="send">` (button/form `name` routing)
+- `ctx.GetString("field")` extracts form data
 - Just modify state - broadcasting happens automatically!
 - No manual WebSocket code needed
 
@@ -240,12 +240,12 @@ Replace `chat.tmpl` with the chat interface. Key template concepts:
 **Form Actions:**
 
 ```html
-<form lvt-submit="join">
+<form method="POST" name="join">
     <input type="text" name="username" required autofocus>
     <button type="submit">Join Chat</button>
 </form>
 
-<form lvt-submit="send">
+<form method="POST" name="send">
     <input type="text" name="message" autocomplete="off">
     <button type="submit">Send</button>
 </form>
