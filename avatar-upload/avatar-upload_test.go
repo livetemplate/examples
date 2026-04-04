@@ -105,7 +105,6 @@ func TestAvatarUploadE2E(t *testing.T) {
 			// and can't access host filesystem paths.
 			chromedp.Evaluate(`
 				(() => {
-					// 1x1 red PNG as base64
 					const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4z8AAAMBBBQAB1x2RAAAASElEQVQI12P4z8BQDwCNAQz/cWMmRQAAAABJRU5ErkJggg==';
 					const binary = atob(b64);
 					const bytes = new Uint8Array(binary.length);
@@ -118,59 +117,17 @@ func TestAvatarUploadE2E(t *testing.T) {
 					const dt = new DataTransfer();
 					dt.items.add(file);
 					input.files = dt.files;
-
-					// Dispatch change event so the client knows a file was selected
-					input.dispatchEvent(new Event('change', {bubbles: true}));
-					return 'file set';
+					return 'file set (' + input.files.length + ' files)';
 				})()
 			`, nil),
 
-			// Click the submit button to trigger form submission
+			// Click submit button
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 
-			// Wait for the avatar image to appear (server processed the upload)
+			// Wait for the avatar image to appear
 			e2etest.WaitFor(`document.querySelector('img[alt="Avatar"]') !== null`, 15*time.Second),
 		)
 		if err != nil {
-			// Debug: check client state after submission
-			var clientState string
-			_ = chromedp.Run(ctx, chromedp.Evaluate(`
-				JSON.stringify({
-					sendCalled: window.__lvtSendCalled,
-					sendPath: window.__lvtSendPath,
-					submitTriggered: window.__lvtSubmitListenerTriggered,
-					submitTarget: window.__lvtSubmitEventTarget,
-					inWrapper: window.__lvtInWrapper,
-					actionFound: window.__lvtActionFound,
-					beforeHandle: window.__lvtBeforeHandleAction,
-					afterHandle: window.__lvtAfterHandleAction,
-					messageAction: window.__lvtMessageAction,
-					multipartCalled: window.__lvtMultipartCalled,
-					multipartAction: window.__lvtMultipartAction,
-					multipartURL: window.__lvtMultipartURL,
-					multipartFormDataKeys: window.__lvtMultipartFormDataKeys,
-					multipartStatus: window.__lvtMultipartStatus,
-					multipartSuccess: window.__lvtMultipartSuccess,
-					multipartError: window.__lvtMultipartError,
-				})
-			`, &clientState))
-			t.Logf("Client state: %s", clientState)
-
-			// Debug: check console logs and file input state
-			var debugInfo string
-			_ = chromedp.Run(ctx, chromedp.Evaluate(`
-				JSON.stringify({
-					fileInput: document.querySelector('#avatar') ? {
-						files: document.querySelector('#avatar').files.length,
-						name: document.querySelector('#avatar').name,
-						hasLvtUpload: document.querySelector('#avatar').hasAttribute('lvt-upload')
-					} : null,
-					sendPath: window.__lvtSendPath || 'unknown',
-					wsMessage: window.__lvtWSMessage || 'none',
-					consoleErrors: window.__lvtErrors || []
-				})
-			`, &debugInfo))
-			t.Logf("Debug info: %s", debugInfo)
 			var debugHTML string
 			_ = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &debugHTML, chromedp.ByQuery))
 			t.Logf("Page HTML at failure:\n%s", debugHTML)
