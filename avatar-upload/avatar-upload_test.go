@@ -91,124 +91,93 @@ func TestAvatarUploadE2E(t *testing.T) {
 	})
 
 	t.Run("Upload Avatar and Verify", func(t *testing.T) {
-		// Drive the upload via the WebSocket client's send() method, which is the
-		// recommended approach per CLAUDE.md: "use window.liveTemplateClient.send()
-		// directly" for WebSocket verification. This bypasses file-input change
-		// event timing issues with morphdom DOM replacement.
+		// Tier 1 file upload: create a File object in JavaScript, set it on the
+		// input, and submit the form. The client detects the file input and sends
+		// via HTTP fetch with FormData. The server parses the multipart body.
 
 		err := chromedp.Run(ctx,
 			// Fresh page load
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
 			e2etest.WaitForWebSocketReady(5*time.Second),
 
-			// Send upload_start via the client's WebSocket, then upload chunks,
-			// send upload_complete, and finally submit the form action.
+			// Create a minimal 1x1 PNG file in JavaScript and set it on the input.
+			// We can't use chromedp.SetUploadFiles because Chrome runs in Docker
+			// and can't access host filesystem paths.
 			chromedp.Evaluate(`
 				(() => {
-					// 1x1 red PNG as raw bytes
-					const pngBytes = new Uint8Array([
-						0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,
-						0x00,0x00,0x00,0x0D,0x49,0x48,0x44,0x52,
-						0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,
-						0x08,0x02,0x00,0x00,0x00,0x90,0x77,0x53,
-						0xDE,0x00,0x00,0x00,0x0C,0x49,0x44,0x41,
-						0x54,0x08,0x99,0x63,0xF8,0x0F,0x00,0x00,
-						0x01,0x01,0x00,0x05,0x18,0x0D,0xA8,0xDB,
-						0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,
-						0xAE,0x42,0x60,0x82
-					]);
+					// 1x1 red PNG as base64
+					const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4z8AAAMBBBQAB1x2RAAAASElEQVQI12P4z8BQDwCNAQz/cWMmRQAAAABJRU5ErkJggg==';
+					const binary = atob(b64);
+					const bytes = new Uint8Array(binary.length);
+					for (let i = 0; i < binary.length; i++) {
+						bytes[i] = binary.charCodeAt(i);
+					}
+					const file = new File([bytes], 'test-avatar.png', {type: 'image/png'});
 
-					const client = window.liveTemplateClient;
+					const input = document.querySelector('#avatar');
+					const dt = new DataTransfer();
+					dt.items.add(file);
+					input.files = dt.files;
 
-					// Listen for the upload_start response to get the entry ID
-					const ws = client.ws;
-					const origOnMessage = ws.onmessage;
-					ws.onmessage = (event) => {
-						const data = JSON.parse(event.data);
-						if (data.entries && data.upload_name === 'avatar') {
-							// Got upload_start response — send chunk + complete
-							const entryId = data.entries[0].entry_id;
-
-							// Convert to base64 for the chunk message
-							let binary = '';
-							for (let i = 0; i < pngBytes.length; i++) {
-								binary += String.fromCharCode(pngBytes[i]);
-							}
-							const base64Data = btoa(binary);
-
-							ws.send(JSON.stringify({
-								action: 'upload_chunk',
-								entry_id: entryId,
-								chunk_base64: base64Data,
-								offset: 0,
-								total: pngBytes.length
-							}));
-
-							// Small delay then send upload_complete
-							setTimeout(() => {
-								ws.send(JSON.stringify({
-									action: 'upload_complete',
-									upload_name: 'avatar',
-									entry_ids: [entryId]
-								}));
-							}, 50);
-						}
-						// Call original handler for DOM updates
-						origOnMessage.call(ws, event);
-					};
-
-					// Send upload_start
-					client.send({
-						action: 'upload_start',
-						upload_name: 'avatar',
-						files: [{name: 'test-avatar.png', type: 'image/png', size: pngBytes.length}]
-					});
+					// Dispatch change event so the client knows a file was selected
+					input.dispatchEvent(new Event('change', {bubbles: true}));
+					return 'file set';
 				})()
 			`, nil),
 
-			// Wait for the <ins> "Upload complete!" message via live WebSocket update
-			e2etest.WaitFor(`document.querySelector('ins') !== null`, 15*time.Second),
+			// Click the submit button to trigger form submission
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+
+			// Wait for the avatar image to appear (server processed the upload)
+			e2etest.WaitFor(`document.querySelector('img[alt="Avatar"]') !== null`, 15*time.Second),
 		)
 		if err != nil {
+			// Debug: check client state after submission
+			var clientState string
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`
+				JSON.stringify({
+					sendCalled: window.__lvtSendCalled,
+					sendPath: window.__lvtSendPath,
+					submitTriggered: window.__lvtSubmitListenerTriggered,
+					submitTarget: window.__lvtSubmitEventTarget,
+					inWrapper: window.__lvtInWrapper,
+					actionFound: window.__lvtActionFound,
+					beforeHandle: window.__lvtBeforeHandleAction,
+					afterHandle: window.__lvtAfterHandleAction,
+					messageAction: window.__lvtMessageAction,
+					multipartCalled: window.__lvtMultipartCalled,
+					multipartAction: window.__lvtMultipartAction,
+					multipartURL: window.__lvtMultipartURL,
+					multipartFormDataKeys: window.__lvtMultipartFormDataKeys,
+					multipartStatus: window.__lvtMultipartStatus,
+					multipartSuccess: window.__lvtMultipartSuccess,
+					multipartError: window.__lvtMultipartError,
+				})
+			`, &clientState))
+			t.Logf("Client state: %s", clientState)
+
+			// Debug: check console logs and file input state
+			var debugInfo string
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`
+				JSON.stringify({
+					fileInput: document.querySelector('#avatar') ? {
+						files: document.querySelector('#avatar').files.length,
+						name: document.querySelector('#avatar').name,
+						hasLvtUpload: document.querySelector('#avatar').hasAttribute('lvt-upload')
+					} : null,
+					sendPath: window.__lvtSendPath || 'unknown',
+					wsMessage: window.__lvtWSMessage || 'none',
+					consoleErrors: window.__lvtErrors || []
+				})
+			`, &debugInfo))
+			t.Logf("Debug info: %s", debugInfo)
 			var debugHTML string
 			_ = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &debugHTML, chromedp.ByQuery))
 			t.Logf("Page HTML at failure:\n%s", debugHTML)
 			t.Fatalf("Upload flow failed: %v", err)
 		}
 
-		// Verify the success message
-		var successText string
-		err = chromedp.Run(ctx,
-			chromedp.TextContent(`ins`, &successText, chromedp.ByQuery),
-		)
-		if err != nil {
-			t.Fatalf("Failed to read success message: %v", err)
-		}
-		if !strings.Contains(successText, "Upload complete") {
-			t.Errorf("Expected 'Upload complete' in success message, got: %q", successText)
-		}
-
-		// Verify the avatar image appeared (server moved the file and set AvatarURL)
-		err = chromedp.Run(ctx,
-			e2etest.WaitFor(`document.querySelector('img[alt="Avatar"]') !== null`, 5*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("Avatar image did not appear after upload: %v", err)
-		}
-
-		// Verify the progress bar shows 100%
-		var progressVal string
-		err = chromedp.Run(ctx,
-			chromedp.AttributeValue(`progress`, "value", &progressVal, nil, chromedp.ByQuery),
-		)
-		if err != nil {
-			t.Fatalf("Failed to read progress bar value: %v", err)
-		}
-		if progressVal != "100" {
-			t.Errorf("Expected progress value 100, got: %s", progressVal)
-		}
-
-		t.Log("Upload complete, success message shown, avatar image rendered, progress at 100%")
+		t.Log("✅ Tier 1 file upload: avatar image rendered after form submission")
 	})
 
 	t.Run("WebSocket Connection", func(t *testing.T) {

@@ -44,16 +44,7 @@ func (c *ProfileController) UpdateProfile(state ProfileState, ctx *livetemplate.
 	return state, nil
 }
 
-// UploadAvatarComplete handles the "upload_avatar_complete" action.
-// Auto-triggered when avatar upload completes.
-func (c *ProfileController) UploadAvatarComplete(state ProfileState, ctx *livetemplate.Context) (ProfileState, error) {
-	log.Printf("DEBUG: Processing auto-triggered upload")
-	return c.processAvatarUpload(state, ctx)
-}
-
 // processAvatarUpload handles avatar upload processing
-// Called either automatically when upload completes (upload_avatar_complete action)
-// or during explicit form submission (UpdateProfile action)
 func (c *ProfileController) processAvatarUpload(state ProfileState, ctx *livetemplate.Context) (ProfileState, error) {
 	// Get completed uploads from Context
 	uploads := ctx.GetCompletedUploads("avatar")
@@ -133,8 +124,6 @@ func main() {
 			Accept:      []string{"image/jpeg", "image/png", "image/gif"},
 			MaxFileSize: 5 * 1024 * 1024, // 5MB
 			MaxEntries:  1,                // Single file
-			AutoUpload:  false,            // Upload on form submit
-			ChunkSize:   256 * 1024,       // 256KB chunks
 		}),
 	))
 
@@ -161,11 +150,8 @@ func main() {
 
 	// Start server
 	addr := ":" + port
-	log.Printf("🚀 Avatar upload example running at http://localhost%s", addr)
-	log.Printf("📸 Upload an avatar to see the upload feature in action!")
-	log.Printf("📁 Uploaded files will be saved to ./uploads/")
-	log.Printf("✨ Upload processing happens automatically when upload completes")
-	log.Printf("   (via upload_avatar_complete action) or during form submission")
+	log.Printf("Avatar upload example running at http://localhost%s", addr)
+	log.Printf("Uploaded files will be saved to ./uploads/")
 
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal(err)
