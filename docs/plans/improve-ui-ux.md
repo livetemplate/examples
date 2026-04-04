@@ -115,7 +115,7 @@ Apply to ALL 10 templates:
 - Replace `.stats` div → `<small>` element (Pico handles the styling)
 - Replace `.input-form` grid → `<fieldset role="group">` (compact input+button on one line)
 - Replace `.empty-state` → `<small>` 
-- Keep message container `.messages` CSS (genuine Tier 2 need for scrollable area with `lvt-scroll`)
+- Keep message container `.messages` CSS (genuine Tier 2 need for scrollable area with `lvt-fx:scroll`)
 - Keep `.message` styles but minimize — use Pico variables
 - Remove `body { padding: 1rem; }` — Pico's container handles this
 - Wrap in `<article>` for consistent card structure
