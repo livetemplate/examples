@@ -27,9 +27,9 @@ These apply to ALL examples:
 
 ---
 
-## Phase 1: Create Shared CSS (`livetemplate.css`)
+## Phase 1: Use Shared CSS (`livetemplate.css`)
 
-Create `../client/livetemplate.css` (relative to examples root) with reusable utilities:
+Use `../client/livetemplate.css` (relative to examples root) with reusable utilities:
 
 ```css
 /* Narrow container for focused, single-purpose apps */
@@ -70,7 +70,7 @@ Create `../client/livetemplate.css` (relative to examples root) with reusable ut
 - `.visually-hidden` → accessible hidden labels
 - `.inline` → forms embedded in table cells/toolbars without extra margin
 
-All examples will link this via `<link rel="stylesheet" href="/livetemplate.css">` and the Go server will serve it.
+All examples will link this via npm.
 
 ---
 
@@ -81,8 +81,8 @@ Apply to ALL 10 templates:
 1. **Add `lang="en"`** to `<html>` where missing (6 templates)
 2. **Add `<meta name="color-scheme" content="light dark">`** to all `<head>` blocks
 3. **Remove `data-theme="light"`** from todos template
-4. **Link shared CSS**: `<link rel="stylesheet" href="/livetemplate.css">` in all templates
-5. **Serve shared CSS**: Add `http.Handle("/livetemplate.css", ...)` in each example's main.go (or via the testing framework)
+4. **Link shared CSS**: `<link rel="stylesheet" href="/livetemplate.css">` in all templates. In production use npmjs cdn css
+5. **Serve shared CSS**: Add `http.Handle("/livetemplate.css", ...)` in each example's main.go (or via the testing framework). In production use npmjs cdn css.
 6. **Standardize `<title>`**: Use `App Name — LiveTemplate` pattern
 7. **Use `<hgroup>`** for title + subtitle combinations consistently
 
@@ -197,7 +197,7 @@ Apply to ALL 10 templates:
 ### 4b. All examples — serve shared CSS
 - Each example's main.go serves `/livetemplate.css` at runtime via `http.ServeFile` pointing to `../client/livetemplate.css`
 - Templates link it with `<link rel="stylesheet" href="/livetemplate.css">`
-- For production/CDN, the CSS would be published alongside the client JS package
+- For production/CDN, the CSS would be published alongside the client JS package. In production use npmjs cdn css.
 
 ---
 
@@ -222,7 +222,7 @@ Add new sections:
     <meta name="color-scheme" content="light dark">
     <title>App Name — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="/livetemplate.css">
+    <link rel="stylesheet" href="/livetemplate.css"> #In production use npmjs cdn css using devmode
 </head>
 ```
 
