@@ -6,7 +6,7 @@ The examples lack visual polish and consistency. Content stretches too wide, but
 
 ## Approach
 
-1. Create a shared `livetemplate.css` with visual utilities (narrow container, compact buttons, visually-hidden)
+1. Use livetemplate/client/livetemplate.css to create common visual utilities (narrow container, compact buttons, visually-hidden)
 2. Apply visual improvements to every template: narrow focused layout, compact action buttons, single-row toolbars, breathing space
 3. Clean up code hygiene: remove inline styles/JS, fix accessibility
 4. Update CLAUDE.md with established visual and coding standards
