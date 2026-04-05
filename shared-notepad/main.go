@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
@@ -37,13 +38,21 @@ func (c *NotepadController) Mount(state NotepadState, ctx *livetemplate.Context)
 
 func (c *NotepadController) Save(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
 	state.Content = ctx.GetString("content")
-	state.CharCount = len([]rune(state.Content))
+	state.CharCount = utf8.RuneCountInString(state.Content)
 	state.SavedAt = time.Now().Format("15:04:05")
 
 	c.mu.Lock()
 	c.notes[ctx.UserID()] = state
 	c.mu.Unlock()
 
+	return state, nil
+}
+
+func (c *NotepadController) Change(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
+	if ctx.Has("content") {
+		state.Content = ctx.GetString("content")
+		state.CharCount = utf8.RuneCountInString(state.Content)
+	}
 	return state, nil
 }
 
@@ -85,6 +94,9 @@ func main() {
 
 	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	http.HandleFunc("/livetemplate.css", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "../../client/livetemplate.css")
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {

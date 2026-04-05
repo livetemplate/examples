@@ -27,9 +27,13 @@ All examples follow the **progressive complexity** model introduced in livetempl
 | `lvt-upload` | Chunked file uploads | Avatar upload |
 | `lvt-mod:debounce` | Custom timing control | Search with custom delay |
 | `lvt-on:keydown` | Keyboard shortcuts | Global key bindings |
-| `lvt-fx:animate` | Entry/exit animations | Toast notifications |
+| `lvt-on:change` | Checkbox/input change without inline JS | Todo toggle |
+| `lvt-fx:animate` | Entry/exit animations | Toast notifications, todo rows |
+| `lvt-fx:highlight` | Visual flash on change | Toggled todo rows |
+| `lvt-el:setAttr:on:{action}:pending` | Loading state during round-trip | Submit button |
 | `lvt-form:preserve` | Preserve form state across re-renders | Shared notepad |
 | `lvt-form:no-intercept` | Skip WebSocket, use real HTTP POST | Login/logout forms |
+| `data-lvt-target` | Cross-element targeting for lvt-el: methods | Modal open/close |
 
 ### Action Resolution Order
 
@@ -81,6 +85,56 @@ Use framework-native solutions instead of custom JavaScript. Common patterns:
 - `input type="search"` has a browser-native clear button; the framework handles the `search` event automatically (no custom JS needed)
 - The `Change()` method auto-wires input/change/search events on named form fields with 300ms debounce
 - Use `hidden` HTML attribute for visibility toggling (not `style="display:none"`)
+
+## CSP Compliance
+
+All templates must be compatible with `Content-Security-Policy: script-src 'self'`:
+
+- NEVER use inline event handlers (`onchange`, `oninput`, `onclick`, etc.)
+- NEVER use `<style>` blocks in templates — all CSS in `livetemplate.css`
+- NEVER use inline `<script>` blocks (except the conditional client library loader)
+- NEVER use inline `style` attributes (except `<ins>`/`<del>` block pattern)
+- Use `lvt-on:{event}` attributes instead of inline JS event handlers
+- Use `Change()` method for reactive input handling
+
+## Shared CSS
+
+All examples link `livetemplate.css` for shared utilities:
+- Served at `/livetemplate.css` (dev) or CDN (production)
+- Contains: narrow container (640px), `.compact` buttons, `.visually-hidden`, `.inline` forms, `.messages`/`.message` for chat-style UIs
+- Do NOT add example-specific CSS to livetemplate.css — only reusable patterns
+
+## HTML Boilerplate
+
+Every template must use this boilerplate:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>App Name — LiveTemplate</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
+</head>
+```
+
+## Visual Layout
+
+- Wrap content in `<main class="container">` (640px via shared CSS)
+- Use `<article>` as primary card container
+- Use `<hgroup>` for title + subtitle
+- Group related controls: `<fieldset role="group">` or `<div class="grid">`
+- Inline forms in tables: `class="inline"`
+- Compact action buttons: `class="compact secondary"` or `class="compact contrast outline"`
+- Empty states: `<p><small>Message</small></p>`
+- Completed items: `<s>` element (not CSS classes)
 
 ## CSS
 

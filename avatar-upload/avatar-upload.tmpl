@@ -3,15 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avatar Upload Example - LiveTemplate</title>
+    <meta name="color-scheme" content="light dark">
+    <title>Avatar Upload — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
 </head>
 <body>
     <main class="container">
         <article>
             <header>
-                <h1>Profile Settings</h1>
-                <small>Upload your avatar and update your profile</small>
+                <hgroup>
+                    <h1>Profile Settings</h1>
+                    <p>Upload your avatar and update your profile</p>
+                </hgroup>
             </header>
 
             <blockquote>
@@ -67,7 +75,7 @@
             </form>
 
             <footer>
-                <small>Powered by <a href="https://github.com/livetemplate/livetemplate" target="_blank">LiveTemplate v0.3.0</a></small>
+                <small>Powered by <a href="https://github.com/livetemplate/livetemplate" target="_blank">LiveTemplate</a></small>
             </footer>
         </article>
     </main>

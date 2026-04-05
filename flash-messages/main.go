@@ -144,6 +144,9 @@ func main() {
 
 	// Serve client library (development only - use CDN in production)
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	http.HandleFunc("/livetemplate.css", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "../../client/livetemplate.css")
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {

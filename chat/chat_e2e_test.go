@@ -122,7 +122,7 @@ func TestChatE2E(t *testing.T) {
 
 		err := chromedp.Run(browserCtx,
 			// Capture initial state
-			chromedp.Text(".stats", &initialStatsText, chromedp.ByQuery),
+			chromedp.Text("hgroup p", &initialStatsText, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('form[name="join"]') !== null`, &initialFormVisible),
 
 			// Fill and submit join form
@@ -131,7 +131,7 @@ func TestChatE2E(t *testing.T) {
 			waitFor(`document.querySelector('.messages') !== null`, 5*time.Second),
 
 			// Capture after-join state
-			chromedp.Text(".stats", &afterStatsText, chromedp.ByQuery),
+			chromedp.Text("hgroup p", &afterStatsText, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('.messages') !== null`, &afterChatVisible),
 			chromedp.Evaluate(`document.querySelector('form[name="join"]') !== null`, &afterFormVisible),
 		)
@@ -219,7 +219,7 @@ func TestChatE2E(t *testing.T) {
 			}),
 			chromedp.Evaluate(`document.querySelectorAll('.messages .message').length`, &msg1Count),
 			chromedp.OuterHTML(`.messages`, &after1HTML, chromedp.ByQuery),
-			chromedp.Evaluate(`Array.from(document.querySelectorAll('.message-text')).map(el => el.textContent).join('|')`, &msg1Text),
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('.message p')).map(el => el.textContent).join('|')`, &msg1Text),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				t.Logf("After 1st: count=%d, text=%q", msg1Count, msg1Text)
@@ -240,7 +240,7 @@ func TestChatE2E(t *testing.T) {
 			}),
 			chromedp.Evaluate(`document.querySelectorAll('.messages .message').length`, &msg2Count),
 			chromedp.OuterHTML(`.messages`, &after2HTML, chromedp.ByQuery),
-			chromedp.Evaluate(`Array.from(document.querySelectorAll('.message-text')).map(el => el.textContent).join('|')`, &msg2Text),
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('.message p')).map(el => el.textContent).join('|')`, &msg2Text),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				t.Logf("After 2nd: count=%d, text=%q", msg2Count, msg2Text)
@@ -261,7 +261,7 @@ func TestChatE2E(t *testing.T) {
 			}),
 			chromedp.Evaluate(`document.querySelectorAll('.messages .message').length`, &msg3Count),
 			chromedp.OuterHTML(`.messages`, &after3HTML, chromedp.ByQuery),
-			chromedp.Evaluate(`Array.from(document.querySelectorAll('.message-text')).map(el => el.textContent).join('|')`, &msg3Text),
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('.message p')).map(el => el.textContent).join('|')`, &msg3Text),
 		)
 
 		if err != nil {

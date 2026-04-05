@@ -1,40 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{.Title}}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Flash Messages — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
 </head>
 <body>
     <main class="container">
-        <h1>{{.Title}}</h1>
-
-        <!-- Flash Messages Section -->
-        {{.lvt.FlashTag "success"}}
-        {{.lvt.FlashTag "error"}}
-        {{.lvt.FlashTag "warning"}}
-        {{.lvt.FlashTag "info"}}
-
-        <!-- Add Item Form -->
-        <form method="POST" name="addItem">
-            <input type="text"
-                   name="item"
-                   placeholder="Enter item name"
-                   {{.lvt.AriaInvalid "item"}} />
-            <button type="submit" name="addItem" {{.lvt.AriaDisabled "item"}}>Add Item</button>
-            {{.lvt.ErrorTag "item"}}
-        </form>
-
-        <!-- Action Buttons -->
-        <div class="grid">
-            <button name="clearItems" class="secondary">Clear All</button>
-            <button name="simulateError" class="contrast">Simulate Error</button>
-        </div>
-
-        <!-- Items List -->
         <article>
-            <h3>Items ({{.ItemCount}})</h3>
+            <header>
+                <hgroup>
+                    <h1>{{.Title}}</h1>
+                    <p>Flash notification patterns for LiveTemplate</p>
+                </hgroup>
+            </header>
+
+            {{.lvt.FlashTag "success"}}
+            {{.lvt.FlashTag "error"}}
+            {{.lvt.FlashTag "warning"}}
+            {{.lvt.FlashTag "info"}}
+
+            <form method="POST" name="addItem">
+                <fieldset role="group">
+                    <input type="text"
+                           name="item"
+                           placeholder="Enter item name"
+                           {{.lvt.AriaInvalid "item"}}>
+                    <button type="submit" name="addItem" {{.lvt.AriaDisabled "item"}}>Add Item</button>
+                </fieldset>
+                {{.lvt.ErrorTag "item"}}
+            </form>
+
+            <fieldset role="group">
+                <button name="clearItems" class="secondary">Clear All</button>
+                <button name="simulateError" class="contrast">Simulate Error</button>
+            </fieldset>
+        </article>
+
+        <article>
+            <header>
+                <strong>Items ({{.ItemCount}})</strong>
+            </header>
             {{if .Items}}
             <table>
                 <tbody>
@@ -42,9 +55,9 @@
                 <tr>
                     <td>{{.}}</td>
                     <td>
-                        <form method="POST" name="removeItem">
+                        <form method="POST" name="removeItem" class="inline">
                             <input type="hidden" name="item" value="{{.}}">
-                            <button type="submit" name="removeItem" class="secondary outline">Remove</button>
+                            <button type="submit" name="removeItem" class="compact secondary outline">Remove</button>
                         </form>
                     </td>
                 </tr>
@@ -52,13 +65,12 @@
                 </tbody>
             </table>
             {{else}}
-            <small>No items. Add some above!</small>
+            <p><small>No items. Add some above!</small></p>
             {{end}}
         </article>
 
-        <!-- Info Box -->
-        <blockquote>
-            <strong>About Flash Messages:</strong>
+        <details>
+            <summary>About Flash Messages</summary>
             <ul>
                 <li>Flash messages show once and clear after each action</li>
                 <li>They don't affect <code>ResponseMetadata.Success</code></li>
@@ -67,7 +79,7 @@
                 <li>Render via: <code>.lvt.FlashTag "success"</code> (recommended)</li>
                 <li>Or manually: <code>.lvt.HasFlash "key"</code>, <code>.lvt.Flash "key"</code></li>
             </ul>
-        </blockquote>
+        </details>
     </main>
 
     {{if .lvt.DevMode}}
