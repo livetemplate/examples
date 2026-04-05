@@ -16,6 +16,7 @@ All examples follow the **progressive complexity** model introduced in livetempl
 | Hidden data | `<input type="hidden" name="id" value="...">` | `ctx.GetString("id")` |
 | Auto-submit | `<form method="POST">` (no name) | `Submit()` method |
 | Live updates | Controller with `Change()` method | Auto-wired 300ms debounce |
+| Form auto-reset | Forms reset after successful submission | Use `lvt-form:preserve` to retain values |
 | Validation | `required`, `minlength`, `pattern` | `ctx.ValidateForm()` |
 
 ### Tier 2 Constructs (use sparingly)

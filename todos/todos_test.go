@@ -138,8 +138,8 @@ func TestTodosE2E(t *testing.T) {
 		if !strings.Contains(initialHTML, "Todo App") {
 			t.Error("Page title not found")
 		}
-		if !strings.Contains(initialHTML, "Statistics") {
-			t.Error("Statistics section not found")
+		if !strings.Contains(initialHTML, "Total:") {
+			t.Error("Stats not found in header")
 		}
 		// Check for either empty state or table structure
 		hasEmptyState := strings.Contains(initialHTML, "No tasks")
