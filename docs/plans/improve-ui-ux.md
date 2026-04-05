@@ -19,8 +19,8 @@ Run `go get -u` in each example's `go.mod` and update CDN script tags to pin the
 
 | # | Task | Status | Depends On |
 |---|------|--------|------------|
-| 1 | Extend `livetemplate.css` with semantic utilities + chat styles | ⬜ | — |
-| 2 | Publish CSS in client `package.json` files array | ⬜ | 1 |
+| 1 | Extend `livetemplate.css` with semantic utilities + chat styles | ✅ | — |
+| 2 | Publish CSS in client `package.json` files array | ✅ | 1 |
 | 3 | Todos template: CSP fix, layout, showcase lvt-* features | ⬜ | 1 |
 | 4 | Todos Go code: simplify toggle, serve CSS | ⬜ | 3 |
 | 5 | Fix all other templates (universal + per-example) | ⬜ | 1 |
