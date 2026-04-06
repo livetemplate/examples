@@ -96,8 +96,8 @@ github.com/livetemplate/livetemplate v0.8.16 h1:HHqFyMpPTE46tWIB1Jg18fICP+HdtOnQ
 github.com/livetemplate/livetemplate v0.8.16/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
 github.com/livetemplate/lvt v0.1.3-0.20260406005551-0a27e82771e5 h1:ytEAuajVysPiKMKL6UhT7mB6UHZCfgi/2jyps7WFqqQ=
 github.com/livetemplate/lvt v0.1.3-0.20260406005551-0a27e82771e5/go.mod h1:17cFl500ntymD3gx8h+ZODnVnTictHgG8Wmz/By75sU=
-github.com/livetemplate/lvt/components v0.1.1 h1:C8/g3KW5X9kGicaLBRh0vN2Vzr6ddgjM9Po8M4peAtk=
-github.com/livetemplate/lvt/components v0.1.1/go.mod h1:G9PElN3LRf8xoRtoxbOAcTkV/4FhrCE/Laczkz5bfL4=
+github.com/livetemplate/lvt/components v0.1.2 h1:MM2M5IZnsUAu0py9ZbtcQCo0bvUrL4Z3Ly/yDkYNyag=
+github.com/livetemplate/lvt/components v0.1.2/go.mod h1:G9PElN3LRf8xoRtoxbOAcTkV/4FhrCE/Laczkz5bfL4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
 github.com/magiconair/properties v1.8.10 h1:s31yESBquKXCV9a/ScB3ESkOjUYYv+X0rg8SYxI99mE=

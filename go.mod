@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/livetemplate/livetemplate v0.8.16
 	github.com/livetemplate/lvt v0.1.3-0.20260406005551-0a27e82771e5
-	github.com/livetemplate/lvt/components v0.1.1
+	github.com/livetemplate/lvt/components v0.1.2
 	modernc.org/sqlite v1.43.0
 )
 
