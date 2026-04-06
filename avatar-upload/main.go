@@ -144,9 +144,7 @@ func main() {
 
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", lvttest.ServeClientLibrary)
-	http.HandleFunc("/livetemplate.css", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "../../client/livetemplate.css")
-	})
+	http.HandleFunc("/livetemplate.css", lvttest.ServeCSS)
 
 	// Mount the LiveTemplate handler
 	http.Handle("/", handler)

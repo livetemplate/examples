@@ -93,9 +93,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/", liveHandler)
 	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
-	mux.HandleFunc("/livetemplate.css", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "../../client/livetemplate.css")
-	})
+	mux.HandleFunc("/livetemplate.css", e2etest.ServeCSS)
 
 	port := os.Getenv("PORT")
 	if port == "" {
