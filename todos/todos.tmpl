@@ -40,10 +40,10 @@
 
 {{ define "sort-select" }}
   <div>
-    <label for="sort_by">Sort by:</label>
+    <label for="sort_by" class="visually-hidden">Sort by</label>
     <select name="sort_by" id="sort_by">
       <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
-        Newest First
+        Sort: Newest First
       </option>
       <option
         value="alphabetical"
