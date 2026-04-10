@@ -2,6 +2,20 @@
 
 Example applications demonstrating LiveTemplate usage with various features and patterns.
 
+## Showcase: Todo App
+
+The todo app demonstrates LiveTemplate's core features in ~150 lines of Go + ~80 lines of HTML:
+
+- **Real-time sync** — open two tabs as the same user; changes appear instantly via `Sync()`
+- **Standard HTML forms** — `<form method="POST" name="add">` routes to `Add()` with zero configuration
+- **Live search & sort** — `Change()` auto-wires input events with 300ms debounce
+- **Validation** — `ErrorTag`, `AriaInvalid`, `AriaDisabled` template helpers
+- **Components** — modal confirmation dialogs and toast notifications
+- **Entry animations** — `lvt-fx:animate="fade"` on new rows
+- **Loading states** — `lvt-el:setAttr:on:add:pending="aria-busy:true"` for visual feedback
+- **Dark mode** — automatic via `<meta name="color-scheme" content="light dark">`
+- **Progressive enhancement** — standard form actions use HTTP POST fallback; live search/sort and other reactive interactions are enhanced by JavaScript
+
 ## Progressive Complexity
 
 All examples follow the [progressive complexity](https://github.com/livetemplate/livetemplate/blob/main/docs/guides/progressive-complexity.md) model. Tier 1 (standard HTML) is preferred; Tier 2 (`lvt-*` attributes) is used only when necessary.
@@ -10,7 +24,7 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 |---------|------|-------------|--------------------|
 | `counter/` | 1 | Counter with logging + graceful shutdown | None |
 | `chat/` | 1+2 | Real-time multi-user chat | `lvt-fx:scroll` |
-| `todos/` | 1+2 | Full CRUD with SQLite, auth, modal + toast components | Component-internal |
+| `todos/` | 1+2 | Full CRUD with SQLite, auth, modal + toast components | `lvt-on:change`, `lvt-fx:animate`, `lvt-fx:highlight`, `lvt-el:setAttr` |
 | `flash-messages/` | 1 | Flash notification patterns | None |
 | `avatar-upload/` | 1+2 | File upload with progress | `lvt-upload` |
 | `progressive-enhancement/` | 1 | Works with/without JS | None |

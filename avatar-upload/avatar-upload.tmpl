@@ -3,30 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avatar Upload Example - LiveTemplate</title>
+    <meta name="color-scheme" content="light dark">
+    <title>Avatar Upload — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
 </head>
 <body>
     <main class="container">
         <article>
             <header>
-                <h1>Profile Settings</h1>
-                <small>Upload your avatar and update your profile</small>
+                <hgroup>
+                    <h1>Profile Settings</h1>
+                    <p>Upload your avatar and update your profile</p>
+                </hgroup>
             </header>
 
             <blockquote>
                 Accepted: JPEG, PNG, GIF — Max size: 5MB — Click "Save Profile" to upload
             </blockquote>
 
-            <div>
-                {{if .AvatarURL}}
-                    <img src="{{.AvatarURL}}" alt="Avatar">
-                {{else}}
-                    <mark>{{slice .Name 0 1}}</mark>
-                {{end}}
-            </div>
+            {{.lvt.FlashTag "success"}}
 
-            <form method="POST" name="updateProfile" enctype="multipart/form-data">
+            {{if .AvatarURL}}
+            <div>
+                <img src="{{.AvatarURL}}" alt="Avatar">
+            </div>
+            {{end}}
+
+            <form method="POST" name="updateProfile" enctype="multipart/form-data" lvt-form:preserve>
                 <label for="name">
                     Name
                     <input type="text" id="name" name="name" value="{{.Name}}" required>
@@ -67,7 +75,7 @@
             </form>
 
             <footer>
-                <small>Powered by <a href="https://github.com/livetemplate/livetemplate" target="_blank">LiveTemplate v0.3.0</a></small>
+                <small>Powered by <a href="https://github.com/livetemplate/livetemplate" target="_blank">LiveTemplate</a></small>
             </footer>
         </article>
     </main>

@@ -114,6 +114,38 @@ func TestSharedNotepadE2E(t *testing.T) {
 		}
 	})
 
+	t.Run("UI_Standards", func(t *testing.T) {
+		var violations string
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const v = [];
+				['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+					document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+				});
+				document.querySelectorAll('[style]').forEach(el => {
+					if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+						v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+				});
+				if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+				if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+				const c = document.querySelector('.container');
+				if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+				return v.join('; ');
+			})()`, &violations),
+		)
+		if err != nil {
+			t.Fatalf("UI standards check failed: %v", err)
+		}
+		if violations != "" {
+			t.Errorf("UI standard violations: %s", violations)
+		}
+		var cssStatus int
+		chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+		if cssStatus != 200 {
+			t.Logf("Warning: Shared CSS not loading: status=%d (may not be available in CI)", cssStatus)
+		}
+	})
+
 	t.Run("TypeSaveAndRefresh", func(t *testing.T) {
 		// Type in textarea
 		err := chromedp.Run(ctx,
@@ -138,10 +170,21 @@ func TestSharedNotepadE2E(t *testing.T) {
 			t.Fatalf("Typed text not in textarea: %q", beforeSave)
 		}
 
-		// Click Save
+		// Verify character count updated
+		var charCountText string
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`document.querySelector('button[name="save"]').click()`, nil),
-			chromedp.Sleep(1*time.Second),
+			chromedp.TextContent(`#charcount`, &charCountText, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Logf("Warning: could not read charcount: %v", err)
+		} else if !strings.Contains(charCountText, "characters") {
+			t.Errorf("Char count should contain 'characters', got %q", charCountText)
+		}
+
+		// Click Save and wait for timestamp to appear (indicates save completed)
+		err = chromedp.Run(ctx,
+			chromedp.Click(`button[name="save"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('charcount').textContent.includes('saved at')`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to save: %v", err)
@@ -158,6 +201,17 @@ func TestSharedNotepadE2E(t *testing.T) {
 		t.Logf("After save: %q", afterSave)
 		if afterSave == "" {
 			t.Fatal("BUG: Textarea wiped after save")
+		}
+
+		// Verify timestamp appeared after save
+		var charCountAfterSave string
+		err = chromedp.Run(ctx,
+			chromedp.TextContent(`#charcount`, &charCountAfterSave, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Logf("Warning: could not read charcount after save: %v", err)
+		} else if !strings.Contains(charCountAfterSave, "saved at") {
+			t.Errorf("After save, charcount should contain 'saved at', got %q", charCountAfterSave)
 		}
 
 		// Log server state before refresh

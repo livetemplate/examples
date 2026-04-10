@@ -40,6 +40,7 @@ func (c *ProfileController) UpdateProfile(state ProfileState, ctx *livetemplate.
 		}
 	}
 
+	ctx.SetFlash("success", "Profile updated")
 	log.Printf("Profile updated: name=%s, email=%s", state.Name, state.Email)
 	return state, nil
 }
@@ -144,6 +145,7 @@ func main() {
 
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", lvttest.ServeClientLibrary)
+	http.HandleFunc("/livetemplate.css", lvttest.ServeCSS)
 
 	// Mount the LiveTemplate handler
 	http.Handle("/", handler)

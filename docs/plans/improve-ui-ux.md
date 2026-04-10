@@ -21,15 +21,15 @@ Run `go get -u` in each example's `go.mod` and update CDN script tags to pin the
 |---|------|--------|------------|
 | 1 | Extend `livetemplate.css` with semantic utilities + chat styles | ✅ | — |
 | 2 | Publish CSS in client `package.json` files array | ✅ | 1 |
-| 3 | Todos template: CSP fix, layout, showcase lvt-* features | ⬜ | 1 |
-| 4 | Todos Go code: simplify toggle, serve CSS | ⬜ | 3 |
-| 5 | Fix all other templates (universal + per-example) | ⬜ | 1 |
-| 6 | Go controller changes (notepad Change(), CSS serving) | ⬜ | 5 |
-| 7 | Update CLAUDE.md with new constraints | ⬜ | 3, 5 |
-| 8 | Update README with showcase section | ⬜ | 3 |
-| 9 | Run `./test-all.sh`, fix breakage | ⬜ | all above |
+| 3 | Todos template: CSP fix, layout, showcase lvt-* features | ✅ | 1 |
+| 4 | Todos Go code: simplify toggle, serve CSS | ✅ | 3 |
+| 5 | Fix all other templates (universal + per-example) | ✅ | 1 |
+| 6 | Go controller changes (notepad Change(), CSS serving) | ✅ | 5 |
+| 7 | Update CLAUDE.md with new constraints | ✅ | 3, 5 |
+| 8 | Update README with showcase section | ✅ | 3 |
+| 9 | Run `./test-all.sh`, fix breakage | ✅ | all above |
 | 10 | Record two-tab demo GIF | ⬜ | 9 |
-| 11 | Clean up stale binaries (todos-components, todos-progressive, profile-progressive) | ⬜ | — |
+| 11 | Clean up stale binaries (todos-components, todos-progressive, profile-progressive) | ✅ (already absent) | — |
 
 ---
 
@@ -217,10 +217,7 @@ The entire form wrapper, hidden input, and hidden button are eliminated. The `da
 
 These demonstrate LiveTemplate's key capabilities with minimal code:
 
-1. **Form reset on success** — clears input after adding a todo:
-   ```html
-   <form method="POST" name="add" lvt-el:reset:on:add:success>
-   ```
+1. ~~**Form reset on success**~~ — NOT NEEDED: forms auto-reset after successful submission (Tier 1 behavior). Use `lvt-form:preserve` to opt out.
 
 2. **Entry animations** — new todo rows fade in:
    ```html
@@ -259,13 +256,12 @@ The final template should demonstrate these features in this Tier breakdown:
 
 **Tier 2 (lvt-* attributes, used sparingly):**
 - `lvt-on:change="toggle"` — checkbox toggle without inline JS (CSP fix)
-- `lvt-el:reset:on:add:success` — form auto-clear on success
 - `lvt-fx:animate="fade"` — entry animation on new rows
 - `lvt-fx:highlight="flash"` — visual feedback on toggled rows
 - `lvt-el:setAttr:on:add:pending="aria-busy:true"` — loading state on Add button
 - `lvt-el:setAttr:on:add:done="aria-busy:false"` — clear loading state
 
-This is 6 lvt attributes total, each solving a real interaction problem that standard HTML cannot express.
+This is 5 lvt attributes total, each solving a real interaction problem that standard HTML cannot express.
 
 ### 2f. New in v0.8.19: `data-lvt-target` for cross-element targeting
 

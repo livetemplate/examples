@@ -90,6 +90,38 @@ func TestAvatarUploadE2E(t *testing.T) {
 		t.Log("✅ Initial page load verified")
 	})
 
+	t.Run("UI_Standards", func(t *testing.T) {
+		var violations string
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const v = [];
+				['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+					document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+				});
+				document.querySelectorAll('[style]').forEach(el => {
+					if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+						v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+				});
+				if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+				if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+				const c = document.querySelector('.container');
+				if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+				return v.join('; ');
+			})()`, &violations),
+		)
+		if err != nil {
+			t.Fatalf("UI standards check failed: %v", err)
+		}
+		if violations != "" {
+			t.Errorf("UI standard violations: %s", violations)
+		}
+		var cssStatus int
+		chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+		if cssStatus != 200 {
+			t.Logf("Warning: Shared CSS not loading: status=%d (may not be available in CI)", cssStatus)
+		}
+	})
+
 	t.Run("Upload Avatar and Verify", func(t *testing.T) {
 		// Tier 1 file upload: create a File object in JavaScript, set it on the
 		// input, and submit the form. The client detects the file input and sends
@@ -125,7 +157,7 @@ func TestAvatarUploadE2E(t *testing.T) {
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 
 			// Wait for the avatar image to appear
-			e2etest.WaitFor(`document.querySelector('img[alt="Avatar"]') !== null`, 15*time.Second),
+			e2etest.WaitFor(`document.querySelector('img[alt^="Avatar"]') !== null`, 15*time.Second),
 		)
 		if err != nil {
 			var debugHTML string
@@ -134,7 +166,23 @@ func TestAvatarUploadE2E(t *testing.T) {
 			t.Fatalf("Upload flow failed: %v", err)
 		}
 
-		t.Log("✅ Tier 1 file upload: avatar image rendered after form submission")
+		// Verify Name and Email fields retained their values after upload
+		var nameVal, emailVal string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.getElementById('name').value`, &nameVal),
+			chromedp.Evaluate(`document.getElementById('email').value`, &emailVal),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read form fields after upload: %v", err)
+		}
+		if nameVal != "John Doe" {
+			t.Errorf("Name field should retain value after upload, got %q", nameVal)
+		}
+		if emailVal != "john@example.com" {
+			t.Errorf("Email field should retain value after upload, got %q", emailVal)
+		}
+
+		t.Log("✅ Tier 1 file upload: avatar image rendered, form fields retained")
 	})
 
 	t.Run("WebSocket Connection", func(t *testing.T) {
@@ -329,8 +377,8 @@ func TestUploadViaWebSocket(t *testing.T) {
 					t.Logf("✅ Tree has %d root keys", len(treeMap))
 
 					// Check if upload entries are in the tree and have Done=true
-					// Position 3 should be the upload-preview div content
-					if uploadPreview, ok := treeMap["3"]; ok {
+					// Position 4 is the upload-preview div content (after flash tag, avatar img, name, email)
+					if uploadPreview, ok := treeMap["4"]; ok {
 						t.Logf("📦 Upload preview section found in tree: %T", uploadPreview)
 						// uploadPreview is an array containing the range operation
 						if outerArray, ok := uploadPreview.([]interface{}); ok && len(outerArray) > 0 {
@@ -390,7 +438,7 @@ func TestUploadViaWebSocket(t *testing.T) {
 							t.Logf("Upload preview is not a []interface{} or is empty: %+v", uploadPreview)
 						}
 					} else {
-						t.Error("❌ Upload preview section (position 3) not in tree update!")
+						t.Error("❌ Upload preview section (position 4) not in tree update!")
 					}
 				}
 			}

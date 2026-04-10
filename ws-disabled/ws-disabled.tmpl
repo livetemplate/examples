@@ -1,21 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{.Title}}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Bookmarks — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
 </head>
 <body>
     <main class="container">
-        <h1>{{.Title}}</h1>
-        <p><small>WebSocket is disabled. The client library uses HTTP fetch for all actions
-        and applies tree-based DOM updates without page reloads.</small></p>
-
-        {{.lvt.FlashTag "success"}}
-        {{.lvt.FlashTag "error"}}
-
         <article>
+            <header>
+                <hgroup>
+                    <h1>{{.Title}}</h1>
+                    <p>WebSocket is disabled — the client uses HTTP fetch for all actions</p>
+                </hgroup>
+            </header>
+
+            {{.lvt.FlashTag "success"}}
+            {{.lvt.FlashTag "error"}}
+
             <form method="POST" name="add">
                 <div class="grid">
                     <label>
@@ -40,20 +49,26 @@
                 <strong>Bookmarks ({{.Count}})</strong>
             </header>
             {{if not .Bookmarks}}
-            <p style="text-align:center;">No bookmarks yet. Add one above!</p>
+            <p><small>No bookmarks yet. Add one above!</small></p>
             {{else}}
-            {{range .Bookmarks}}
-            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.5rem;">
-                <span style="flex:1;">
-                    <a href="{{.URL}}" target="_blank" rel="noopener">{{.Label}}</a>
-                    <small> — {{.URL}}</small>
-                </span>
-                <form method="POST" name="delete" style="margin:0;">
-                    <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" name="delete" class="contrast outline" style="margin:0; padding:0.25rem 0.5rem;">&#10005;</button>
-                </form>
-            </div>
-            {{end}}
+            <table>
+                <tbody>
+                {{range .Bookmarks}}
+                <tr>
+                    <td>
+                        <a href="{{.URL}}" target="_blank" rel="noopener">{{.Label}}</a>
+                        <small> — {{.URL}}</small>
+                    </td>
+                    <td>
+                        <form method="POST" name="delete" class="inline">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <button type="submit" name="delete" class="compact contrast outline">&#10005;</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
             {{end}}
         </article>
     </main>

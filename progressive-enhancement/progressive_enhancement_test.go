@@ -31,6 +31,7 @@ func setupServer(t *testing.T) *httptest.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	mux.HandleFunc("/livetemplate.css", e2etest.ServeCSS)
 
 	return httptest.NewServer(mux)
 }
@@ -80,6 +81,83 @@ func TestProgressiveEnhancement_WithJS(t *testing.T) {
 	if !strings.Contains(initialHTML, `name="add"`) {
 		t.Error("Expected button with name='add' in form")
 	}
+}
+
+// TestProgressiveEnhancement_UIStandards checks CSP compliance, shared CSS, and layout standards
+func TestProgressiveEnhancement_UIStandards(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, timeoutCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer timeoutCancel()
+
+	var violations string
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL),
+		chromedp.WaitReady("body"),
+		chromedp.Evaluate(`(() => {
+			const v = [];
+			['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+				document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+			});
+			document.querySelectorAll('[style]').forEach(el => {
+				if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+					v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+			});
+			if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+			if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+			const c = document.querySelector('.container');
+			if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+			return v.join('; ');
+		})()`, &violations),
+	)
+	if err != nil {
+		t.Fatalf("UI standards check failed: %v", err)
+	}
+	if violations != "" {
+		t.Errorf("UI standard violations: %s", violations)
+	}
+	var cssStatus int
+	chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+	if cssStatus != 200 {
+		t.Logf("Warning: Shared CSS not loading: status=%d (may not be available in CI)", cssStatus)
+	}
+	if err := chromedp.Run(ctx, e2etest.ValidatePicoCSS()); err != nil {
+		t.Errorf("Pico CSS check failed: %v", err)
+	}
+}
+
+// TestProgressiveEnhancement_VisualCheck uses LLM vision to check for visual UI issues.
+func TestProgressiveEnhancement_VisualCheck(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, timeoutCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer timeoutCancel()
+
+	if err := chromedp.Run(ctx, chromedp.Navigate(server.URL), chromedp.WaitReady("body")); err != nil {
+		t.Fatalf("Failed to load page: %v", err)
+	}
+
+	e2etest.ValidateScreenshotWithLLM(t, ctx, "Progressive Enhancement Todo List — form with input+button, todo table below")
 }
 
 // TestProgressiveEnhancement_JSFormSubmission tests that JS mode intercepts forms and updates DOM
@@ -154,7 +232,7 @@ func TestProgressiveEnhancement_JSFormSubmission(t *testing.T) {
 	// Count initial todos
 	var initialTodoCount int
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialTodoCount),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &initialTodoCount),
 	)
 	if err != nil {
 		t.Fatalf("Failed to count initial todos: %v", err)
@@ -192,7 +270,7 @@ func TestProgressiveEnhancement_JSFormSubmission(t *testing.T) {
 	// Count todos after submission
 	var finalTodoCount int
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &finalTodoCount),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &finalTodoCount),
 	)
 	if err != nil {
 		t.Fatalf("Failed to count final todos: %v", err)
@@ -524,7 +602,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 		chromedp.Navigate(server.URL),
 		chromedp.WaitReady(`body`, chromedp.ByQuery),
 		e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &initialCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 1 (navigate) error: %v", err)
@@ -535,10 +613,10 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 	expectedAfterAdd := initialCount + 1
 	err = chromedp.Run(ctx,
 		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
-		chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+		chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 		// Wait for DOM to update with new item
-		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterAdd), 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterAddCount),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('table tbody tr').length === %d`, expectedAfterAdd), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterAddCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 2 (add) error: %v", err)
@@ -550,54 +628,71 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 		t.Errorf("Add failed: expected %d todos, got %d", expectedAfterAdd, afterAddCount)
 	}
 
+	// Verify flash message appeared after add
+	var flashText string
+	chromedp.Run(ctx,
+		chromedp.Evaluate(`(() => {
+			const el = document.querySelector('[data-flash="success"]') || document.querySelector('output[role="status"]');
+			return el ? el.textContent.trim() : '';
+		})()`, &flashText),
+	)
+	if flashText == "" {
+		t.Log("Note: No flash message found after add (may be cleared)")
+	} else {
+		t.Logf("Flash after add: %q", flashText)
+		if !strings.Contains(strings.ToLower(flashText), "added") {
+			t.Errorf("Flash message should contain 'added', got %q", flashText)
+		}
+	}
+
 	// Step 3: Toggle the last todo (mark as complete)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to appear
-		e2etest.WaitFor(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClass),
+		e2etest.WaitFor(`document.querySelector('table tbody tr:last-child').querySelector('s') !== null`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterToggleCount),
+		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClass),
 	)
 	if err != nil {
 		t.Fatalf("Step 3 (toggle) error: %v", err)
 	}
-	t.Logf("After toggle count: %d, has completed class: %v", afterToggleCount, hasCompletedClass)
+	t.Logf("After toggle count: %d, has strikethrough: %v", afterToggleCount, hasCompletedClass)
 
-	// Verify toggle worked - count should stay the same, but item should now have .completed class
+	// Verify toggle worked - count should stay the same, but item should now have strikethrough
 	if afterToggleCount != afterAddCount {
 		t.Errorf("Toggle changed item count: expected %d, got %d", afterAddCount, afterToggleCount)
 	}
 	if !hasCompletedClass {
-		t.Errorf("Toggle failed: item should have .completed class after toggle")
+		t.Errorf("Toggle failed: item should have strikethrough after toggle")
 	}
 
 	// Step 4: Toggle again (mark as incomplete)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to be removed
-		e2etest.WaitFor(`!document.querySelector('.todo-item:last-child').classList.contains('completed')`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterUntoggleCount),
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClassAfterUntoggle),
+		e2etest.WaitFor(`document.querySelector('table tbody tr:last-child').querySelector('s') === null`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterUntoggleCount),
+		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClassAfterUntoggle),
 	)
 	if err != nil {
 		t.Fatalf("Step 4 (untoggle) error: %v", err)
 	}
-	t.Logf("After untoggle count: %d, has completed class: %v", afterUntoggleCount, hasCompletedClassAfterUntoggle)
+	t.Logf("After untoggle count: %d, has strikethrough: %v", afterUntoggleCount, hasCompletedClassAfterUntoggle)
 
-	// Verify untoggle worked - count should stay the same, item should NOT have .completed class
+	// Verify untoggle worked - count should stay the same, item should NOT have strikethrough
 	if afterUntoggleCount != afterAddCount {
 		t.Errorf("Untoggle changed item count: expected %d, got %d", afterAddCount, afterUntoggleCount)
 	}
 	if hasCompletedClassAfterUntoggle {
-		t.Errorf("Untoggle failed: item should NOT have .completed class after second toggle")
+		t.Errorf("Untoggle failed: item should NOT have strikethrough after second toggle")
 	}
 
 	// Step 5: Delete the last todo (the one we just added)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="delete"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="delete"]`, chromedp.ByQuery),
 		// Wait for DOM to update with deleted item
-		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, initialCount), 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('table tbody tr').length === %d`, initialCount), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterDeleteCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 5 (delete) error: %v", err)
@@ -641,7 +736,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 		chromedp.Navigate(server.URL),
 		chromedp.WaitReady(`body`, chromedp.ByQuery),
 		e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &initialCount),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &initialCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 1 (navigate) error: %v", err)
@@ -655,10 +750,10 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	// Step 2: Delete the FIRST todo
 	expectedAfterDelete := initialCount - 1
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:first-child button[name="delete"]').click()`, nil),
+		chromedp.Click(`table tbody tr:first-child button[name="delete"]`, chromedp.ByQuery),
 		// Wait for DOM to update with deleted item
-		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('.todo-item').length === %d`, expectedAfterDelete), 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterDeleteCount),
+		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('table tbody tr').length === %d`, expectedAfterDelete), 5*time.Second),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterDeleteCount),
 	)
 	if err != nil {
 		t.Fatalf("Step 2 (delete) error: %v", err)
@@ -671,33 +766,33 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	}
 
 	// Step 3: Toggle the LAST remaining todo (different item than what we deleted)
-	// Check if it has completed class before toggle
+	// Check if it has strikethrough before toggle
 	var hasCompletedClassBefore bool
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClassBefore),
+		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClassBefore),
 	)
 	if err != nil {
 		t.Fatalf("Step 3 (check before toggle) error: %v", err)
 	}
-	t.Logf("Last item has completed class before toggle: %v", hasCompletedClassBefore)
+	t.Logf("Last item has strikethrough before toggle: %v", hasCompletedClassBefore)
 
 	// Build the wait condition based on whether we expect completed class or not
-	toggleWaitCondition := `document.querySelector('.todo-item:last-child').classList.contains('completed')`
+	toggleWaitCondition := `document.querySelector('table tbody tr:last-child').querySelector('s') !== null`
 	if hasCompletedClassBefore {
-		toggleWaitCondition = `!document.querySelector('.todo-item:last-child').classList.contains('completed')`
+		toggleWaitCondition = `document.querySelector('table tbody tr:last-child').querySelector('s') === null`
 	}
 
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to change
 		e2etest.WaitFor(toggleWaitCondition, 5*time.Second),
-		chromedp.Evaluate(`document.querySelectorAll('.todo-item').length`, &afterToggleCount),
-		chromedp.Evaluate(`document.querySelector('.todo-item:last-child').classList.contains('completed')`, &hasCompletedClass),
+		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterToggleCount),
+		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child').querySelector('s') !== null`, &hasCompletedClass),
 	)
 	if err != nil {
 		t.Fatalf("Step 3 (toggle) error: %v", err)
 	}
-	t.Logf("After toggle count: %d, has completed class: %v", afterToggleCount, hasCompletedClass)
+	t.Logf("After toggle count: %d, has strikethrough: %v", afterToggleCount, hasCompletedClass)
 
 	// Verify toggle worked - count should stay the same
 	if afterToggleCount != afterDeleteCount {
@@ -706,7 +801,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 
 	// Verify the completed class changed
 	if hasCompletedClass == hasCompletedClassBefore {
-		t.Errorf("Toggle failed: completed class should have changed from %v to %v", hasCompletedClassBefore, !hasCompletedClassBefore)
+		t.Errorf("Toggle failed: strikethrough should have changed from %v to %v", hasCompletedClassBefore, !hasCompletedClassBefore)
 	}
 
 	t.Log("SUCCESS: Toggle works correctly after deleting a different item")

@@ -13,21 +13,16 @@
         aria-required="true"
         {{.lvt.AriaInvalid "text"}}
       />
-      <button type="submit" name="add" {{.lvt.AriaDisabled "text"}}>Add</button>
+      <button
+        type="submit"
+        name="add"
+        lvt-el:setAttr:on:add:pending="aria-busy:true"
+        lvt-el:setAttr:on:add:done="aria-busy:false"
+        {{.lvt.AriaDisabled "text"}}
+      >Add</button>
     </fieldset>
     {{.lvt.ErrorTag "text"}}
   </form>
-{{ end }}
-
-{{ define "stats" }}
-  <!-- Statistics -->
-  <p>
-    <small>
-      Total: <strong>{{ .TotalCount }}</strong> • Completed:
-      <strong>{{ .CompletedCount }}</strong> • Remaining:
-      <strong>{{ .RemainingCount }}</strong>
-    </small>
-  </p>
 {{ end }}
 
 {{ define "search-form" }}
@@ -45,10 +40,10 @@
 
 {{ define "sort-select" }}
   <div>
-    <label for="sort_by">Sort by:</label>
+    <label for="sort_by" class="visually-hidden">Sort by</label>
     <select name="sort_by" id="sort_by">
       <option value="" {{ if eq .SortBy "" }}selected{{ end }}>
-        Newest First
+        Sort: Newest First
       </option>
       <option
         value="alphabetical"
@@ -73,29 +68,26 @@
 {{ end }}
 
 {{ define "todo-item" }}
-  <tr data-key="{{ .ID }}">
+  <tr data-key="{{ .ID }}" lvt-fx:animate="fade" lvt-fx:highlight="flash">
     <td>
-      <form method="POST" name="toggle">
-        <input type="hidden" name="id" value="{{ .ID }}" />
-        <input
-          type="checkbox"
-          {{ if .Completed }}checked{{ end }}
-          onchange="this.form.requestSubmit()"
-          aria-label="Toggle completion"
-        />
-        <button type="submit" name="toggle" hidden>Toggle</button>
-      </form>
+      <input
+        type="checkbox"
+        {{ if .Completed }}checked{{ end }}
+        lvt-on:change="toggle"
+        data-id="{{ .ID }}"
+        aria-label="Toggle completion"
+      />
     </td>
     <td>
       {{ if .Completed }}<s>{{ .Text }}</s>{{ else }}{{ .Text }}{{ end }}
     </td>
     <td>
-      <form method="POST" name="confirmDelete">
+      <form method="POST" name="confirmDelete" class="inline">
         <input type="hidden" name="id" value="{{ .ID }}" />
         <button
           type="submit"
           name="confirmDelete"
-          class="secondary"
+          class="compact secondary outline"
           aria-label="Delete this todo"
         >
           Delete
@@ -119,7 +111,7 @@
             name="prevPage"
             data-disabled="{{- if .PrevDisabled -}}true{{- else -}}false{{- end -}}"
             {{ if .PrevDisabled }}disabled aria-disabled="true"{{ end }}
-            class="secondary"
+            class="compact secondary"
             aria-label="Go to previous page"
           >
             Previous
@@ -136,7 +128,7 @@
             name="nextPage"
             data-disabled="{{- if .NextDisabled -}}true{{- else -}}false{{- end -}}"
             {{ if .NextDisabled }}disabled aria-disabled="true"{{ end }}
-            class="secondary"
+            class="compact secondary"
             aria-label="Go to next page"
           >
             Next
@@ -151,36 +143,30 @@
 
 
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ .Title }} - LiveTemplate with Pico CSS</title>
+    <meta name="color-scheme" content="light dark" />
+    <title>Todo App — LiveTemplate</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
     />
-    <style>
-      /* Visually hidden but accessible to screen readers */
-      .visually-hidden {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-      }
-    </style>
+    {{ if .lvt.DevMode }}
+    <link rel="stylesheet" href="/livetemplate.css" />
+    {{ else }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css" />
+    {{ end }}
   </head>
   <body>
     <main class="container">
       <article>
         <header>
-          <h1>{{ .Title }}</h1>
-          <p>A simple todo app with real-time updates</p>
+          <hgroup>
+            <h1>{{ .Title }}</h1>
+            <p>Total: <strong>{{ .TotalCount }}</strong> · Completed: <strong>{{ .CompletedCount }}</strong> · Remaining: <strong>{{ .RemainingCount }}</strong></p>
+          </hgroup>
           {{ if .Username }}
             <p>
               <small>Logged in as: <strong>{{ .Username }}</strong></small>
@@ -191,14 +177,11 @@
         {{/* Add Todo Form */}}
         {{ template "add-form" . }}
 
-        {{/* Statistics */}}
-        {{ template "stats" . }}
-
-        {{/* Search */}}
-        {{ template "search-form" . }}
-
-        {{/* Sort */}}
-        {{ template "sort-select" . }}
+        {{/* Search + Sort */}}
+        <div class="grid">
+          {{ template "search-form" . }}
+          {{ template "sort-select" . }}
+        </div>
 
         {{/* Todo List */}}
         <section>
@@ -226,7 +209,7 @@
 
           {{ if gt .CompletedCount 0 }}
             <form method="POST">
-              <button type="submit" name="clearCompleted" class="secondary">
+              <button type="submit" name="clearCompleted" class="compact secondary outline">
                 Clear Completed ({{ .CompletedCount }})
               </button>
             </form>

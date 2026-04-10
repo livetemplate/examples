@@ -15,8 +15,8 @@ import (
 type PreviewController struct{}
 
 type PreviewState struct {
-	Name    string `json:"name"`
-	Preview string `json:"preview"`
+	Name    string `json:"name" lvt:"persist"`
+	Preview string `json:"preview" lvt:"persist"`
 }
 
 func preview(name string) string {
@@ -57,6 +57,7 @@ func main() {
 	tmpl := livetemplate.Must(livetemplate.New("preview", opts...))
 	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 	http.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	http.HandleFunc("/livetemplate.css", e2etest.ServeCSS)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Example - LiveTemplate</title>
+    <meta name="color-scheme" content="light dark">
+    <title>Login — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
 </head>
 <body>
     <main class="container">
         {{if .IsLoggedIn}}
-        <!-- Dashboard View -->
         <article>
             <h1>Dashboard</h1>
             {{if .ServerMessage}}
@@ -22,17 +27,14 @@
                 <small>Logged in at: {{.LoginTime.Format "15:04:05"}}</small>
                 {{end}}
             </section>
-            <!-- HTTP logout — lvt-form:no-intercept forces real HTTP POST for cookie deletion -->
             <form method="POST" lvt-form:no-intercept>
-                <button type="submit" name="logout" class="contrast">Logout</button>
+                <button type="submit" name="logout" class="compact contrast">Logout</button>
             </form>
         </article>
         {{else}}
-        <!-- Login View -->
         <article>
             <h1>Login</h1>
             {{.lvt.FlashTag "error"}}
-            <!-- HTTP login — lvt-form:no-intercept forces real HTTP POST for cookie + redirect -->
             <form method="POST" lvt-form:no-intercept>
                 <label for="username">Username
                     <input type="text" id="username" name="username" placeholder="Enter username" required {{.lvt.AriaInvalid "username"}}>

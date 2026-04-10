@@ -16,6 +16,7 @@ All examples follow the **progressive complexity** model introduced in livetempl
 | Hidden data | `<input type="hidden" name="id" value="...">` | `ctx.GetString("id")` |
 | Auto-submit | `<form method="POST">` (no name) | `Submit()` method |
 | Live updates | Controller with `Change()` method | Auto-wired 300ms debounce |
+| Form auto-reset | Forms reset after successful submission | Use `lvt-form:preserve` to retain values |
 | Validation | `required`, `minlength`, `pattern` | `ctx.ValidateForm()` |
 
 ### Tier 2 Constructs (use sparingly)
@@ -26,9 +27,13 @@ All examples follow the **progressive complexity** model introduced in livetempl
 | `lvt-upload` | Chunked file uploads | Avatar upload |
 | `lvt-mod:debounce` | Custom timing control | Search with custom delay |
 | `lvt-on:keydown` | Keyboard shortcuts | Global key bindings |
-| `lvt-fx:animate` | Entry/exit animations | Toast notifications |
+| `lvt-on:change` | Checkbox/input change without inline JS | Todo toggle |
+| `lvt-fx:animate` | Entry/exit animations | Toast notifications, todo rows |
+| `lvt-fx:highlight` | Visual flash on change | Toggled todo rows |
+| `lvt-el:setAttr:on:{action}:pending` | Loading state during round-trip | Submit button |
 | `lvt-form:preserve` | Preserve form state across re-renders | Shared notepad |
 | `lvt-form:no-intercept` | Skip WebSocket, use real HTTP POST | Login/logout forms |
+| `data-lvt-target` | Cross-element targeting for lvt-el: methods | Modal open/close |
 
 ### Action Resolution Order
 
@@ -52,9 +57,27 @@ When a form is submitted, the framework resolves the action in this order:
 
 - All examples must have chromedp E2E tests
 - Use `e2etest.StartDockerChrome()` for browser testing
-- For WebSocket CRUD verification, use `window.liveTemplateClient.send({action: '...', data: {...}})` directly
 - HTTP POST tests should use button name encoding: `"add=&field=value"`
 - Run `./test-all.sh` to verify all examples pass
+
+### E2E Test Requirements
+
+Every E2E test must follow these rules. When generating tests for a new example, use this as a checklist.
+
+**1. Exercise every controller method.** Look at the controller's exported methods (e.g., `Add()`, `Delete()`, `Toggle()`, `Reset()`). Every method must be called in at least one E2E subtest. If a button or form triggers it, the test must trigger it.
+
+**2. Assert full page state after each mutation, not just the changed element.** After adding item B, assert both A and B exist. After deleting B, assert A still exists and B is gone. After upload, assert form field values were retained. The goal is to catch cases where a mutation silently corrupts unrelated state.
+
+**3. Use real browser interactions, not WebSocket API bypass.** Use `chromedp.SendKeys` + `chromedp.Click` to submit forms. Do NOT use `window.liveTemplateClient.send()` for primary CRUD flows — that skips client-side form interception, event handling, and field clearing. Reserve `liveTemplateClient.send()` only for targeted WebSocket protocol tests.
+
+**4. Verify form field state after mutations.** After a form submit, assert that input fields were cleared (if the form resets) or retained (if it uses `lvt-form:preserve`). Use `chromedp.Value()` or `chromedp.Evaluate` to read `input.value`. Common patterns:
+   - After add: input should be empty (form auto-reset)
+   - After upload: non-file fields should retain their values
+   - After save: textarea should retain content (with `lvt-form:preserve`)
+
+**5. Use condition-based waits, not `chromedp.Sleep`.** Use `e2etest.WaitFor(jsCondition, timeout)`, `e2etest.WaitForText(selector, text, timeout)`, or `e2etest.WaitForCount(selector, n, timeout)` instead of `chromedp.Sleep`. Sleep-based waits are flaky in CI and hide timing bugs.
+
+**6. Test error/validation paths.** If the controller can return an error (invalid input, failed validation), test it. Assert the error message text appears in the DOM — don't just log it or skip it.
 
 ### Dependencies
 
@@ -80,6 +103,56 @@ Use framework-native solutions instead of custom JavaScript. Common patterns:
 - `input type="search"` has a browser-native clear button; the framework handles the `search` event automatically (no custom JS needed)
 - The `Change()` method auto-wires input/change/search events on named form fields with 300ms debounce
 - Use `hidden` HTML attribute for visibility toggling (not `style="display:none"`)
+
+## CSP Compliance
+
+All templates must be compatible with `Content-Security-Policy: script-src 'self'`:
+
+- NEVER use inline event handlers (`onchange`, `oninput`, `onclick`, etc.)
+- NEVER use `<style>` blocks in templates — all CSS in `livetemplate.css`
+- NEVER use inline `<script>` blocks (except the conditional client library loader)
+- NEVER use inline `style` attributes (except `<ins>`/`<del>` block pattern)
+- Use `lvt-on:{event}` attributes instead of inline JS event handlers
+- Use `Change()` method for reactive input handling
+
+## Shared CSS
+
+All examples link `livetemplate.css` for shared utilities:
+- Served at `/livetemplate.css` (dev) or CDN (production)
+- Contains: narrow container (640px), `.compact` buttons, `.visually-hidden`, `.inline` forms, `.messages`/`.message` for chat-style UIs
+- Do NOT add example-specific CSS to livetemplate.css — only reusable patterns
+
+## HTML Boilerplate
+
+Every template must use this boilerplate:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>App Name — LiveTemplate</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
+</head>
+```
+
+## Visual Layout
+
+- Wrap content in `<main class="container">` (640px via shared CSS)
+- Use `<article>` as primary card container
+- Use `<hgroup>` for title + subtitle
+- Group related controls: `<fieldset role="group">` or `<div class="grid">`
+- Inline forms in tables: `class="inline"`
+- Compact action buttons: `class="compact secondary"` or `class="compact contrast outline"`
+- Empty states: `<p><small>Message</small></p>`
+- Completed items: `<s>` element (not CSS classes)
 
 ## CSS
 

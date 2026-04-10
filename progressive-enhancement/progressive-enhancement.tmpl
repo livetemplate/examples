@@ -1,100 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>{{.Title}}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Progressive Enhancement — LiveTemplate</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <style>
-        /* JS/no-JS mode indicator visibility */
-        .js-mode { display: none; }
-
-        /* Completed todo item */
-        .completed { text-decoration: line-through; opacity: 0.6; }
-
-        /* Empty state centering */
-        .empty-state { text-align: center; }
-
-        /* Todo item layout */
-        .todo-item { display: flex; align-items: center; gap: var(--pico-spacing); }
-        .todo-item form { margin: 0; }
-        .todo-title { flex: 1; }
-    </style>
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
 </head>
 <body>
     <main class="container">
-        <h1>{{.Title}}</h1>
-        <p><small>This app works with or without JavaScript enabled</small></p>
-
-        <!-- Mode indicator (no-JS version shown by default) -->
-        <noscript>
-            <mark>
-                <strong>No JavaScript Mode:</strong> Using traditional HTTP form submissions with page reloads.
-                Each action reloads the page to show updates.
-            </mark>
-        </noscript>
-        <mark class="js-mode" id="mode-indicator">
-            <strong>JavaScript Mode:</strong> Using WebSocket for instant updates without page reloads.
-            Actions update the page in real-time.
-        </mark>
-
-        <!-- Flash messages -->
-        {{.lvt.FlashTag "success"}}
-        {{.lvt.FlashTag "error"}}
-
-        <!-- Add todo form -->
-        <!-- Works with JS: client intercepts form and routes via WebSocket/fetch -->
-        <!-- Works without JS: method="POST" triggers HTTP form submission -->
         <article>
+            <header>
+                <hgroup>
+                    <h1>{{.Title}}</h1>
+                    <p>This app works with or without JavaScript enabled</p>
+                </hgroup>
+            </header>
+
+            <noscript>
+                <mark>
+                    <strong>No JavaScript Mode:</strong> Using traditional HTTP form submissions with page reloads.
+                    Each action reloads the page to show updates.
+                </mark>
+            </noscript>
+
+            {{if .lvt.HasFlash "success"}}
+            <ins style="display:block;text-decoration:none">{{.lvt.Flash "success"}}</ins>
+            {{end}}
+            {{if .lvt.HasFlash "error"}}
+            <del style="display:block;text-decoration:none">{{.lvt.Flash "error"}}</del>
+            {{end}}
+
             <form method="POST" name="add">
-                <input
-                    type="text"
-                    name="title"
-                    value="{{.InputTitle}}"
-                    placeholder="What needs to be done?"
-                    {{.lvt.AriaInvalid "title"}}
-                    autofocus
-                >
+                <fieldset role="group">
+                    <input
+                        type="text"
+                        name="title"
+                        value="{{.InputTitle}}"
+                        placeholder="What needs to be done?"
+                        {{.lvt.AriaInvalid "title"}}
+                        autofocus
+                    >
+                    <button type="submit" name="add" {{.lvt.AriaDisabled "title"}}>Add</button>
+                </fieldset>
                 {{.lvt.ErrorTag "title"}}
-                <button type="submit" name="add" {{.lvt.AriaDisabled "title"}}>Add Todo</button>
             </form>
         </article>
 
-        <!-- Todo list -->
         <article>
             {{if not .Items}}
-            <div class="empty-state">
-                <p>No todos yet. Add one above!</p>
-            </div>
+            <p><small>No todos yet. Add one above!</small></p>
             {{else}}
-            {{range .Items}}
-            {{/* No explicit data-key needed - library auto-generates content-based keys */}}
-            <div class="todo-item{{if .Completed}} completed{{end}}">
-                <!-- Toggle form -->
-                <form method="POST" name="toggle">
-                    <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" name="toggle" class="secondary outline" title="Toggle completed">
-                        {{if .Completed}}&#10003;{{else}}&#9675;{{end}}
-                    </button>
-                </form>
-                <span class="todo-title">{{.Title}}</span>
-                <small>{{.CreatedAt}}</small>
-                <!-- Delete form -->
-                <form method="POST" name="delete">
-                    <input type="hidden" name="id" value="{{.ID}}">
-                    <button type="submit" name="delete" class="contrast outline" title="Delete">&#10005;</button>
-                </form>
-            </div>
-            {{end}}
+            <table>
+                <tbody>
+                {{range .Items}}
+                <tr>
+                    <td>
+                        <form method="POST" name="toggle" class="inline">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <button type="submit" name="toggle" class="compact secondary outline">
+                                {{if .Completed}}&#10003;{{else}}&#9675;{{end}}
+                            </button>
+                        </form>
+                    </td>
+                    <td>
+                        {{if .Completed}}<s>{{.Title}}</s>{{else}}{{.Title}}{{end}}
+                    </td>
+                    <td>
+                        <small>{{.CreatedAt}}</small>
+                    </td>
+                    <td>
+                        <form method="POST" name="delete" class="inline">
+                            <input type="hidden" name="id" value="{{.ID}}">
+                            <button type="submit" name="delete" class="compact contrast outline">&#10005;</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
             {{end}}
         </article>
     </main>
-
-    <!-- JavaScript for mode detection and client library -->
-    <script>
-        // Show JS mode indicator
-        document.getElementById('mode-indicator').style.display = 'block';
-    </script>
 
     {{if .lvt.DevMode}}
     <script src="/livetemplate-client.js"></script>
