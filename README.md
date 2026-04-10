@@ -12,9 +12,9 @@ The todo app demonstrates LiveTemplate's core features in ~150 lines of Go + ~80
 - **Validation** — `ErrorTag`, `AriaInvalid`, `AriaDisabled` template helpers
 - **Components** — modal confirmation dialogs and toast notifications
 - **Entry animations** — `lvt-fx:animate="fade"` on new rows
-- **Loading states** — `lvt-el:setAttr:on:pending="aria-busy:true"` for visual feedback
+- **Loading states** — `lvt-el:setAttr:on:add:pending="aria-busy:true"` for visual feedback
 - **Dark mode** — automatic via `<meta name="color-scheme" content="light dark">`
-- **Progressive enhancement** — works without JavaScript via HTTP POST fallback
+- **Progressive enhancement** — standard form actions use HTTP POST fallback; live search/sort and other reactive interactions are enhanced by JavaScript
 
 ## Progressive Complexity
 
