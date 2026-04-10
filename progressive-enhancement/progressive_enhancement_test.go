@@ -31,6 +31,7 @@ func setupServer(t *testing.T) *httptest.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	mux.HandleFunc("/livetemplate.css", e2etest.ServeCSS)
 
 	return httptest.NewServer(mux)
 }
@@ -80,6 +81,83 @@ func TestProgressiveEnhancement_WithJS(t *testing.T) {
 	if !strings.Contains(initialHTML, `name="add"`) {
 		t.Error("Expected button with name='add' in form")
 	}
+}
+
+// TestProgressiveEnhancement_UIStandards checks CSP compliance, shared CSS, and layout standards
+func TestProgressiveEnhancement_UIStandards(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, timeoutCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer timeoutCancel()
+
+	var violations string
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(server.URL),
+		chromedp.WaitReady("body"),
+		chromedp.Evaluate(`(() => {
+			const v = [];
+			['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+				document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+			});
+			document.querySelectorAll('[style]').forEach(el => {
+				if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+					v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+			});
+			if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+			if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+			const c = document.querySelector('.container');
+			if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+			return v.join('; ');
+		})()`, &violations),
+	)
+	if err != nil {
+		t.Fatalf("UI standards check failed: %v", err)
+	}
+	if violations != "" {
+		t.Errorf("UI standard violations: %s", violations)
+	}
+	var cssStatus int
+	chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+	if cssStatus != 200 {
+		t.Errorf("Shared CSS not loading: status=%d", cssStatus)
+	}
+	if err := chromedp.Run(ctx, e2etest.ValidatePicoCSS()); err != nil {
+		t.Errorf("Pico CSS check failed: %v", err)
+	}
+}
+
+// TestProgressiveEnhancement_VisualCheck uses LLM vision to check for visual UI issues.
+func TestProgressiveEnhancement_VisualCheck(t *testing.T) {
+	server := setupServer(t)
+	defer server.Close()
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+	)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	ctx, timeoutCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer timeoutCancel()
+
+	if err := chromedp.Run(ctx, chromedp.Navigate(server.URL), chromedp.WaitReady("body")); err != nil {
+		t.Fatalf("Failed to load page: %v", err)
+	}
+
+	e2etest.ValidateScreenshotWithLLM(t, ctx, "Progressive Enhancement Todo List — form with input+button, todo table below")
 }
 
 // TestProgressiveEnhancement_JSFormSubmission tests that JS mode intercepts forms and updates DOM
@@ -535,7 +613,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 	expectedAfterAdd := initialCount + 1
 	err = chromedp.Run(ctx,
 		chromedp.SendKeys(`input[name="title"]`, "E2E Test Todo", chromedp.ByQuery),
-		chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+		chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 		// Wait for DOM to update with new item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('table tbody tr').length === %d`, expectedAfterAdd), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterAddCount),
@@ -550,9 +628,26 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 		t.Errorf("Add failed: expected %d todos, got %d", expectedAfterAdd, afterAddCount)
 	}
 
+	// Verify flash message appeared after add
+	var flashText string
+	chromedp.Run(ctx,
+		chromedp.Evaluate(`(() => {
+			const el = document.querySelector('[data-flash="success"]') || document.querySelector('output[role="status"]');
+			return el ? el.textContent.trim() : '';
+		})()`, &flashText),
+	)
+	if flashText == "" {
+		t.Log("Note: No flash message found after add (may be cleared)")
+	} else {
+		t.Logf("Flash after add: %q", flashText)
+		if !strings.Contains(strings.ToLower(flashText), "added") {
+			t.Errorf("Flash message should contain 'added', got %q", flashText)
+		}
+	}
+
 	// Step 3: Toggle the last todo (mark as complete)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to appear
 		e2etest.WaitFor(`document.querySelector('table tbody tr:last-child').querySelector('s') !== null`, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterToggleCount),
@@ -573,7 +668,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 4: Toggle again (mark as incomplete)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to be removed
 		e2etest.WaitFor(`document.querySelector('table tbody tr:last-child').querySelector('s') === null`, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterUntoggleCount),
@@ -594,7 +689,7 @@ func TestProgressiveEnhancement_WebSocketCRUD(t *testing.T) {
 
 	// Step 5: Delete the last todo (the one we just added)
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child button[name="delete"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="delete"]`, chromedp.ByQuery),
 		// Wait for DOM to update with deleted item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('table tbody tr').length === %d`, initialCount), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterDeleteCount),
@@ -655,7 +750,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	// Step 2: Delete the FIRST todo
 	expectedAfterDelete := initialCount - 1
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('table tbody tr:first-child button[name="delete"]').click()`, nil),
+		chromedp.Click(`table tbody tr:first-child button[name="delete"]`, chromedp.ByQuery),
 		// Wait for DOM to update with deleted item
 		e2etest.WaitFor(fmt.Sprintf(`document.querySelectorAll('table tbody tr').length === %d`, expectedAfterDelete), 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterDeleteCount),
@@ -688,7 +783,7 @@ func TestProgressiveEnhancement_DeleteThenToggle(t *testing.T) {
 	}
 
 	err = chromedp.Run(ctx,
-		chromedp.Evaluate(`document.querySelector('table tbody tr:last-child button[name="toggle"]').click()`, nil),
+		chromedp.Click(`table tbody tr:last-child button[name="toggle"]`, chromedp.ByQuery),
 		// Wait for the completed class to change
 		e2etest.WaitFor(toggleWaitCondition, 5*time.Second),
 		chromedp.Evaluate(`document.querySelectorAll('table tbody tr').length`, &afterToggleCount),

@@ -15,8 +15,8 @@ import (
 type PreviewController struct{}
 
 type PreviewState struct {
-	Name    string `json:"name"`
-	Preview string `json:"preview"`
+	Name    string `json:"name" lvt:"persist"`
+	Preview string `json:"preview" lvt:"persist"`
 }
 
 func preview(name string) string {

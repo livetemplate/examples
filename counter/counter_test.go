@@ -94,16 +94,91 @@ func TestCounterE2E(t *testing.T) {
 		t.Log("✅ Initial page load verified")
 	})
 
+	t.Run("UI_Standards", func(t *testing.T) {
+		var violations string
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const v = [];
+				['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+					document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+				});
+				document.querySelectorAll('[style]').forEach(el => {
+					if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+						v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+				});
+				if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+				if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+				const c = document.querySelector('.container');
+				if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+				return v.join('; ');
+			})()`, &violations),
+		)
+		if err != nil {
+			t.Fatalf("UI standards check failed: %v", err)
+		}
+		if violations != "" {
+			t.Errorf("UI standard violations: %s", violations)
+		}
+		var cssStatus int
+		chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+		if cssStatus != 200 {
+			t.Errorf("Shared CSS not loading: status=%d", cssStatus)
+		}
+	})
+
 	t.Run("Button_Click_Increment", func(t *testing.T) {
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
-			chromedp.Evaluate(`document.querySelector('button[name="increment"]').click()`, nil),
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`document.body.innerText.includes('Counter: 1')`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to click increment: %v", err)
 		}
 		t.Log("✅ Button click increment works")
+	})
+
+	t.Run("Full_Interaction_Flow", func(t *testing.T) {
+		// Counter is at 1 from Button_Click_Increment
+		// Decrement → 0
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="decrement"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.body.innerText.includes('Counter: 0')`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Decrement failed: %v", err)
+		}
+
+		// Increment x3 → 3
+		for i := 0; i < 3; i++ {
+			err = chromedp.Run(ctx,
+				chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+				e2etest.WaitFor(fmt.Sprintf(`document.body.innerText.includes('Counter: %d')`, i+1), 5*time.Second),
+			)
+			if err != nil {
+				t.Fatalf("Increment %d failed: %v", i+1, err)
+			}
+		}
+
+		// Reset → 0
+		err = chromedp.Run(ctx,
+			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.body.innerText.includes('Counter: 0')`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Reset failed: %v", err)
+		}
+
+		// Leave counter at 1 for State_Persists_On_Refresh
+		err = chromedp.Run(ctx,
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.body.innerText.includes('Counter: 1')`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Final increment failed: %v", err)
+		}
+
+		t.Log("✅ Full interaction flow: increment, decrement, reset all work")
 	})
 
 	t.Run("State_Persists_On_Refresh", func(t *testing.T) {

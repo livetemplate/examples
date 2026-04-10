@@ -40,6 +40,7 @@ func (c *ProfileController) UpdateProfile(state ProfileState, ctx *livetemplate.
 		}
 	}
 
+	ctx.SetFlash("success", "Profile updated")
 	log.Printf("Profile updated: name=%s, email=%s", state.Name, state.Email)
 	return state, nil
 }

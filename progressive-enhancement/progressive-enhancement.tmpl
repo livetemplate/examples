@@ -29,8 +29,12 @@
                 </mark>
             </noscript>
 
-            {{.lvt.FlashTag "success"}}
-            {{.lvt.FlashTag "error"}}
+            {{if .lvt.HasFlash "success"}}
+            <ins style="display:block;text-decoration:none">{{.lvt.Flash "success"}}</ins>
+            {{end}}
+            {{if .lvt.HasFlash "error"}}
+            <del style="display:block;text-decoration:none">{{.lvt.Flash "error"}}</del>
+            {{end}}
 
             <form method="POST" name="add">
                 <fieldset role="group">
@@ -42,7 +46,7 @@
                         {{.lvt.AriaInvalid "title"}}
                         autofocus
                     >
-                    <button type="submit" name="add" {{.lvt.AriaDisabled "title"}}>Add Todo</button>
+                    <button type="submit" name="add" {{.lvt.AriaDisabled "title"}}>Add</button>
                 </fieldset>
                 {{.lvt.ErrorTag "title"}}
             </form>

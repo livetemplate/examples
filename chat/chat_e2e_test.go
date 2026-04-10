@@ -113,6 +113,38 @@ func TestChatE2E(t *testing.T) {
 		t.Logf("✅ Initial page loaded correctly")
 	})
 
+	t.Run("UI_Standards", func(t *testing.T) {
+		var violations string
+		err := chromedp.Run(browserCtx,
+			chromedp.Evaluate(`(() => {
+				const v = [];
+				['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+					document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+				});
+				document.querySelectorAll('[style]').forEach(el => {
+					if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+						v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+				});
+				if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+				if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+				const c = document.querySelector('.container');
+				if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+				return v.join('; ');
+			})()`, &violations),
+		)
+		if err != nil {
+			t.Fatalf("UI standards check failed: %v", err)
+		}
+		if violations != "" {
+			t.Errorf("UI standard violations: %s", violations)
+		}
+		var cssStatus int
+		chromedp.Run(browserCtx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+		if cssStatus != 200 {
+			t.Errorf("Shared CSS not loading: status=%d", cssStatus)
+		}
+	})
+
 	t.Run("Join_Flow", func(t *testing.T) {
 		var initialStatsText string
 		var initialFormVisible bool
@@ -127,7 +159,7 @@ func TestChatE2E(t *testing.T) {
 
 			// Fill and submit join form
 			chromedp.SetValue(`input[name="username"]`, "testuser", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('form[name="join"] button[type="submit"]').click()`, nil),
+			chromedp.Click(`form[name="join"] button[type="submit"]`, chromedp.ByQuery),
 			waitFor(`document.querySelector('.messages') !== null`, 5*time.Second),
 
 			// Capture after-join state
@@ -190,7 +222,7 @@ func TestChatE2E(t *testing.T) {
 			chromedp.Run(browserCtx,
 				chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
 				chromedp.SetValue(`input[name="username"]`, "testuser", chromedp.ByQuery),
-				chromedp.Evaluate(`document.querySelector('form[name="join"] button[type="submit"]').click()`, nil),
+				chromedp.Click(`form[name="join"] button[type="submit"]`, chromedp.ByQuery),
 				waitFor(`document.querySelector('.messages') !== null`, 5*time.Second),
 				chromedp.WaitVisible(`.messages`, chromedp.ByQuery),
 			)
@@ -210,7 +242,7 @@ func TestChatE2E(t *testing.T) {
 				return nil
 			}),
 			chromedp.SetValue(`input[name="message"]`, "First message", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('form[name="send"] button[type="submit"]').click()`, nil),
+			chromedp.Click(`form[name="send"] button[type="submit"]`, chromedp.ByQuery),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 1`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -231,7 +263,7 @@ func TestChatE2E(t *testing.T) {
 				return nil
 			}),
 			chromedp.SetValue(`input[name="message"]`, "Second message", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('form[name="send"] button[type="submit"]').click()`, nil),
+			chromedp.Click(`form[name="send"] button[type="submit"]`, chromedp.ByQuery),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 2`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -252,7 +284,7 @@ func TestChatE2E(t *testing.T) {
 				return nil
 			}),
 			chromedp.SetValue(`input[name="message"]`, "Third message", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('form[name="send"] button[type="submit"]').click()`, nil),
+			chromedp.Click(`form[name="send"] button[type="submit"]`, chromedp.ByQuery),
 			waitFor(`document.querySelectorAll('.messages .message').length >= 3`, 5*time.Second),
 
 			chromedp.ActionFunc(func(ctx context.Context) error {
@@ -308,6 +340,24 @@ func TestChatE2E(t *testing.T) {
 		}
 		if !strings.Contains(msg3Text, "Third message") {
 			t.Errorf("After 3rd message: 'Third message' missing from %q", msg3Text)
+		}
+
+		// Verify message input was cleared after submit (form auto-reset)
+		var inputVal string
+		chromedp.Run(browserCtx,
+			chromedp.Evaluate(`document.querySelector('input[name="message"]').value`, &inputVal),
+		)
+		if inputVal != "" {
+			t.Errorf("Message input should be empty after send, got %q", inputVal)
+		}
+
+		// Verify stats contain message count
+		var statsText string
+		chromedp.Run(browserCtx,
+			chromedp.TextContent(`hgroup p`, &statsText, chromedp.ByQuery),
+		)
+		if !strings.Contains(statsText, "3") {
+			t.Errorf("Stats should contain message count '3', got %q", statsText)
 		}
 
 		t.Logf("✅ Multiple message send test passed")

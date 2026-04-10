@@ -26,15 +26,15 @@
                 Accepted: JPEG, PNG, GIF — Max size: 5MB — Click "Save Profile" to upload
             </blockquote>
 
-            <div>
-                {{if .AvatarURL}}
-                    <img src="{{.AvatarURL}}" alt="Avatar">
-                {{else}}
-                    <mark>{{slice .Name 0 1}}</mark>
-                {{end}}
-            </div>
+            {{.lvt.FlashTag "success"}}
 
-            <form method="POST" name="updateProfile" enctype="multipart/form-data">
+            {{if .AvatarURL}}
+            <div>
+                <img src="{{.AvatarURL}}" alt="Avatar">
+            </div>
+            {{end}}
+
+            <form method="POST" name="updateProfile" enctype="multipart/form-data" lvt-form:preserve>
                 <label for="name">
                     Name
                     <input type="text" id="name" name="name" value="{{.Name}}" required>

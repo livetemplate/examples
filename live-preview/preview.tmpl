@@ -23,8 +23,10 @@
             </header>
             <form method="POST">
                 <label for="name-input">Name</label>
-                <input id="name-input" name="Name" value="{{.Name}}" placeholder="Type your name...">
-                <button type="submit" name="submit">Save</button>
+                <fieldset role="group">
+                    <input id="name-input" name="Name" value="{{.Name}}" placeholder="Type your name...">
+                    <button type="submit" name="submit">Save</button>
+                </fieldset>
             </form>
             <blockquote id="preview">{{.Preview}}</blockquote>
         </article>

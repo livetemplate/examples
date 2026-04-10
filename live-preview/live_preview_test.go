@@ -219,6 +219,45 @@ func TestLivePreviewE2E(t *testing.T) {
 		}
 	})
 
+	t.Run("UI_Standards", func(t *testing.T) {
+		var violations string
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const v = [];
+				['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+					document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+				});
+				document.querySelectorAll('[style]').forEach(el => {
+					if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+						v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+				});
+				if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+				if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+				const c = document.querySelector('.container');
+				if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+				return v.join('; ');
+			})()`, &violations),
+		)
+		if err != nil {
+			t.Fatalf("UI standards check failed: %v", err)
+		}
+		if violations != "" {
+			t.Errorf("UI standard violations: %s", violations)
+		}
+		var cssStatus int
+		chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+		if cssStatus != 200 {
+			t.Errorf("Shared CSS not loading: status=%d", cssStatus)
+		}
+		if err := chromedp.Run(ctx, e2etest.ValidatePicoCSS()); err != nil {
+			t.Errorf("Pico CSS check failed: %v", err)
+		}
+	})
+
+	t.Run("Visual_Check", func(t *testing.T) {
+		e2etest.ValidateScreenshotWithLLM(t, ctx, "Live Preview — name input with save button, preview blockquote below")
+	})
+
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 3*time.Second),

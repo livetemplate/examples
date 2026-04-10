@@ -38,6 +38,8 @@ WORKING_EXAMPLES=(
     "login"
     "shared-notepad"
     "flash-messages"
+    "avatar-upload"
+    "progressive-enhancement"
 )
 
 # Disabled examples

@@ -57,9 +57,27 @@ When a form is submitted, the framework resolves the action in this order:
 
 - All examples must have chromedp E2E tests
 - Use `e2etest.StartDockerChrome()` for browser testing
-- For WebSocket CRUD verification, use `window.liveTemplateClient.send({action: '...', data: {...}})` directly
 - HTTP POST tests should use button name encoding: `"add=&field=value"`
 - Run `./test-all.sh` to verify all examples pass
+
+### E2E Test Requirements
+
+Every E2E test must follow these rules. When generating tests for a new example, use this as a checklist.
+
+**1. Exercise every controller method.** Look at the controller's exported methods (e.g., `Add()`, `Delete()`, `Toggle()`, `Reset()`). Every method must be called in at least one E2E subtest. If a button or form triggers it, the test must trigger it.
+
+**2. Assert full page state after each mutation, not just the changed element.** After adding item B, assert both A and B exist. After deleting B, assert A still exists and B is gone. After upload, assert form field values were retained. The goal is to catch cases where a mutation silently corrupts unrelated state.
+
+**3. Use real browser interactions, not WebSocket API bypass.** Use `chromedp.SendKeys` + `chromedp.Click` to submit forms. Do NOT use `window.liveTemplateClient.send()` for primary CRUD flows — that skips client-side form interception, event handling, and field clearing. Reserve `liveTemplateClient.send()` only for targeted WebSocket protocol tests.
+
+**4. Verify form field state after mutations.** After a form submit, assert that input fields were cleared (if the form resets) or retained (if it uses `lvt-form:preserve`). Use `chromedp.Value()` or `chromedp.Evaluate` to read `input.value`. Common patterns:
+   - After add: input should be empty (form auto-reset)
+   - After upload: non-file fields should retain their values
+   - After save: textarea should retain content (with `lvt-form:preserve`)
+
+**5. Use condition-based waits, not `chromedp.Sleep`.** Use `e2etest.WaitFor(jsCondition, timeout)`, `e2etest.WaitForText(selector, text, timeout)`, or `e2etest.WaitForCount(selector, n, timeout)` instead of `chromedp.Sleep`. Sleep-based waits are flaky in CI and hide timing bugs.
+
+**6. Test error/validation paths.** If the controller can return an error (invalid input, failed validation), test it. Assert the error message text appears in the DOM — don't just log it or skip it.
 
 ### Dependencies
 

@@ -162,6 +162,38 @@ func TestTodosE2E(t *testing.T) {
 		t.Log("✅ Initial page load verified")
 	})
 
+	t.Run("UI_Standards", func(t *testing.T) {
+		var violations string
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const v = [];
+				['onclick','onchange','oninput','onsubmit','onkeydown','onkeyup'].forEach(h => {
+					document.querySelectorAll('[' + h + ']').forEach(el => v.push('inline ' + h + ' on <' + el.tagName.toLowerCase() + '>'));
+				});
+				document.querySelectorAll('[style]').forEach(el => {
+					if (el.tagName !== 'INS' && el.tagName !== 'DEL' && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]'))
+						v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+				});
+				if (!document.querySelector('meta[name="color-scheme"]')) v.push('missing color-scheme meta');
+				if (document.documentElement.lang !== 'en') v.push('missing lang=en');
+				const c = document.querySelector('.container');
+				if (c && c.offsetWidth > 700) v.push('container too wide: ' + c.offsetWidth + 'px');
+				return v.join('; ');
+			})()`, &violations),
+		)
+		if err != nil {
+			t.Fatalf("UI standards check failed: %v", err)
+		}
+		if violations != "" {
+			t.Errorf("UI standard violations: %s", violations)
+		}
+		var cssStatus int
+		chromedp.Run(ctx, chromedp.Evaluate(`(() => { const x = new XMLHttpRequest(); x.open('GET', '/livetemplate.css', false); x.send(); return x.status; })()`, &cssStatus))
+		if cssStatus != 200 {
+			t.Errorf("Shared CSS not loading: status=%d", cssStatus)
+		}
+	})
+
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		// Simple check - just verify client is initialized
 		// We rely on WaitForWebSocketReady from Initial Load
@@ -175,7 +207,7 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "First Todo Item", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			// Wait for todo to appear
 			e2etest.WaitFor(`(() => {
 				const tbody = document.querySelector('tbody');
@@ -210,7 +242,7 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`window.__wsMessages = [];`, nil),
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Second Todo Item", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForCount("tbody tr", 2, 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
@@ -260,7 +292,7 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.Evaluate(`window.__wsMessages = [];`, nil),
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Third Todo Item", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForCount("tbody tr", 3, 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 			chromedp.Evaluate(`JSON.stringify(window.__wsMessages, null, 2)`, &wsMessages),
@@ -330,7 +362,7 @@ func TestTodosE2E(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Fourth Todo Item", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForText("tbody", "Fourth Todo Item", 10*time.Second),
 		)
 		if err != nil {
@@ -342,7 +374,7 @@ func TestTodosE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="text"]`, "Fifth Todo Item", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForText("tbody", "Fifth Todo Item", 10*time.Second),
 			chromedp.OuterHTML(`section`, &html, chromedp.ByQuery),
 		)
@@ -726,7 +758,7 @@ func TestTodosE2E(t *testing.T) {
 			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
 			e2etest.SetupUpdateEventListener(),
 			chromedp.SendKeys(`input[name="text"]`, "Sixth Todo Item", chromedp.ByQuery),
-			chromedp.Evaluate(`document.querySelector('button[name="add"]').click()`, nil),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitForUpdateEvent("add", 5*time.Second),
 			// Wait for pagination controls to appear (they only show when TotalPages > 1)
 			e2etest.WaitFor(`document.querySelector('button[name="nextPage"]') !== null`, 5*time.Second),
@@ -758,7 +790,7 @@ func TestTodosE2E(t *testing.T) {
 		// Navigate to page 2 via WebSocket API
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`document.querySelector('button[name="nextPage"]').click()`, nil),
+			chromedp.Click(`button[name="nextPage"]`, chromedp.ByQuery),
 			e2etest.WaitForUpdateEvent("nextPage", 5*time.Second),
 			e2etest.WaitFor(`(() => {
 				const btn = document.querySelector('button[name="nextPage"]');
@@ -827,7 +859,7 @@ func TestTodosE2E(t *testing.T) {
 		// Navigate to page 1 via WebSocket API
 		err = chromedp.Run(ctx,
 			e2etest.SetupUpdateEventListener(),
-			chromedp.Evaluate(`document.querySelector('button[name="prevPage"]').click()`, nil),
+			chromedp.Click(`button[name="prevPage"]`, chromedp.ByQuery),
 			e2etest.WaitForUpdateEvent("prevPage", 5*time.Second),
 			e2etest.WaitFor(`(() => {
 				const btn = document.querySelector('button[name="prevPage"]');
@@ -1028,8 +1060,124 @@ func TestTodosE2E(t *testing.T) {
 		t.Log("✅ Toast notification shown after delete with correct positioning")
 	})
 
+	t.Run("Modal_Positioning_And_Cancel", func(t *testing.T) {
+		// Open the modal via confirmDelete on the first row
+		var todoID string
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('tbody tr:first-child input[name="id"]').value`, &todoID),
+		)
+		if err != nil || todoID == "" {
+			t.Fatalf("Failed to get todo ID for modal test: %v", err)
+		}
+
+		err = chromedp.Run(ctx,
+			e2etest.SetupUpdateEventListener(),
+			chromedp.Evaluate(fmt.Sprintf(`window.liveTemplateClient.send({action: 'confirmDelete', data: {id: %q}})`, todoID), nil),
+			e2etest.WaitForUpdateEvent("confirmDelete", 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('[data-modal]') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to open modal: %v", err)
+		}
+
+		// Assert modal CSS positioning
+		var modalPos, modalZIndex string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const m = document.querySelector('[data-modal]');
+				const cs = window.getComputedStyle(m);
+				return cs.position;
+			})()`, &modalPos),
+			chromedp.Evaluate(`(() => {
+				const m = document.querySelector('[data-modal]');
+				const cs = window.getComputedStyle(m);
+				return cs.zIndex;
+			})()`, &modalZIndex),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read modal CSS: %v", err)
+		}
+		if modalPos != "fixed" {
+			t.Errorf("Modal should have position:fixed, got %q", modalPos)
+		}
+		if modalZIndex != "40" {
+			t.Errorf("Modal should have z-index:40, got %q", modalZIndex)
+		}
+
+		// Click Cancel using real mouse event
+		err = chromedp.Run(ctx,
+			chromedp.Click(`[data-modal] button[name^="cancel"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('[data-modal]') === null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Cancel button click failed: %v", err)
+		}
+		t.Log("Modal positioning verified (fixed, z-index:40) and Cancel click works")
+	})
+
+	t.Run("Toast_Positioning", func(t *testing.T) {
+		// Add a todo to trigger a toast
+		err := chromedp.Run(ctx,
+			chromedp.WaitVisible(`input[name="text"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="text"]`, "Toast position test", chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('[data-lvt-toast-stack]') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to trigger toast: %v", err)
+		}
+
+		var toastPos string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const s = document.querySelector('[data-lvt-toast-stack]');
+				const cs = window.getComputedStyle(s);
+				return JSON.stringify({
+					position: cs.position,
+					top: cs.top,
+					right: cs.right,
+					zIndex: cs.zIndex
+				});
+			})()`, &toastPos),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read toast CSS: %v", err)
+		}
+
+		// Parse the JSON result
+		var toastCSS struct {
+			Position string `json:"position"`
+			Top      string `json:"top"`
+			Right    string `json:"right"`
+			ZIndex   string `json:"zIndex"`
+		}
+		if err := json.Unmarshal([]byte(toastPos), &toastCSS); err != nil {
+			t.Fatalf("Failed to parse toast CSS JSON: %v", err)
+		}
+
+		if toastCSS.Position != "fixed" {
+			t.Errorf("Toast stack should have position:fixed, got %q", toastCSS.Position)
+		}
+		if toastCSS.Top == "auto" || toastCSS.Top == "" {
+			t.Errorf("Toast stack should have explicit top value, got %q", toastCSS.Top)
+		}
+		if toastCSS.Right == "auto" || toastCSS.Right == "" {
+			t.Errorf("Toast stack should have explicit right value, got %q", toastCSS.Right)
+		}
+
+		// z-index should be >= 50
+		var zIndex int
+		fmt.Sscanf(toastCSS.ZIndex, "%d", &zIndex)
+		if zIndex < 50 {
+			t.Errorf("Toast stack should have z-index >= 50, got %q", toastCSS.ZIndex)
+		}
+
+		t.Logf("Toast positioning verified: position=%s top=%s right=%s z-index=%s",
+			toastCSS.Position, toastCSS.Top, toastCSS.Right, toastCSS.ZIndex)
+	})
+
 	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("🎉 All E2E tests passed!")
+	fmt.Println("All E2E tests passed!")
 	fmt.Println(strings.Repeat("=", 60))
 }
 

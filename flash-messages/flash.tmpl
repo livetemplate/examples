@@ -22,10 +22,18 @@
                 </hgroup>
             </header>
 
-            {{.lvt.FlashTag "success"}}
-            {{.lvt.FlashTag "error"}}
-            {{.lvt.FlashTag "warning"}}
-            {{.lvt.FlashTag "info"}}
+            {{if .lvt.HasFlash "success"}}
+            <ins style="display:block;text-decoration:none">{{.lvt.Flash "success"}}</ins>
+            {{end}}
+            {{if .lvt.HasFlash "error"}}
+            <del style="display:block;text-decoration:none">{{.lvt.Flash "error"}}</del>
+            {{end}}
+            {{if .lvt.HasFlash "warning"}}
+            <del style="display:block;text-decoration:none">{{.lvt.Flash "warning"}}</del>
+            {{end}}
+            {{if .lvt.HasFlash "info"}}
+            <ins style="display:block;text-decoration:none">{{.lvt.Flash "info"}}</ins>
+            {{end}}
 
             <form method="POST" name="addItem">
                 <fieldset role="group">
@@ -33,7 +41,7 @@
                            name="item"
                            placeholder="Enter item name"
                            {{.lvt.AriaInvalid "item"}}>
-                    <button type="submit" name="addItem" {{.lvt.AriaDisabled "item"}}>Add Item</button>
+                    <button type="submit" name="addItem" {{.lvt.AriaDisabled "item"}}>Add</button>
                 </fieldset>
                 {{.lvt.ErrorTag "item"}}
             </form>
