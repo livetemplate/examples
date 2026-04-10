@@ -39,8 +39,10 @@ WORKING_EXAMPLES=(
     "shared-notepad"
     "flash-messages"
     "avatar-upload"
-    "progressive-enhancement"
 )
+
+# Examples that use local Chrome (not Docker Chrome) — skip in CI
+# "progressive-enhancement" uses chromedp.NewExecAllocator (requires local Chrome)
 
 # Disabled examples
 DISABLED_EXAMPLES=(
