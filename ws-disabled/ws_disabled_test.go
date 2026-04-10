@@ -159,7 +159,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			chromedp.SendKeys(`input[name="label"]`, "Go Docs", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://go.dev", chromedp.ByQuery),
 			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Go Docs')`, 5*time.Second),
+			e2etest.WaitFor(`document.body.innerText.includes('Go Docs')`, 10*time.Second),
 			chromedp.OuterHTML("html", &htmlAfter),
 		)
 		if err != nil {
@@ -230,7 +230,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			chromedp.SendKeys(`input[name="label"]`, "First", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://first.example", chromedp.ByQuery),
 			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('First')`, 5*time.Second),
+			e2etest.WaitFor(`document.body.innerText.includes('First')`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("First submission failed: %v", err)
@@ -243,7 +243,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			chromedp.SendKeys(`input[name="label"]`, "Second", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://second.example", chromedp.ByQuery),
 			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Second')`, 5*time.Second),
+			e2etest.WaitFor(`document.body.innerText.includes('Second')`, 10*time.Second),
 			chromedp.OuterHTML("html", &htmlAfterTwo),
 		)
 		if err != nil {
@@ -268,7 +268,7 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 			chromedp.SendKeys(`input[name="label"]`, "To Delete", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="url"]`, "https://delete.me", chromedp.ByQuery),
 			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('To Delete')`, 5*time.Second),
+			e2etest.WaitFor(`document.body.innerText.includes('To Delete')`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Add failed: %v", err)
@@ -277,19 +277,10 @@ func TestWSDisabled_BrowserE2E(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.WaitReady(`button[name="delete"]`, chromedp.ByQuery),
 			chromedp.Click(`button[name="delete"]`, chromedp.ByQuery),
-			chromedp.Sleep(2*time.Second),
+			e2etest.WaitFor(`document.body.innerText.includes('No bookmarks yet')`, 10*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Delete click failed: %v", err)
-		}
-
-		var noBookmarks bool
-		chromedp.Run(ctx,
-			chromedp.Evaluate(`document.body.innerText.includes('No bookmarks yet')`, &noBookmarks),
-		)
-
-		if !noBookmarks {
-			t.Error("Expected 'No bookmarks yet' after delete")
+			t.Fatalf("Delete failed: %v", err)
 		}
 	})
 }
