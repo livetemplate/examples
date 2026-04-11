@@ -258,6 +258,43 @@ func TestDialogPatternsE2E(t *testing.T) {
 		t.Log("✅ Item added via dialog, dialog closed, form reset")
 	})
 
+	t.Run("Add_Empty_Title_Error", func(t *testing.T) {
+		// Open the dialog and submit with empty title
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="add-dialog"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('add-dialog').open === true`, 5*time.Second),
+			chromedp.Clear(`dialog#add-dialog input[name="title"]`, chromedp.ByQuery),
+			chromedp.Click(`dialog#add-dialog button[type="submit"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to submit empty form: %v", err)
+		}
+
+		// Item count should remain 4 (unchanged from Add_Item_Via_Dialog)
+		var html string
+		err = chromedp.Run(ctx,
+			e2etest.WaitFor(`true`, 1*time.Second), // brief wait for any server response
+			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to get HTML: %v", err)
+		}
+		if !strings.Contains(html, "4 items") {
+			t.Error("Item count should still be '4 items' after failed empty submission")
+		}
+
+		// Close dialog for next test
+		err = chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="add-dialog"][command="close"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('add-dialog').open === false`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to close dialog: %v", err)
+		}
+
+		t.Log("✅ Empty title submission rejected, item count unchanged")
+	})
+
 	t.Run("Delete_Item", func(t *testing.T) {
 		// Delete the first seed item (Learn LiveTemplate)
 		err := chromedp.Run(ctx,
