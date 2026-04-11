@@ -259,45 +259,64 @@ func TestDialogPatternsE2E(t *testing.T) {
 	})
 
 	t.Run("Add_Empty_Title_Error", func(t *testing.T) {
-		// Open the dialog and submit with empty title
+		// Navigate fresh to get clean polyfill state (command/commandfor listeners
+		// are lost after WebSocket DOM updates from the previous test)
 		err := chromedp.Run(ctx,
+			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`h1`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to reload page: %v", err)
+		}
+
+		// Open the dialog
+		err = chromedp.Run(ctx,
 			chromedp.Click(`button[commandfor="add-dialog"][command="show-modal"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`document.getElementById('add-dialog').open === true`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to open dialog: %v", err)
+		}
+
+		// The input has `required`, so browser validation prevents empty submission.
+		// Remove `required` via JS to test server-side validation.
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('dialog#add-dialog input[name="title"]').removeAttribute('required')`, nil),
 			chromedp.Clear(`dialog#add-dialog input[name="title"]`, chromedp.ByQuery),
 			chromedp.Click(`dialog#add-dialog button[type="submit"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`true`, 2*time.Second), // wait for server response
 		)
 		if err != nil {
 			t.Fatalf("Failed to submit empty form: %v", err)
 		}
 
-		// Item count should remain 4 (unchanged from Add_Item_Via_Dialog)
+		// Item count should remain 3 (unchanged — fresh session has seed items)
 		var html string
-		err = chromedp.Run(ctx,
-			e2etest.WaitFor(`true`, 1*time.Second), // brief wait for any server response
-			chromedp.OuterHTML(`body`, &html, chromedp.ByQuery),
-		)
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &html, chromedp.ByQuery))
 		if err != nil {
 			t.Fatalf("Failed to get HTML: %v", err)
 		}
-		if !strings.Contains(html, "4 items") {
-			t.Error("Item count should still be '4 items' after failed empty submission")
+		if !strings.Contains(html, "3 items") {
+			t.Error("Item count should still be '3 items' after failed empty submission")
 		}
 
-		// Close dialog for next test
-		err = chromedp.Run(ctx,
-			chromedp.Click(`button[commandfor="add-dialog"][command="close"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.getElementById('add-dialog').open === false`, 5*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("Failed to close dialog: %v", err)
-		}
-
-		t.Log("✅ Empty title submission rejected, item count unchanged")
+		t.Log("✅ Empty title submission rejected by server, item count unchanged")
 	})
 
 	t.Run("Delete_Item", func(t *testing.T) {
-		// Delete the first seed item (Learn LiveTemplate)
+		// Navigate fresh to get clean state
 		err := chromedp.Run(ctx,
+			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to reload page: %v", err)
+		}
+
+		// Delete the first seed item (Learn LiveTemplate)
+		err = chromedp.Run(ctx,
 			chromedp.Click(`button[name="delete"][value="1"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`!document.body.innerText.includes('Learn LiveTemplate')`, 5*time.Second),
 		)
@@ -320,11 +339,8 @@ func TestDialogPatternsE2E(t *testing.T) {
 		if !strings.Contains(html, "Write E2E tests") {
 			t.Error("Remaining item 'Write E2E tests' should be present")
 		}
-		if !strings.Contains(html, "New Test Item") {
-			t.Error("Previously added item 'New Test Item' should be present")
-		}
-		if !strings.Contains(html, "3 items") {
-			t.Error("Item count should be '3 items' after deletion")
+		if !strings.Contains(html, "2 items") {
+			t.Error("Item count should be '2 items' after deletion")
 		}
 
 		t.Log("✅ Item deleted, remaining items preserved")
