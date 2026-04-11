@@ -155,8 +155,10 @@
     />
     {{ if .lvt.DevMode }}
     <link rel="stylesheet" href="/livetemplate.css" />
+    <script defer src="/livetemplate-client.js"></script>
     {{ else }}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
     {{ end }}
   </head>
   <body>
@@ -228,10 +230,5 @@
     {{/* Toast Notifications */}}
     {{ template "lvt:toast:container:v1" .Toasts }}
 
-    {{ if .lvt.DevMode }}
-      <script src="/livetemplate-client.js"></script>
-    {{ else }}
-      <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
-    {{ end }}
   </body>
 </html>

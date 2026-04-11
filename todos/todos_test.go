@@ -127,7 +127,7 @@ func TestTodosE2E(t *testing.T) {
 			e2etest.WaitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`h1`, chromedp.ByQuery),
 			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
-			chromedp.OuterHTML(`body`, &initialHTML, chromedp.ByQuery),
+			chromedp.OuterHTML(`html`, &initialHTML, chromedp.ByQuery),
 		)
 
 		if err != nil {
