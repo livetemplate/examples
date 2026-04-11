@@ -1,0 +1,21 @@
+{{define "content"}}
+<article>
+    <h3>File Upload</h3>
+
+    <h4>Tier 1: Standard HTML</h4>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="document">
+        <button type="submit">Upload</button>
+    </form>
+
+    <h4>Tier 2: Chunked with Progress</h4>
+    <form method="POST">
+        <input type="file" lvt-upload="chunked-doc" name="chunked-doc">
+        <button type="submit">Upload</button>
+    </form>
+
+    {{if .Uploaded}}
+    <ins style="display:block;text-decoration:none">Uploaded: {{.UploadName}}</ins>
+    {{end}}
+</article>
+{{end}}

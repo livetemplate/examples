@@ -1,0 +1,22 @@
+{{define "content"}}
+<article>
+    <h3>Preserving Form Inputs</h3>
+    <form method="POST" lvt-form:preserve>
+        <fieldset>
+            <label>Name
+                <input name="name" value="{{.Name}}" required>
+            </label>
+            <label>Description
+                <textarea name="description">{{.Description}}</textarea>
+            </label>
+            <label>Attachment
+                <input type="file" name="attachment">
+            </label>
+            <button type="submit">Submit</button>
+        </fieldset>
+    </form>
+    {{if .lvt.HasError "name"}}
+    <small>{{.lvt.Error "name"}}</small>
+    {{end}}
+</article>
+{{end}}

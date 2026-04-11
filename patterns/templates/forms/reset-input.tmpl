@@ -1,0 +1,15 @@
+{{define "content"}}
+<article>
+    <h3>Reset User Input</h3>
+    <p><small>Form clears automatically after successful submission — no extra attributes needed.</small></p>
+    <form method="POST">
+        <fieldset role="group">
+            <input name="message" placeholder="Type a message..." required>
+            <button type="submit">Send</button>
+        </fieldset>
+    </form>
+    {{range .Messages}}
+    <p>{{.}}</p>
+    {{end}}
+</article>
+{{end}}

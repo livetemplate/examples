@@ -1,0 +1,120 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"slices"
+	"syscall"
+	"time"
+
+	"github.com/livetemplate/livetemplate"
+	e2etest "github.com/livetemplate/lvt/testing"
+)
+
+// IndexController serves the pattern catalog index page.
+type IndexController struct{}
+
+// IndexState holds the categorized pattern list for the index page.
+type IndexState struct {
+	Title      string
+	Category   string
+	Categories []PatternCategory
+}
+
+func indexHandler(baseOpts []livetemplate.Option) http.Handler {
+	opts := append(slices.Clone(baseOpts),
+		livetemplate.WithParseFiles("templates/layout.tmpl", "templates/index.tmpl"),
+	)
+	tmpl := livetemplate.Must(livetemplate.New("layout", opts...))
+	return tmpl.Handle(&IndexController{}, livetemplate.AsState(&IndexState{
+		Title:      "LiveTemplate Patterns",
+		Categories: allPatterns(),
+	}))
+}
+
+func main() {
+	envConfig, err := livetemplate.LoadEnvConfig()
+	if err != nil {
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+	if err := envConfig.Validate(); err != nil {
+		slog.Error("Invalid configuration", "error", err)
+		os.Exit(1)
+	}
+
+	var level slog.Level
+	switch envConfig.LogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})))
+
+	baseOpts := envConfig.ToOptions()
+
+	mux := http.NewServeMux()
+
+	// Index page
+	mux.Handle("/", indexHandler(baseOpts))
+
+	// Category: Forms & Editing (#1–#7)
+	mux.Handle("/patterns/forms/click-to-edit", clickToEditHandler(baseOpts))
+	mux.Handle("/patterns/forms/edit-row", editRowHandler(baseOpts))
+	mux.Handle("/patterns/forms/inline-validation", inlineValidationHandler(baseOpts))
+	mux.Handle("/patterns/forms/bulk-update", bulkUpdateHandler(baseOpts))
+	mux.Handle("/patterns/forms/reset-input", resetInputHandler(baseOpts))
+	mux.Handle("/patterns/forms/file-upload", fileUploadHandler(baseOpts))
+	mux.Handle("/patterns/forms/preserve-inputs", preserveInputsHandler(baseOpts))
+
+	// Client library and CSS (dev mode)
+	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	mux.HandleFunc("/livetemplate.css", e2etest.ServeCSS)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		slog.Info("Patterns server starting", "url", "http://localhost:"+port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-quit
+
+	shutdownTimeout := envConfig.ShutdownTimeout
+	if shutdownTimeout == 0 {
+		shutdownTimeout = 30 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	slog.Info("Shutting down server...")
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("Shutdown error", "error", err)
+	}
+	slog.Info("Shutdown complete")
+}
