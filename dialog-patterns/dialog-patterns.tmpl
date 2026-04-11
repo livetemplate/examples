@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Dialog Patterns — LiveTemplate</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    {{end}}
+</head>
+<body>
+    <main class="container">
+        <article>
+            <header>
+                <hgroup>
+                    <h1>Dialog Patterns</h1>
+                    <p>Native &lt;dialog&gt; with command/commandfor (Tier 1)</p>
+                </hgroup>
+            </header>
+
+            <button command="show-modal" commandfor="add-dialog">Add Item</button>
+
+            {{ if .Items }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Items }}
+                    <tr data-key="{{.ID}}">
+                        <td>{{.Title}}</td>
+                        <td>
+                            <button name="delete" value="{{.ID}}" class="compact secondary outline">Delete</button>
+                        </td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+            {{ else }}
+            <p><small>No items yet. Add one above!</small></p>
+            {{ end }}
+
+            <footer>
+                <small>{{len .Items}} items</small>
+            </footer>
+        </article>
+    </main>
+
+    <dialog id="add-dialog">
+        <article>
+            <header>
+                <h2>Add Item</h2>
+            </header>
+            <form method="dialog" name="add">
+                <label>
+                    Title
+                    <input name="title" required placeholder="Enter item title">
+                </label>
+                <footer>
+                    <fieldset role="group">
+                        <button type="submit">Add</button>
+                        <button type="button" command="close" commandfor="add-dialog" class="secondary">Cancel</button>
+                    </fieldset>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+
+    {{if .lvt.DevMode}}
+    <script src="/livetemplate-client.js"></script>
+    {{else}}
+    <script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</body>
+</html>

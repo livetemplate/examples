@@ -32,6 +32,7 @@ All examples follow the [progressive complexity](https://github.com/livetemplate
 | `live-preview/` | 1 | Change() live updates | None |
 | `login/` | 1+2 | Authentication + sessions | `lvt-form:no-intercept` |
 | `shared-notepad/` | 1+2 | BasicAuth + SharedState | `lvt-form:preserve` |
+| `dialog-patterns/` | 1 | Native `<dialog>` with `command`/`commandfor` | None (polyfilled by client) |
 
 ## Examples
 
