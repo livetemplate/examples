@@ -185,9 +185,9 @@ func TestClickToEdit(t *testing.T) {
 		if !strings.Contains(html, "john@example.com") {
 			t.Error("Default email not found")
 		}
-		// Should be in view mode — dl should be present, form should not
-		if !strings.Contains(html, "<dl>") {
-			t.Error("View mode <dl> not found")
+		// Should be in view mode — table should be present, form should not
+		if !strings.Contains(html, "<table>") {
+			t.Error("View mode table not found")
 		}
 	})
 
@@ -232,7 +232,7 @@ func TestClickToEdit(t *testing.T) {
 			chromedp.SendKeys(`input[name="email"]`, "jane@smith.org", chromedp.ByQuery),
 			chromedp.Click(`button[name="save"]`, chromedp.ByQuery),
 			// Wait for view mode to return
-			e2etest.WaitFor(`document.querySelector('dl') !== null`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('article table') !== null`, 5*time.Second),
 			chromedp.OuterHTML(`article`, &html, chromedp.ByQuery),
 		)
 		if err != nil {
@@ -257,7 +257,7 @@ func TestClickToEdit(t *testing.T) {
 			e2etest.WaitFor(`document.querySelector('input[name="firstName"]') !== null`, 5*time.Second),
 			// Cancel without saving
 			chromedp.Click(`button[name="cancel"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.querySelector('dl') !== null`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('article table') !== null`, 5*time.Second),
 			chromedp.OuterHTML(`article`, &html, chromedp.ByQuery),
 		)
 		if err != nil {
