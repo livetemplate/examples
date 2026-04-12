@@ -41,6 +41,7 @@ WORKING_EXAMPLES=(
     "avatar-upload"
     "progressive-enhancement"
     "dialog-patterns"
+    "patterns"
 )
 
 # Disabled examples

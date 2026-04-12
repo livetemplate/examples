@@ -1,0 +1,36 @@
+{{define "content"}}
+<article>
+    <h3>Edit Row</h3>
+    <table>
+        <thead><tr><th>Name</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+        {{range .Contacts}}
+        <tr data-key="{{.ID}}">
+            {{if eq $.EditingID .ID}}
+            <td colspan="3">
+                <form method="POST" class="inline">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <fieldset role="group">
+                        <input name="name" value="{{.Name}}">
+                        <input name="email" value="{{.Email}}">
+                        <button name="save" class="compact">Save</button>
+                        <button name="cancel" class="compact secondary">Cancel</button>
+                    </fieldset>
+                </form>
+            </td>
+            {{else}}
+            <td>{{.Name}}</td>
+            <td>{{.Email}}</td>
+            <td>
+                <form method="POST" class="inline">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <button name="edit" class="compact secondary outline">Edit</button>
+                </form>
+            </td>
+            {{end}}
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</article>
+{{end}}

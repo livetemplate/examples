@@ -1,0 +1,19 @@
+{{define "content"}}
+<article>
+    <h3>Inline Validation</h3>
+    <form method="POST">
+        <fieldset>
+            <label>Email
+                <input type="email" name="email" value="{{.Email}}" required {{.lvt.AriaInvalid "email"}}>
+                {{.lvt.ErrorTag "email"}}
+            </label>
+            <label>Username
+                <input name="username" value="{{.Username}}" required minlength="3" maxlength="20" {{.lvt.AriaInvalid "username"}}>
+                {{.lvt.ErrorTag "username"}}
+            </label>
+            <button type="submit">Submit</button>
+        </fieldset>
+    </form>
+    {{if .Saved}}<ins style="display:block;text-decoration:none">Saved successfully!</ins>{{end}}
+</article>
+{{end}}

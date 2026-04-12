@@ -1,0 +1,21 @@
+{{define "content"}}
+<article>
+    <h3>Bulk Update</h3>
+    <form method="POST">
+        <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Active</th></tr></thead>
+            <tbody>
+            {{range .Users}}
+            <tr data-key="{{.ID}}">
+                <td>{{.Name}}</td>
+                <td>{{.Email}}</td>
+                <td><input type="checkbox" name="active-{{.ID}}" {{if .Active}}checked{{end}}></td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+        <button name="bulkUpdate">Update</button>
+    </form>
+    {{.lvt.FlashTag "success"}}
+</article>
+{{end}}

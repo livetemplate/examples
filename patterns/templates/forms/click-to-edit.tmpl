@@ -1,0 +1,31 @@
+{{define "content"}}
+<article>
+    <h3>Click To Edit</h3>
+    {{if .Editing}}
+    <form method="POST">
+        <label>First Name
+            <input name="firstName" value="{{.FirstName}}" required>
+        </label>
+        <label>Last Name
+            <input name="lastName" value="{{.LastName}}" required>
+        </label>
+        <label>Email
+            <input name="email" type="email" value="{{.Email}}" required>
+        </label>
+        <fieldset role="group">
+            <button name="save">Save</button>
+            <button name="cancel" class="secondary">Cancel</button>
+        </fieldset>
+    </form>
+    {{else}}
+    <table>
+        <tbody>
+            <tr><th>First Name</th><td>{{.FirstName}}</td></tr>
+            <tr><th>Last Name</th><td>{{.LastName}}</td></tr>
+            <tr><th>Email</th><td>{{.Email}}</td></tr>
+        </tbody>
+    </table>
+    <button name="edit" class="outline">Edit</button>
+    {{end}}
+</article>
+{{end}}
