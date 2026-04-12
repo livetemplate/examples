@@ -4,14 +4,12 @@
     <form method="POST">
         <fieldset>
             <label>Email
-                <input type="email" name="email" value="{{.Email}}" required
-                    {{if .lvt.HasError "email"}}aria-invalid="true"{{end}}>
-                {{if .lvt.HasError "email"}}<small>{{.lvt.Error "email"}}</small>{{end}}
+                <input type="email" name="email" value="{{.Email}}" required {{.lvt.AriaInvalid "email"}}>
+                {{.lvt.ErrorTag "email"}}
             </label>
             <label>Username
-                <input name="username" value="{{.Username}}" required minlength="3" maxlength="20"
-                    {{if .lvt.HasError "username"}}aria-invalid="true"{{end}}>
-                {{if .lvt.HasError "username"}}<small>{{.lvt.Error "username"}}</small>{{end}}
+                <input name="username" value="{{.Username}}" required minlength="3" maxlength="20" {{.lvt.AriaInvalid "username"}}>
+                {{.lvt.ErrorTag "username"}}
             </label>
             <button type="submit">Submit</button>
         </fieldset>

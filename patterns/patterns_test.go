@@ -103,6 +103,22 @@ func runUIStandardsWithPico(t *testing.T, ctx context.Context) {
 	}
 }
 
+// attachFileViaDataTransfer sets a File on the given file input using the
+// DataTransfer API. chromedp.SetUploadFiles cannot be used with Docker
+// Chrome because the container has no access to host filesystem paths.
+func attachFileViaDataTransfer(inputSelector, filename, content, mimeType string) chromedp.Action {
+	script := fmt.Sprintf(`
+		(() => {
+			const file = new File([%q], %q, {type: %q});
+			const input = document.querySelector(%q);
+			const dt = new DataTransfer();
+			dt.items.add(file);
+			input.files = dt.files;
+		})()
+	`, content, filename, mimeType, inputSelector)
+	return chromedp.Evaluate(script, nil)
+}
+
 // --- Index Page ---
 
 func TestIndexPage(t *testing.T) {
@@ -495,7 +511,8 @@ func TestBulkUpdate(t *testing.T) {
 			chromedp.Click(`input[name="active-3"]`, chromedp.ByQuery),
 			// Click Update
 			chromedp.Click(`button[name="bulkUpdate"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`true`, 2*time.Second), // Wait for re-render
+			// Wait for flash message (FlashTag renders as <output data-flash>)
+			e2etest.WaitForText(`output[data-flash]`, "Updated", 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to toggle and update: %v", err)
@@ -658,15 +675,44 @@ func TestFileUpload(t *testing.T) {
 		e2etest.ValidateScreenshotWithLLM(t, ctx, "File Upload — two sections: Tier 1 standard HTML upload and Tier 2 chunked upload, each with file input and Upload button")
 	})
 
-	t.Run("Tier1_Upload", func(t *testing.T) {
-		// Verify the Tier 1 multipart form has correct attributes.
-		// Full upload E2E testing is covered by the avatar-upload example.
-		// Here we verify the form structure is correct for multipart upload.
+	t.Run("Submit_Without_File", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.Click(`button[name="upload"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "No file selected", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("No-file error flash not shown: %v", err)
+		}
+	})
+
+	t.Run("Tier1_Upload_With_File", func(t *testing.T) {
+		// Upload a file via Tier 1 (standard multipart form).
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`input[name="document"]`, chromedp.ByQuery),
+			attachFileViaDataTransfer(`input[name="document"]`, "hello.txt", "hello world", "text/plain"),
+			chromedp.Click(`button[name="upload"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash]`, "Uploaded: hello.txt", 10*time.Second),
+		)
+		if err != nil {
+			var debugHTML string
+			_ = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &debugHTML, chromedp.ByQuery))
+			t.Logf("Page HTML at failure:\n%s", debugHTML)
+			t.Fatalf("Tier 1 upload failed: %v", err)
+		}
+	})
+
+	t.Run("Form_Structure", func(t *testing.T) {
+		// Verify both Tier 1 and Tier 2 upload forms are present
 		var enctype string
-		var hasFileInput bool
+		var hasFileInput, hasLvtUpload bool
 		err := chromedp.Run(ctx,
 			chromedp.AttributeValue(`form[enctype]`, "enctype", &enctype, nil, chromedp.ByQuery),
 			chromedp.Evaluate(`document.querySelector('input[name="document"][type="file"]') !== null`, &hasFileInput),
+			chromedp.Evaluate(`document.querySelector('input[lvt-upload="chunked-doc"]') !== null`, &hasLvtUpload),
 		)
 		if err != nil {
 			t.Fatalf("Failed to verify form structure: %v", err)
@@ -675,16 +721,7 @@ func TestFileUpload(t *testing.T) {
 			t.Errorf("Expected enctype='multipart/form-data', got %q", enctype)
 		}
 		if !hasFileInput {
-			t.Error("File input 'document' not found")
-		}
-
-		// Verify the Tier 2 chunked upload input has lvt-upload attribute
-		var hasLvtUpload bool
-		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`document.querySelector('input[lvt-upload="chunked-doc"]') !== null`, &hasLvtUpload),
-		)
-		if err != nil {
-			t.Fatalf("Failed to verify Tier 2 upload: %v", err)
+			t.Error("Tier 1 file input not found")
 		}
 		if !hasLvtUpload {
 			t.Error("Tier 2 lvt-upload input not found")
@@ -732,28 +769,76 @@ func TestPreserveInputs(t *testing.T) {
 		e2etest.ValidateScreenshotWithLLM(t, ctx, "Preserving Form Inputs — name input, description textarea, file attachment input, submit button")
 	})
 
-	t.Run("Submit_Valid", func(t *testing.T) {
-		var html string
+	t.Run("Submit_Shows_Flash", func(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.SendKeys(`input[name="name"]`, "Test Name", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="description"]`, "Test Description", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`true`, 3*time.Second),
-			chromedp.OuterHTML(`article`, &html, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Saved: Test Name", 5*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Failed to submit valid form: %v", err)
+			t.Fatalf("Failed to submit or flash not shown: %v", err)
 		}
-		// Form should preserve values via lvt-form:preserve
+	})
+
+	t.Run("Form_Values_Preserved_After_Submit", func(t *testing.T) {
+		// After successful submit with lvt-form:preserve, form values
+		// should NOT be cleared (unlike normal forms which auto-reset).
+		var nameVal, descVal string
+		err := chromedp.Run(ctx,
+			chromedp.Value(`input[name="name"]`, &nameVal, chromedp.ByQuery),
+			chromedp.Value(`textarea[name="description"]`, &descVal, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read form values: %v", err)
+		}
+		if nameVal != "Test Name" {
+			t.Errorf("Name should be preserved after submit, got %q", nameVal)
+		}
+		if descVal != "Test Description" {
+			t.Errorf("Description should be preserved after submit, got %q", descVal)
+		}
+	})
+
+	t.Run("Values_Survive_Rerender", func(t *testing.T) {
+		// Submit again — triggers a re-render. Form values should survive
+		// because lvt-form:preserve prevents the client from overwriting
+		// input values during DOM patching.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Saved: Test Name", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Second submit failed: %v", err)
+		}
+
 		var nameVal string
 		err = chromedp.Run(ctx,
 			chromedp.Value(`input[name="name"]`, &nameVal, chromedp.ByQuery),
 		)
 		if err != nil {
-			t.Fatalf("Failed to read name value: %v", err)
+			t.Fatalf("Failed to read name after re-render: %v", err)
 		}
 		if nameVal != "Test Name" {
-			t.Errorf("Name field should be preserved, got %q", nameVal)
+			t.Errorf("Name should survive re-render with lvt-form:preserve, got %q", nameVal)
+		}
+	})
+
+	t.Run("Submit_With_File_Attached", func(t *testing.T) {
+		// Regression: text fields must reach the server even when the
+		// HTTP multipart path is taken (file attached).
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`input[name="name"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="name"]`, "WithFile Name", chromedp.ByQuery),
+			chromedp.SendKeys(`textarea[name="description"]`, "With File Description", chromedp.ByQuery),
+			attachFileViaDataTransfer(`input[name="attachment"]`, "test.txt", "test content", "text/plain"),
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash]`, "Saved: WithFile Name", 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Submit with file attached failed: %v", err)
 		}
 	})
 }

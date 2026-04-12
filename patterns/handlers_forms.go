@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"slices"
 
@@ -124,6 +125,7 @@ func (c *BulkUpdateController) BulkUpdate(state BulkUpdateState, ctx *livetempla
 	for i, user := range state.Users {
 		state.Users[i].Active = ctx.GetBool("active-" + user.ID)
 	}
+	ctx.SetFlash("success", fmt.Sprintf("Updated %d user(s)", len(state.Users)))
 	return state, nil
 }
 
@@ -166,26 +168,31 @@ func resetInputHandler(baseOpts []livetemplate.Option) http.Handler {
 
 type FileUploadController struct{}
 
-func (c *FileUploadController) Submit(state FileUploadState, ctx *livetemplate.Context) (FileUploadState, error) {
+func (c *FileUploadController) Upload(state FileUploadState, ctx *livetemplate.Context) (FileUploadState, error) {
 	for _, name := range []string{"document", "chunked-doc"} {
 		if ctx.HasUploads(name) {
 			entries := ctx.GetCompletedUploads(name)
 			if len(entries) > 0 {
-				state.UploadName = entries[0].ClientName
-				state.Uploaded = true
+				ctx.SetFlash("success", "Uploaded: "+entries[0].ClientName)
 				return state, nil
 			}
 		}
 	}
+	ctx.SetFlash("error", "No file selected")
 	return state, nil
 }
 
 func fileUploadHandler(baseOpts []livetemplate.Option) http.Handler {
 	opts := append(slices.Clone(baseOpts),
 		livetemplate.WithParseFiles("templates/layout.tmpl", "templates/forms/file-upload.tmpl"),
+		livetemplate.WithUpload("document", livetemplate.UploadConfig{
+			MaxFileSize: 10 << 20, // 10 MB
+			MaxEntries:  1,
+		}),
 		livetemplate.WithUpload("chunked-doc", livetemplate.UploadConfig{
 			MaxFileSize: 10 << 20, // 10 MB
 			MaxEntries:  1,
+			ChunkSize:   1024, // 1KB chunks — small so progress is visible for demo files
 		}),
 	)
 	tmpl := livetemplate.Must(livetemplate.New("layout", opts...))
@@ -205,12 +212,17 @@ func (c *PreserveInputsController) Submit(state PreserveInputsState, ctx *livete
 	if err := ctx.ValidateForm(); err != nil {
 		return state, err
 	}
+	ctx.SetFlash("success", "Saved: "+state.Name)
 	return state, nil
 }
 
 func preserveInputsHandler(baseOpts []livetemplate.Option) http.Handler {
 	opts := append(slices.Clone(baseOpts),
 		livetemplate.WithParseFiles("templates/layout.tmpl", "templates/forms/preserve-inputs.tmpl"),
+		livetemplate.WithUpload("attachment", livetemplate.UploadConfig{
+			MaxFileSize: 10 << 20, // 10 MB
+			MaxEntries:  1,
+		}),
 	)
 	tmpl := livetemplate.Must(livetemplate.New("layout", opts...))
 	return tmpl.Handle(&PreserveInputsController{}, livetemplate.AsState(&PreserveInputsState{

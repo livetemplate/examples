@@ -43,10 +43,8 @@ type ResetInputState struct {
 
 // FileUploadState holds the state for the File Upload pattern (#6).
 type FileUploadState struct {
-	Title      string
-	Category   string
-	UploadName string
-	Uploaded   bool
+	Title    string
+	Category string
 }
 
 // PreserveInputsState holds the state for the Preserving File Inputs pattern (#7).

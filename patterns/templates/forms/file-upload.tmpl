@@ -3,19 +3,24 @@
     <h3>File Upload</h3>
 
     <h4>Tier 1: Standard HTML</h4>
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" lvt-form:preserve>
         <input type="file" name="document">
-        <button type="submit">Upload</button>
+        <button type="submit" name="upload">Upload</button>
     </form>
 
     <h4>Tier 2: Chunked with Progress</h4>
-    <form method="POST">
+    <form method="POST" lvt-form:preserve>
         <input type="file" lvt-upload="chunked-doc" name="chunked-doc">
-        <button type="submit">Upload</button>
+        {{range .lvt.Uploads "chunked-doc"}}
+        <div>
+            <small><strong>{{.ClientName}}</strong> — {{.Progress}}%</small>
+            <progress value="{{.Progress}}" max="100"></progress>
+        </div>
+        {{end}}
+        <button type="submit" name="upload">Upload</button>
     </form>
 
-    {{if .Uploaded}}
-    <ins style="display:block;text-decoration:none">Uploaded: {{.UploadName}}</ins>
-    {{end}}
+    {{.lvt.FlashTag "success"}}
+    {{.lvt.FlashTag "error"}}
 </article>
 {{end}}

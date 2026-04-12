@@ -76,7 +76,13 @@ func main() {
 	mux.Handle("/patterns/forms/preserve-inputs", preserveInputsHandler(baseOpts))
 
 	// Client library and CSS (dev mode)
-	mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
+		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, localClient)
+		})
+	} else {
+		mux.HandleFunc("/livetemplate-client.js", e2etest.ServeClientLibrary)
+	}
 	mux.HandleFunc("/livetemplate.css", e2etest.ServeCSS)
 
 	port := os.Getenv("PORT")

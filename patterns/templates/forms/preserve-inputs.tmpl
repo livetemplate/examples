@@ -15,8 +15,7 @@
             <button type="submit">Submit</button>
         </fieldset>
     </form>
-    {{if .lvt.HasError "name"}}
-    <small>{{.lvt.Error "name"}}</small>
-    {{end}}
+    {{.lvt.FlashTag "success"}}
+    {{.lvt.ErrorTag "name"}}
 </article>
 {{end}}
