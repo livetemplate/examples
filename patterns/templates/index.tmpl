@@ -8,7 +8,7 @@
     <h4>{{.Name}}</h4>
     {{range .Patterns}}
     <p>
-        {{if .Implemented}}<a href="{{.Path}}">{{.Name}}</a>{{else}}<small>{{.Name}}</small>{{end}}
+        {{if .Implemented}}<a href="{{.Path}}" lvt-nav:no-intercept>{{.Name}}</a>{{else}}<small>{{.Name}}</small>{{end}}
         — <small>{{.Description}}</small>
     </p>
     {{end}}
