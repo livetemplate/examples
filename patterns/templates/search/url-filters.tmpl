@@ -1,0 +1,33 @@
+{{define "content"}}
+<article>
+    <h3>URL-Preserved Filters</h3>
+    <p><small>Filter state lives in the URL. SPA link clicks update history; direct-loading a bookmark restores the view. Mount() reads query params.</small></p>
+    <p><small>Current: status=<code>{{.Status}}</code>, sort=<code>{{.Sort}}</code></small></p>
+    <nav>
+        <ul>
+            <li><a href="?status=all&amp;sort={{.Sort}}" {{if eq .Status "all"}}aria-current="page"{{end}}>All</a></li>
+            <li><a href="?status=active&amp;sort={{.Sort}}" {{if eq .Status "active"}}aria-current="page"{{end}}>Active</a></li>
+            <li><a href="?status=completed&amp;sort={{.Sort}}" {{if eq .Status "completed"}}aria-current="page"{{end}}>Completed</a></li>
+        </ul>
+        <ul>
+            <li><a href="?status={{.Status}}&amp;sort=name" {{if eq .Sort "name"}}aria-current="page"{{end}}>By Name</a></li>
+            <li><a href="?status={{.Status}}&amp;sort=date" {{if eq .Sort "date"}}aria-current="page"{{end}}>By Date</a></li>
+        </ul>
+    </nav>
+    <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+        {{range .Items}}
+        <tr data-key="{{.ID}}">
+            <td>{{.Name}}</td>
+            <td>{{.Status}}</td>
+            <td>{{.Date}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{if eq (len .Items) 0}}
+    <p><small>No items match this filter.</small></p>
+    {{end}}
+</article>
+{{end}}

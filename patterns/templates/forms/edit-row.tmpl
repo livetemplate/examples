@@ -9,11 +9,10 @@
             {{if eq $.EditingID .ID}}
             <td colspan="3">
                 <form method="POST" class="inline">
-                    <input type="hidden" name="id" value="{{.ID}}">
                     <fieldset role="group">
                         <input name="name" value="{{.Name}}">
                         <input name="email" value="{{.Email}}">
-                        <button name="save" class="compact">Save</button>
+                        <button name="save" value="{{.ID}}" class="compact">Save</button>
                         <button name="cancel" class="compact secondary">Cancel</button>
                     </fieldset>
                 </form>
@@ -23,8 +22,7 @@
             <td>{{.Email}}</td>
             <td>
                 <form method="POST" class="inline">
-                    <input type="hidden" name="id" value="{{.ID}}">
-                    <button name="edit" class="compact secondary outline">Edit</button>
+                    <button name="edit" value="{{.ID}}" class="compact secondary outline">Edit</button>
                 </form>
             </td>
             {{end}}

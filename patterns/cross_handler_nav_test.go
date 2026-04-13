@@ -270,6 +270,48 @@ func TestCrossHandlerNavigation(t *testing.T) {
 		}
 	})
 
+	t.Run("Index_To_Delete_Row_No_Stale_Dom", func(t *testing.T) {
+		// Regression for cross-handler nav leaving stale index DOM: index's
+		// 7 category <h4>s must NOT remain after clicking into Delete Row.
+		// The later WaitFor on row count is load-bearing — it ensures the
+		// WebSocket's initial tree update has been applied before we check,
+		// so any treeState merge bug actually shows up.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`h2`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelectorAll('article').length >= 7`, 3*time.Second),
+			chromedp.Click(`a[href="/patterns/lists/delete-row"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h3`, "Delete Row", 10*time.Second),
+			e2etest.WaitFor(`document.querySelectorAll('tbody tr[data-key]').length === 5`, 5*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+		)
+		if err != nil {
+			var articleCount, rowCount, leakedCategoryHeaders int
+			var wrapperHTML string
+			_ = chromedp.Run(ctx,
+				chromedp.Evaluate(`document.querySelectorAll('[data-lvt-id] article').length`, &articleCount),
+				chromedp.Evaluate(`document.querySelectorAll('tbody tr[data-key]').length`, &rowCount),
+				chromedp.Evaluate(`document.querySelectorAll('[data-lvt-id] h4').length`, &leakedCategoryHeaders),
+				chromedp.OuterHTML(`[data-lvt-id]`, &wrapperHTML, chromedp.ByQuery),
+			)
+			t.Fatalf("Navigation bug: articles=%d rows=%d leakedH4=%d. Wrapper HTML:\n%s\nError: %v",
+				articleCount, rowCount, leakedCategoryHeaders, wrapperHTML, err)
+		}
+		// Assert: exactly 1 article, exactly 5 rows, 0 leaked <h4> headers.
+		var articleCount, leakedCategoryHeaders int
+		_ = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelectorAll('[data-lvt-id] article').length`, &articleCount),
+			chromedp.Evaluate(`document.querySelectorAll('[data-lvt-id] h4').length`, &leakedCategoryHeaders),
+		)
+		if leakedCategoryHeaders > 0 {
+			t.Errorf("Stale <h4> category headers leaked from index: %d present", leakedCategoryHeaders)
+		}
+		if articleCount != 1 {
+			t.Errorf("Expected exactly 1 <article>, got %d", articleCount)
+		}
+	})
+
 	t.Run("WebSocket_Works_After_Navigation", func(t *testing.T) {
 		// Start fresh at index
 		err := chromedp.Run(ctx,

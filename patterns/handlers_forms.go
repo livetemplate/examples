@@ -49,12 +49,14 @@ func clickToEditHandler(baseOpts []livetemplate.Option) http.Handler {
 type EditRowController struct{}
 
 func (c *EditRowController) Edit(state EditRowState, ctx *livetemplate.Context) (EditRowState, error) {
-	state.EditingID = ctx.GetString("id")
+	// Edit/Save buttons send their ID via `value` attribute — see
+	// docs/references/progressive-complexity-reference.md.
+	state.EditingID = ctx.GetString("value")
 	return state, nil
 }
 
 func (c *EditRowController) Save(state EditRowState, ctx *livetemplate.Context) (EditRowState, error) {
-	id := ctx.GetString("id")
+	id := ctx.GetString("value")
 	for i, contact := range state.Contacts {
 		if contact.ID == id {
 			state.Contacts[i].Name = ctx.GetString("name")
@@ -122,10 +124,19 @@ func inlineValidationHandler(baseOpts []livetemplate.Option) http.Handler {
 type BulkUpdateController struct{}
 
 func (c *BulkUpdateController) BulkUpdate(state BulkUpdateState, ctx *livetemplate.Context) (BulkUpdateState, error) {
+	changed := 0
 	for i, user := range state.Users {
-		state.Users[i].Active = ctx.GetBool("active-" + user.ID)
+		newActive := ctx.GetBool("active-" + user.ID)
+		if newActive != user.Active {
+			changed++
+		}
+		state.Users[i].Active = newActive
 	}
-	ctx.SetFlash("success", fmt.Sprintf("Updated %d user(s)", len(state.Users)))
+	if changed == 0 {
+		ctx.SetFlash("info", "No changes")
+	} else {
+		ctx.SetFlash("success", fmt.Sprintf("Updated %d user(s)", changed))
+	}
 	return state, nil
 }
 

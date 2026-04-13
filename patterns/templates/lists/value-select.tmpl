@@ -1,0 +1,27 @@
+{{define "content"}}
+<article>
+    <h3>Value Select</h3>
+    <p><small>Cascading dependent selects. The Change() handler auto-fires when the Make select changes and updates the Model options server-side — no client JS.</small></p>
+    <form method="POST">
+        <label>Make
+            <select name="make">
+                <option value="">Select Make</option>
+                {{range .Makes}}
+                <option value="{{.}}" {{if eq $.Make .}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+        </label>
+        <label>Model
+            <select name="model" {{if not .Make}}disabled{{end}}>
+                <option value="">Select Model</option>
+                {{range .Models}}
+                <option value="{{.}}" {{if eq $.Model .}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+        </label>
+    </form>
+    {{if .Model}}
+    <p>Selected: <strong>{{.Make}} {{.Model}}</strong></p>
+    {{end}}
+</article>
+{{end}}

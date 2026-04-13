@@ -1,0 +1,30 @@
+{{define "content"}}
+<article>
+    <h3>Delete Row</h3>
+    <p><small>Click Delete on any row. New rows slide in via <code>lvt-fx:animate="slide"</code> (entry-only). Items live in a process-wide in-memory table, so deletions persist across reloads and navigation; use Restore to reset.</small></p>
+    {{if gt (len .Items) 0}}
+    <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+        {{range .Items}}
+        <tr data-key="{{.ID}}" lvt-fx:animate="slide">
+            <td>{{.ID}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.Email}}</td>
+            <td>
+                <form method="POST" class="inline">
+                    <button name="delete" value="{{.ID}}" class="compact contrast outline">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p><small>All items deleted.</small></p>
+    <form method="POST">
+        <button name="restore" class="secondary outline">Restore Items</button>
+    </form>
+    {{end}}
+</article>
+{{end}}
