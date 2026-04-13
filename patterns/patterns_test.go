@@ -1186,16 +1186,26 @@ func TestActiveSearch(t *testing.T) {
 	})
 
 	t.Run("Clear_Query_Restores_All", func(t *testing.T) {
-		// chromedp.Clear doesn't fire DOM events — set value and dispatch input
-		// together in a single script so the Change auto-wirer picks it up.
+		// chromedp.Clear doesn't fire DOM events — set value and dispatch both
+		// `input` (what the Change auto-wirer listens for on text inputs) and
+		// `change` (defensive for event-filter implementations) in a single
+		// script so the auto-wirer picks it up regardless.
+		//
+		// Timeout bumped to 10s: this test was flaky under CI load where
+		// orphan processes from earlier tests compete for CPU. Locally
+		// completes in ~0.4s; CI failure pattern was a hard 5s timeout
+		// while still showing the previous query's 1-result state.
 		err := chromedp.Run(ctx,
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.Focus(`input[name="query"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`(() => {
 				const el = document.querySelector('input[name="query"]');
 				el.value = '';
 				el.dispatchEvent(new Event('input', { bubbles: true }));
+				el.dispatchEvent(new Event('change', { bubbles: true }));
 				return el.value;
 			})()`, nil),
-			e2etest.WaitForCount(`tbody tr[data-key]`, 25, 5*time.Second),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 25, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to clear query: %v", err)
