@@ -1,0 +1,25 @@
+{{define "content"}}
+<article>
+    <h3>Active Search</h3>
+    <p><small>Type in the search box. The Change() handler fires after a 300ms debounce and re-renders the result list server-side — no client-side filtering logic.</small></p>
+    <form method="POST">
+        <label>Search contacts
+            <input type="search" name="query" value="{{.Query}}" placeholder="Name or email…" autocomplete="off">
+        </label>
+    </form>
+    <table>
+        <thead><tr><th>Name</th><th>Email</th></tr></thead>
+        <tbody>
+        {{range .Results}}
+        <tr data-key="{{.ID}}">
+            <td>{{.Name}}</td>
+            <td>{{.Email}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{if and .Query (eq (len .Results) 0)}}
+    <p><small>No contacts match "<strong>{{.Query}}</strong>".</small></p>
+    {{end}}
+</article>
+{{end}}

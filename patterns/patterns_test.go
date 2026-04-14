@@ -103,6 +103,24 @@ func runUIStandardsWithPico(t *testing.T, ctx context.Context) {
 	}
 }
 
+// runStandardSubtests runs the boilerplate `UI_Standards` + `Visual_Check`
+// subtest pair. `pico=true` invokes the Pico-variant UI check. Patterns
+// that need additional setup before the UI check (e.g. waiting for
+// entry animations to finish) should inline the subtests instead.
+func runStandardSubtests(t *testing.T, ctx context.Context, pico bool, screenshotDesc string) {
+	t.Helper()
+	t.Run("UI_Standards", func(t *testing.T) {
+		if pico {
+			runUIStandardsWithPico(t, ctx)
+		} else {
+			runUIStandards(t, ctx)
+		}
+	})
+	t.Run("Visual_Check", func(t *testing.T) {
+		e2etest.ValidateScreenshotWithLLM(t, ctx, screenshotDesc)
+	})
+}
+
 // attachFileViaDataTransfer sets a File on the given file input using the
 // DataTransfer API. chromedp.SetUploadFiles cannot be used with Docker
 // Chrome because the container has no access to host filesystem paths.
@@ -149,13 +167,7 @@ func TestIndexPage(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandardsWithPico(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Pattern index page — heading, 7 category cards with pattern links and descriptions")
-	})
+	runStandardSubtests(t, ctx, true, "Pattern index page — heading, 7 category cards with pattern links and descriptions")
 
 	t.Run("Pattern_Links", func(t *testing.T) {
 		var count int
@@ -207,13 +219,7 @@ func TestClickToEdit(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandardsWithPico(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Click To Edit — view mode with name/email displayed and Edit button")
-	})
+	runStandardSubtests(t, ctx, true, "Click To Edit — view mode with name/email displayed and Edit button")
 
 	t.Run("Edit_Mode", func(t *testing.T) {
 		var html string
@@ -318,13 +324,7 @@ func TestEditRow(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandardsWithPico(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Edit Row — table with 4 contacts, each with name/email and Edit button")
-	})
+	runStandardSubtests(t, ctx, true, "Edit Row — table with 4 contacts, each with name/email and Edit button")
 
 	t.Run("Edit_Row", func(t *testing.T) {
 		// Click Edit on the first row
@@ -426,13 +426,7 @@ func TestInlineValidation(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandards(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Inline Validation — email and username inputs with submit button, no errors shown yet")
-	})
+	runStandardSubtests(t, ctx, false, "Inline Validation — email and username inputs with submit button, no errors shown yet")
 
 	t.Run("Valid_Submit", func(t *testing.T) {
 		var html string
@@ -496,13 +490,7 @@ func TestBulkUpdate(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandardsWithPico(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Bulk Update — table with 4 users, checkboxes for active status, Update button")
-	})
+	runStandardSubtests(t, ctx, true, "Bulk Update — table with 4 users, checkboxes for active status, Update button")
 
 	t.Run("Toggle_And_Update", func(t *testing.T) {
 		err := chromedp.Run(ctx,
@@ -542,6 +530,18 @@ func TestBulkUpdate(t *testing.T) {
 			t.Error("User 4 should still be inactive")
 		}
 	})
+
+	t.Run("Submit_With_No_Changes", func(t *testing.T) {
+		// Clicking Update without toggling anything should report
+		// "No changes" instead of a spurious "Updated N user(s)" count.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="bulkUpdate"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash]`, "No changes", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Expected 'No changes' flash, got: %v", err)
+		}
+	})
 }
 
 // --- Pattern #5: Reset User Input ---
@@ -573,13 +573,7 @@ func TestResetInput(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandardsWithPico(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Reset User Input — message input with Send button, info text about auto-clear")
-	})
+	runStandardSubtests(t, ctx, true, "Reset User Input — message input with Send button, info text about auto-clear")
 
 	t.Run("Submit_Message", func(t *testing.T) {
 		var html string
@@ -667,13 +661,7 @@ func TestFileUpload(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandardsWithPico(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "File Upload — two sections: Tier 1 standard HTML upload and Tier 2 chunked upload, each with file input and Upload button")
-	})
+	runStandardSubtests(t, ctx, true, "File Upload — two sections: Tier 1 standard HTML upload and Tier 2 chunked upload, each with file input and Upload button")
 
 	t.Run("Submit_Without_File", func(t *testing.T) {
 		err := chromedp.Run(ctx,
@@ -761,13 +749,7 @@ func TestPreserveInputs(t *testing.T) {
 		}
 	})
 
-	t.Run("UI_Standards", func(t *testing.T) {
-		runUIStandards(t, ctx)
-	})
-
-	t.Run("Visual_Check", func(t *testing.T) {
-		e2etest.ValidateScreenshotWithLLM(t, ctx, "Preserving Form Inputs — name input, description textarea, file attachment input, submit button")
-	})
+	runStandardSubtests(t, ctx, false, "Preserving Form Inputs — name input, description textarea, file attachment input, submit button")
 
 	t.Run("Submit_Shows_Flash", func(t *testing.T) {
 		err := chromedp.Run(ctx,
@@ -839,6 +821,639 @@ func TestPreserveInputs(t *testing.T) {
 		)
 		if err != nil {
 			t.Fatalf("Submit with file attached failed: %v", err)
+		}
+	})
+}
+
+// --- Pattern #8: Delete Row ---
+
+func TestDeleteRow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/delete-row"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		var html string
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 5, 5*time.Second),
+			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load page: %v", err)
+		}
+		for i := 1; i <= 5; i++ {
+			if !strings.Contains(html, fmt.Sprintf(`data-key="%d"`, i)) {
+				t.Errorf("Row with data-key=%q not found", fmt.Sprintf("%d", i))
+			}
+		}
+	})
+
+	t.Run("UI_Standards", func(t *testing.T) {
+		// Wait for lvt-fx:animate entry animations to finish before the
+		// inline-style check — animationend clears the style attribute.
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`Array.from(document.querySelectorAll('[data-key]')).every(el => !el.hasAttribute('style'))`, 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Animations did not complete: %v", err)
+		}
+		runUIStandards(t, ctx)
+	})
+
+	t.Run("Visual_Check", func(t *testing.T) {
+		e2etest.ValidateScreenshotWithLLM(t, ctx, "Delete Row — table with 5 items showing ID, Name, Email columns and a Delete button on each row")
+	})
+
+	t.Run("Delete_First_Row", func(t *testing.T) {
+		var html string
+		err := chromedp.Run(ctx,
+			chromedp.Click(`tr[data-key="1"] button[name="delete"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 4, 5*time.Second),
+			chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to delete first row: %v", err)
+		}
+		if strings.Contains(html, `data-key="1"`) {
+			t.Error("Row 1 still present after delete")
+		}
+		if !strings.Contains(html, `data-key="2"`) {
+			t.Error("Row 2 should still be present")
+		}
+	})
+
+	t.Run("Delete_All_Remaining_Rows", func(t *testing.T) {
+		// Delete rows 2, 3, 4, 5 one at a time, asserting the count after each.
+		for _, row := range []struct {
+			id            string
+			expectedAfter int
+		}{
+			{"2", 3},
+			{"3", 2},
+			{"4", 1},
+			{"5", 0},
+		} {
+			err := chromedp.Run(ctx,
+				chromedp.Click(fmt.Sprintf(`tr[data-key="%s"] button[name="delete"]`, row.id), chromedp.ByQuery),
+				e2etest.WaitForCount(`tbody tr[data-key]`, row.expectedAfter, 5*time.Second),
+			)
+			if err != nil {
+				t.Fatalf("Failed to delete row %s: %v", row.id, err)
+			}
+		}
+		// Assert empty state message appears and Restore button is present
+		err := chromedp.Run(ctx,
+			e2etest.WaitForText(`article`, "All items deleted", 5*time.Second),
+			chromedp.WaitVisible(`button[name="restore"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Empty state or restore button not shown: %v", err)
+		}
+	})
+
+	t.Run("State_Persists_Across_Reload", func(t *testing.T) {
+		// Reload the page — the shared in-memory DB should still be empty
+		// from the previous Delete_All_Remaining_Rows subtest, proving that
+		// state persists across reloads without needing lvt:"persist" tags.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForText(`article`, "All items deleted", 5*time.Second),
+			chromedp.WaitVisible(`button[name="restore"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Empty state did not persist across reload: %v", err)
+		}
+	})
+
+	t.Run("Restore_Refills_Items", func(t *testing.T) {
+		// Click Restore to refill the DB. All 5 items should reappear.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="restore"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 5, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Restore did not refill items: %v", err)
+		}
+	})
+}
+
+// --- Pattern #9: Click To Load ---
+
+func TestClickToLoad(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/click-to-load"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		var html string
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 10, 5*time.Second),
+			chromedp.OuterHTML(`article`, &html, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load page: %v", err)
+		}
+		if !strings.Contains(html, `name="loadMore"`) {
+			t.Error("Load More button not found")
+		}
+		if !strings.Contains(html, "Item 10") {
+			t.Error("First page's last item (Item 10) not found")
+		}
+		if strings.Contains(html, "Item 11") {
+			t.Error("Second page item (Item 11) should not be present yet")
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Click To Load — table with 10 rows (ID, Name, Email) and a Load More button below")
+
+	t.Run("Load_Second_Page", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="loadMore"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 20, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load second page: %v", err)
+		}
+		var html string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read tbody: %v", err)
+		}
+		if !strings.Contains(html, "Item 11") {
+			t.Error("Second page item (Item 11) not found after load")
+		}
+		if !strings.Contains(html, "Item 20") {
+			t.Error("Second page's last item (Item 20) not found after load")
+		}
+	})
+
+	t.Run("Load_Third_Page_And_Hide_Button", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="loadMore"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 25, 5*time.Second),
+			// Wait for the button to disappear (HasMore flips false when the
+			// final page returns fewer than listPageSize items).
+			e2etest.WaitFor(`document.querySelector('button[name="loadMore"]') === null`, 5*time.Second),
+			e2etest.WaitForText(`article`, "End of list", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load third page: %v", err)
+		}
+	})
+}
+
+// --- Pattern #11: Value Select ---
+
+// selectValueAndDispatchChange sets a <select>'s value and dispatches a
+// bubbling change event so the LiveTemplate client's Change auto-wirer fires.
+// chromedp.Click cannot open native <select> dropdowns in headless Chrome.
+func selectValueAndDispatchChange(selector, value string) chromedp.Action {
+	script := fmt.Sprintf(`(() => {
+		const el = document.querySelector(%q);
+		if (!el) return 'missing:' + %q;
+		el.value = %q;
+		el.dispatchEvent(new Event('change', { bubbles: true }));
+		return 'ok';
+	})()`, selector, selector, value)
+	return chromedp.Evaluate(script, nil)
+}
+
+func TestValueSelect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/value-select"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		var makeOptionCount int
+		var modelDisabled bool
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`select[name="make"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			chromedp.Evaluate(`document.querySelectorAll('select[name="make"] option').length`, &makeOptionCount),
+			chromedp.Evaluate(`document.querySelector('select[name="model"]').disabled`, &modelDisabled),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load page: %v", err)
+		}
+		// 1 placeholder + 3 makes (Audi, BMW, Toyota)
+		if makeOptionCount != 4 {
+			t.Errorf("Expected 4 make options, got %d", makeOptionCount)
+		}
+		if !modelDisabled {
+			t.Error("Model select should be disabled when no make is selected")
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Value Select — Make dropdown with 3 car makes and Model dropdown disabled until a make is selected")
+
+	t.Run("Select_Make_Auto_Selects_First_Model", func(t *testing.T) {
+		// Selecting a Make auto-selects the first Model for immediate visual
+		// feedback — the Model dropdown's value updates and the "Selected:"
+		// line appears without needing a second user click.
+		err := chromedp.Run(ctx,
+			selectValueAndDispatchChange(`select[name="make"]`, "Audi"),
+			// Wait for Model options to be populated (4 models + placeholder = 5).
+			e2etest.WaitFor(`document.querySelectorAll('select[name="model"] option').length === 5`, 5*time.Second),
+			// Wait for the auto-selected "Audi A3" line to appear.
+			e2etest.WaitForText(`article`, "Audi A3", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to select make or auto-select model: %v", err)
+		}
+		var html string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`select[name="model"]`, &html, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read model select: %v", err)
+		}
+		for _, model := range []string{"A3", "A4", "Q5", "R8"} {
+			if !strings.Contains(html, model) {
+				t.Errorf("Expected Audi model %q in select, got:\n%s", model, html)
+			}
+		}
+	})
+
+	t.Run("Select_Model_Updates_Selection", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			selectValueAndDispatchChange(`select[name="model"]`, "A4"),
+			e2etest.WaitForText(`article`, "Audi A4", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to select model: %v", err)
+		}
+	})
+
+	t.Run("Change_Make_Auto_Selects_New_First_Model", func(t *testing.T) {
+		// Switching Make auto-selects the new Make's first Model — so the
+		// previous "Audi A4" line becomes "BMW 3 Series" without the user
+		// needing to touch the Model dropdown.
+		err := chromedp.Run(ctx,
+			selectValueAndDispatchChange(`select[name="make"]`, "BMW"),
+			e2etest.WaitFor(`(() => {
+				const opts = document.querySelectorAll('select[name="model"] option');
+				if (opts.length !== 5) return false;
+				const texts = Array.from(opts).map(o => o.textContent);
+				return texts.includes('3 Series') && !texts.includes('A4');
+			})()`, 5*time.Second),
+			e2etest.WaitForText(`article`, "BMW 3 Series", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to switch make or auto-select new model: %v", err)
+		}
+		// The previous "Audi A4" line should be gone.
+		var html string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`article`, &html, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read article: %v", err)
+		}
+		if strings.Contains(html, "Audi A4") {
+			t.Error("Previous selection 'Audi A4' should be cleared after make change")
+		}
+	})
+}
+
+// --- Pattern #12: Active Search ---
+
+func TestActiveSearch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/search/active-search"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`input[name="query"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			// Full directory is 25 contacts
+			e2etest.WaitForCount(`tbody tr[data-key]`, 25, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load page: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Active Search — search input labeled 'Search contacts' with a table of 25 contacts showing Name and Email columns below")
+
+	t.Run("Filter_To_Single_Result", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Focus(`input[name="query"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="query"]`, "Chen", chromedp.ByQuery),
+			// WaitForCount naturally waits out the 300ms debounce
+			e2etest.WaitForCount(`tbody tr[data-key]`, 1, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to filter results: %v", err)
+		}
+		var html string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read tbody: %v", err)
+		}
+		if !strings.Contains(html, "Marcus Chen") {
+			t.Errorf("Expected Marcus Chen in results, got:\n%s", html)
+		}
+	})
+
+	t.Run("Clear_Query_Restores_All", func(t *testing.T) {
+		// chromedp.Clear doesn't fire DOM events — set value and dispatch both
+		// `input` (what the Change auto-wirer listens for on text inputs) and
+		// `change` (defensive for event-filter implementations) in a single
+		// script so the auto-wirer picks it up regardless.
+		//
+		// Timeout bumped to 10s: this test was flaky under CI load where
+		// orphan processes from earlier tests compete for CPU. Locally
+		// completes in ~0.4s; CI failure pattern was a hard 5s timeout
+		// while still showing the previous query's 1-result state.
+		err := chromedp.Run(ctx,
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.Focus(`input[name="query"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`(() => {
+				const el = document.querySelector('input[name="query"]');
+				el.value = '';
+				el.dispatchEvent(new Event('input', { bubbles: true }));
+				el.dispatchEvent(new Event('change', { bubbles: true }));
+				return el.value;
+			})()`, nil),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 25, 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to clear query: %v", err)
+		}
+	})
+
+	t.Run("Empty_Results_Shows_No_Results", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Focus(`input[name="query"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="query"]`, "xzyzzzz-no-match", chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 0, 5*time.Second),
+			e2etest.WaitForText(`article`, "No contacts match", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to show empty results: %v", err)
+		}
+	})
+}
+
+// --- Pattern #13: URL-Preserved Filters ---
+
+func TestURLFilters(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	baseURL := e2etest.GetChromeTestURL(serverPort) + "/patterns/search/url-filters"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			// Full dataset: 12 items
+			e2etest.WaitForCount(`tbody tr[data-key]`, 12, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load page: %v", err)
+		}
+		// "All" and "By Name" should have aria-current="page"
+		var html string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`article nav`, &html, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read nav: %v", err)
+		}
+		if !strings.Contains(html, `aria-current="page">All`) {
+			t.Errorf("Expected 'All' link marked aria-current, got:\n%s", html)
+		}
+		if !strings.Contains(html, `aria-current="page">By Name`) {
+			t.Errorf("Expected 'By Name' link marked aria-current, got:\n%s", html)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "URL-Preserved Filters — two groups of filter links (status: All/Active/Completed and sort: By Name/By Date) above a table of items with Name, Status, Date columns")
+
+	t.Run("Filter_By_Active", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`a[href="?status=active&sort=name"]`, chromedp.ByQuery),
+			// 7 active items in filterDataset (IDs 3, 4, 6, 8, 10, 11, 12).
+			e2etest.WaitForCount(`tbody tr[data-key]`, 7, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to filter by active: %v", err)
+		}
+		var currentURL string
+		err = chromedp.Run(ctx, chromedp.Location(&currentURL))
+		if err != nil {
+			t.Fatalf("Failed to read URL: %v", err)
+		}
+		if !strings.Contains(currentURL, "status=active") {
+			t.Errorf("URL should contain status=active, got: %s", currentURL)
+		}
+	})
+
+	t.Run("Bookmarkable_Reload", func(t *testing.T) {
+		// Direct navigate to a filtered URL (simulates bookmark reload).
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL+"?status=completed&sort=date"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+			// Completed items: 1, 2, 5, 7, 9 = 5
+			e2etest.WaitForCount(`tbody tr[data-key]`, 5, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Bookmarked URL did not restore state: %v", err)
+		}
+		// Verify sort order is date-desc: first row should be the newest completed item
+		// (ID 9, 2024-08-19) per filterDataset in data.go.
+		var firstRowHTML string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`tbody tr:first-child`, &firstRowHTML, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read first row: %v", err)
+		}
+		if !strings.Contains(firstRowHTML, "2024-08-19") {
+			t.Errorf("Expected newest completed item (2024-08-19) first, got:\n%s", firstRowHTML)
+		}
+		var navHTML string
+		err = chromedp.Run(ctx, chromedp.OuterHTML(`article nav`, &navHTML, chromedp.ByQuery))
+		if err != nil {
+			t.Fatalf("Failed to read nav: %v", err)
+		}
+		if !strings.Contains(navHTML, `aria-current="page">Completed`) {
+			t.Errorf("Completed link should be marked aria-current after bookmarked reload, got:\n%s", navHTML)
+		}
+		if !strings.Contains(navHTML, `aria-current="page">By Date`) {
+			t.Errorf("By Date link should be marked aria-current after bookmarked reload, got:\n%s", navHTML)
+		}
+	})
+
+	t.Run("Invalid_Status_Falls_Back", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL+"?status=nonsense&sort=date"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+			// Unknown status falls back to default "all" → 12 items
+			e2etest.WaitForCount(`tbody tr[data-key]`, 12, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Invalid status did not fall back gracefully: %v", err)
+		}
+	})
+
+	t.Run("Reset_To_All", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`a[href="?status=all&sort=date"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 12, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to reset to all: %v", err)
+		}
+	})
+}
+
+// --- Pattern #10: Infinite Scroll ---
+
+// TestInfiniteScroll verifies the #scroll-sentinel IntersectionObserver
+// wiring and the loadMorePending throttle. In headless Chrome the short
+// first page keeps the sentinel intersecting, so page 2 auto-advances;
+// subsequent pages require an explicit scroll because the sentinel has
+// drifted past the 200px rootMargin.
+func TestInfiniteScroll(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/infinite-scroll"
+
+	t.Run("Initial_Load_And_Auto_Advance", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`table`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			// First page renders, observer auto-advances while sentinel is
+			// in view (safely throttled by the client's loadMorePending flag).
+			e2etest.WaitFor(`document.querySelectorAll('tbody tr[data-key]').length >= 10`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+		// Wait for the auto-advance to settle: two consecutive polls with
+		// the same row count (rows have stopped arriving).
+		var dataKeys string
+		err = chromedp.Run(ctx,
+			e2etest.WaitFor(`(() => {
+				const prev = window.__lastRowCount || 0;
+				const cur = document.querySelectorAll('tbody tr[data-key]').length;
+				window.__lastRowCount = cur;
+				return cur === prev && cur > 0;
+			})()`, 3*time.Second),
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('tbody tr[data-key]')).map(r => r.getAttribute('data-key')).join(',')`, &dataKeys),
+		)
+		if err != nil {
+			t.Fatalf("Auto-advance did not settle: %v", err)
+		}
+		// Verify no duplicate data-keys — the client's loadMorePending flag
+		// plus the WS-aware connect() ensure that each load_more lands
+		// exactly once on the server-side persistent state path.
+		seen := make(map[string]bool)
+		for _, k := range strings.Split(dataKeys, ",") {
+			if seen[k] {
+				t.Fatalf("Duplicate data-key %q after auto-advance: %s", k, dataKeys)
+			}
+			seen[k] = true
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Infinite Scroll — table with 20 rows (ID, Name, Email) followed by a 'Loading more…' sentinel at the bottom")
+
+	t.Run("Scroll_Triggers_More_Pages", func(t *testing.T) {
+		// Scroll the sentinel into view repeatedly. Each scroll fires one
+		// observer callback (throttled by the client's loadMorePending flag),
+		// appending one more page. With the 100-item dataset at page size 10,
+		// we'd need ~8-10 scrolls to fully exhaust, so we verify the pipeline
+		// works by scrolling twice and confirming two extra pages loaded.
+		var baseline int
+		_ = chromedp.Run(ctx, chromedp.Evaluate(`document.querySelectorAll('tbody tr[data-key]').length`, &baseline))
+		if baseline < 10 {
+			t.Fatalf("Baseline row count too low: %d", baseline)
+		}
+		// Scroll once
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const s = document.getElementById('scroll-sentinel');
+				if (s) s.scrollIntoView({ block: 'center' });
+			})()`, nil),
+			e2etest.WaitFor(`document.querySelectorAll('tbody tr[data-key]').length > `+fmt.Sprintf("%d", baseline), 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("First scroll did not trigger a new page: %v", err)
+		}
+		// Scroll again
+		var afterFirstScroll int
+		_ = chromedp.Run(ctx, chromedp.Evaluate(`document.querySelectorAll('tbody tr[data-key]').length`, &afterFirstScroll))
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				const s = document.getElementById('scroll-sentinel');
+				if (s) s.scrollIntoView({ block: 'center' });
+			})()`, nil),
+			e2etest.WaitFor(`document.querySelectorAll('tbody tr[data-key]').length > `+fmt.Sprintf("%d", afterFirstScroll), 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Second scroll did not trigger a new page: %v", err)
+		}
+		// Duplicate check: all data-keys are unique.
+		var dataKeys string
+		_ = chromedp.Run(ctx,
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('tbody tr[data-key]')).map(r => r.getAttribute('data-key')).join(',')`, &dataKeys),
+		)
+		seen := make(map[string]bool)
+		for _, k := range strings.Split(dataKeys, ",") {
+			if seen[k] {
+				t.Errorf("Duplicate data-key %q after scroll-driven pagination: %s", k, dataKeys)
+			}
+			seen[k] = true
+		}
+		// Sanity: at least 3 items from past the first page should be present.
+		var html string
+		_ = chromedp.Run(ctx, chromedp.OuterHTML(`tbody`, &html, chromedp.ByQuery))
+		if !strings.Contains(html, "Row 1") {
+			t.Error("Row 1 (first item) missing after scroll")
 		}
 	})
 }

@@ -1,0 +1,25 @@
+{{define "content"}}
+<article>
+    <h3>Click To Load</h3>
+    <p><small>Append-only pagination. Clicking Load More asks the server for the next page; the diff engine appends new rows without redrawing existing ones.</small></p>
+    <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th></tr></thead>
+        <tbody>
+        {{range .Items}}
+        <tr data-key="{{.ID}}">
+            <td>{{.ID}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.Email}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{if .HasMore}}
+    <form method="POST">
+        <button name="loadMore" class="secondary outline">Load More</button>
+    </form>
+    {{else}}
+    <p><small>End of list.</small></p>
+    {{end}}
+</article>
+{{end}}

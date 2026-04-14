@@ -75,6 +75,16 @@ func main() {
 	mux.Handle("/patterns/forms/file-upload", fileUploadHandler(baseOpts))
 	mux.Handle("/patterns/forms/preserve-inputs", preserveInputsHandler(baseOpts))
 
+	// Category: Lists & Data (#8–#11)
+	mux.Handle("/patterns/lists/delete-row", deleteRowHandler(baseOpts))
+	mux.Handle("/patterns/lists/click-to-load", clickToLoadHandler(baseOpts))
+	mux.Handle("/patterns/lists/infinite-scroll", infiniteScrollHandler(baseOpts))
+	mux.Handle("/patterns/lists/value-select", valueSelectHandler(baseOpts))
+
+	// Category: Search & Filtering (#12–#13)
+	mux.Handle("/patterns/search/active-search", activeSearchHandler(baseOpts))
+	mux.Handle("/patterns/search/url-filters", urlFiltersHandler(baseOpts))
+
 	// Client library and CSS (dev mode)
 	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
 		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {
