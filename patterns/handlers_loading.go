@@ -31,9 +31,19 @@ func (c *LazyLoadController) Mount(state LazyLoadState, ctx *livetemplate.Contex
 }
 
 func (c *LazyLoadController) OnConnect(state LazyLoadState, ctx *livetemplate.Context) (LazyLoadState, error) {
+	// Skip if the data has already arrived (e.g., reconnect after a network
+	// hiccup) — re-spawning the goroutine would emit a duplicate update.
 	if !state.Loading {
 		return state, nil
 	}
+	// Session is guaranteed non-nil by livetemplate v0.8.18+ (every connect
+	// path wires WithSession), but the defensive check stays so a future
+	// regression that re-introduces nil sessions surfaces as "no push happens"
+	// rather than a panic. Note: if session is nil here, state.Loading
+	// remains true and the spinner is shown indefinitely. This is the
+	// documented JS-disabled fallback behaviour for the Lazy Loading
+	// pattern (see proposal §14) — JS-enabled clients always reach the
+	// WebSocket connect path that wires the session.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
@@ -54,12 +64,16 @@ func (c *LazyLoadController) DataLoaded(state LazyLoadState, ctx *livetemplate.C
 }
 
 func (c *LazyLoadController) Reload(state LazyLoadState, ctx *livetemplate.Context) (LazyLoadState, error) {
-	state.Loading = true
-	state.Data = ""
+	// Check session BEFORE mutating state. With livetemplate v0.8.18+ this
+	// is always non-nil, but the early return ensures the UI does not
+	// transition into Loading=true with no goroutine to ever clear it
+	// — which would happen if the framework's session wiring regressed.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
 	}
+	state.Loading = true
+	state.Data = ""
 	go func() {
 		time.Sleep(lazyLoadDelay)
 		_ = session.TriggerAction("dataLoaded", map[string]interface{}{
@@ -98,13 +112,18 @@ func (c *ProgressBarController) Start(state ProgressBarState, ctx *livetemplate.
 	if state.Running {
 		return state, nil
 	}
-	state.Running = true
-	state.Done = false
-	state.Progress = 0
+	// Check session BEFORE setting Running=true. With livetemplate v0.8.18+
+	// this is always non-nil, but if it ever became nil the previous
+	// ordering (mutate first, check second) would leave Running=true
+	// permanently and the Running guard above would block all subsequent
+	// Start clicks. Checking first ensures the UI stays interactive.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
 	}
+	state.Running = true
+	state.Done = false
+	state.Progress = 0
 	go func() {
 		for i := progressStep; i <= 100; i += progressStep {
 			time.Sleep(progressTickRate)
@@ -151,17 +170,24 @@ type AsyncOpsController struct{}
 const asyncFetchDelay = 2 * time.Second
 
 func (c *AsyncOpsController) Fetch(state AsyncOpsState, ctx *livetemplate.Context) (AsyncOpsState, error) {
-	state.Status = "loading"
-	state.Result = ""
-	state.Error = ""
+	// Check session BEFORE setting Status="loading". With livetemplate
+	// v0.8.18+ this is always non-nil, but if it ever became nil the
+	// previous ordering (mutate first, check second) would leave the
+	// button stuck showing "Fetching..." with no goroutine to clear it.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
 	}
+	state.Status = "loading"
+	state.Result = ""
+	state.Error = ""
 	go func() {
 		time.Sleep(asyncFetchDelay)
-		// Simulated ~33% failure rate. Non-deterministic by design — tests
-		// must assert {success OR error}, not a specific branch.
+		// Simulated ~33% failure rate. Non-deterministic between runs because
+		// Go 1.20+ auto-seeds top-level math/rand from a system source at
+		// program startup — no rand.Seed call is needed. Tests must assert
+		// {success OR error}, not a specific branch, since either may fire
+		// on any given run.
 		if rand.Intn(3) == 0 {
 			_ = session.TriggerAction("fetchResult", map[string]interface{}{
 				"success": false,

@@ -1632,7 +1632,11 @@ func TestAsyncOperations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Async flow did not complete: %v", err)
 		}
-		// Exactly one of success or error must be present, plus the matching flash.
+		// Exactly one of success or error must be present, plus the matching
+		// flash. The flash text is asserted against the controller's exact
+		// SetFlash message, not just the element presence — an empty
+		// <output data-flash=""> placeholder would satisfy a presence-only
+		// check and silently mask a regression where SetFlash wasn't called.
 		var outcome string
 		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
 			if (document.querySelector('blockquote')) return 'success';
@@ -1642,10 +1646,22 @@ func TestAsyncOperations(t *testing.T) {
 		if outcome == "none" {
 			t.Fatal("No outcome (neither success nor error) rendered")
 		}
-		var hasFlash bool
-		_ = chromedp.Run(ctx, chromedp.Evaluate(`!!document.querySelector('output[data-flash="`+outcome+`"]')`, &hasFlash))
-		if !hasFlash {
-			t.Errorf("Outcome %q: expected matching flash output[data-flash=%q]", outcome, outcome)
+		// Map outcome → expected flash text from the controller.
+		// Mirrors AsyncOpsController.FetchResult ctx.SetFlash calls.
+		expectedFlashText := map[string]string{
+			"success": "Fetch complete",
+			"error":   "Fetch failed",
+		}[outcome]
+		var flashText string
+		_ = chromedp.Run(ctx, chromedp.Evaluate(
+			`(() => { const el = document.querySelector('output[data-flash="`+outcome+`"]'); return el ? el.textContent.trim() : ""; })()`,
+			&flashText,
+		))
+		if flashText == "" {
+			t.Errorf("Outcome %q: expected output[data-flash=%q] to exist with non-empty text, got empty", outcome, outcome)
+		}
+		if !strings.Contains(flashText, expectedFlashText) {
+			t.Errorf("Outcome %q: flash text = %q, want it to contain %q", outcome, flashText, expectedFlashText)
 		}
 	})
 
