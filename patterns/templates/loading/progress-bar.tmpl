@@ -1,0 +1,20 @@
+{{define "content"}}
+<article>
+    <h3>Progress Bar</h3>
+    <p><small>A background goroutine ticks progress from 10% to 100% via WebSocket pushes — no polling.</small></p>
+    {{if .Running}}
+    <progress value="{{.Progress}}" max="100"></progress>
+    <p><small>{{.Progress}}% complete</small></p>
+    {{else if .Done}}
+    <progress value="100" max="100"></progress>
+    {{.lvt.FlashTag "success"}}
+    <form method="POST">
+        <button name="start">Run Again</button>
+    </form>
+    {{else}}
+    <form method="POST">
+        <button name="start">Start Job</button>
+    </form>
+    {{end}}
+</article>
+{{end}}

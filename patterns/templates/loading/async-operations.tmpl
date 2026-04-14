@@ -1,0 +1,16 @@
+{{define "content"}}
+<article>
+    <h3>Async Operations</h3>
+    <p><small>A loading → success / error state machine. ~33% simulated failure rate on each fetch.</small></p>
+    <form method="POST">
+        <button name="fetch"
+            {{if eq .Status "loading"}}aria-busy="true" disabled{{end}}>
+            {{if eq .Status "loading"}}Fetching...{{else}}Fetch Data{{end}}
+        </button>
+    </form>
+    {{.lvt.FlashTag "success"}}
+    {{.lvt.FlashTag "error"}}
+    {{with .Result}}<blockquote>{{.}}</blockquote>{{end}}
+    {{with .Error}}<p><mark>{{.}}</mark></p>{{end}}
+</article>
+{{end}}

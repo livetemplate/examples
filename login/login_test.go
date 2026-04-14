@@ -195,6 +195,27 @@ func TestLoginE2E(t *testing.T) {
 		t.Log("✅ Successful login verified")
 	})
 
+	// Regression guard: before livetemplate's Session.TriggerAction fix,
+	// ctx.Session() returned nil inside OnConnect, so sendWelcomeMessage
+	// silently no-op'd. The page-literal "Welcome, testuser!" (tested above)
+	// is template-rendered and would still be present even with a broken
+	// Session, so only an explicit check for the server-push payload catches
+	// the regression. sendWelcomeMessage sleeps 500ms then calls
+	// session.TriggerAction("serverWelcome", {"message": "Welcome testuser!
+	// This message was pushed from the server at HH:MM:SS"}), which
+	// ServerWelcome renders into the ServerMessage <ins> element.
+	t.Run("Server Welcome Message via WebSocket Push", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			e2etest.WaitForText(`ins`, "pushed from the server", 5*time.Second),
+		)
+		if err != nil {
+			var body string
+			_ = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &body, chromedp.ByQuery))
+			t.Fatalf("Server welcome message did not arrive via WebSocket push within 5s: %v\n=== body ===\n%s", err, body[:min(len(body), 800)])
+		}
+		t.Log("✅ Server-pushed welcome message verified")
+	})
+
 	t.Run("Logout via Form Submit", func(t *testing.T) {
 		var html string
 
