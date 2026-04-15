@@ -1506,8 +1506,15 @@ func TestLazyLoading(t *testing.T) {
 	})
 
 	t.Run("Reload_Refetches_Fresh_Content", func(t *testing.T) {
-		// Click Reload; spinner reappears; new content arrives with a
-		// different timestamp (proves a second goroutine ran, not a cached value).
+		// Click Reload; spinner reappears; new content arrives via a fresh
+		// goroutine push. The two strings have different prefixes ("Content
+		// loaded lazily at …" vs "Content reloaded at …"), so an inequality
+		// check between them is trivially true and would not actually prove
+		// that a second goroutine ran. Instead, assert directly on the
+		// expected prefix transitions: firstContent must be the
+		// initial-load message, secondContent must be the reload message.
+		// Both prefixes are produced by separate goroutine paths, so this
+		// assertion proves real second-goroutine execution.
 		var firstContent, secondContent string
 		err := chromedp.Run(ctx,
 			chromedp.Text(`blockquote`, &firstContent, chromedp.ByQuery),
@@ -1519,11 +1526,17 @@ func TestLazyLoading(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Reload failed: %v", err)
 		}
-		if !strings.Contains(secondContent, "Content reloaded") {
-			t.Errorf("Reload did not produce fresh content: %q", secondContent)
+		if !strings.Contains(firstContent, "Content loaded lazily") {
+			t.Errorf("First content was not the initial load message: %q", firstContent)
 		}
-		if firstContent == secondContent {
-			t.Errorf("Reload returned identical content (expected different timestamp): %q", secondContent)
+		if strings.Contains(firstContent, "Content reloaded") {
+			t.Errorf("First content already had the reload prefix — test ordering broken: %q", firstContent)
+		}
+		if !strings.Contains(secondContent, "Content reloaded") {
+			t.Errorf("Second content did not have the reload prefix: %q", secondContent)
+		}
+		if strings.Contains(secondContent, "Content loaded lazily") {
+			t.Errorf("Second content still had the initial-load prefix: %q", secondContent)
 		}
 	})
 
@@ -1607,7 +1620,7 @@ func TestAsyncOperations(t *testing.T) {
 			e2etest.WaitForWebSocketReady(5*time.Second),
 			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
 			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
-			chromedp.Evaluate(`!!document.querySelector('blockquote') || !!document.querySelector('mark')`, &hasResult),
+			chromedp.Evaluate(`!!document.querySelector('blockquote') || !!document.querySelector('del')`, &hasResult),
 		)
 		if err != nil {
 			t.Fatalf("Initial load failed: %v", err)
@@ -1624,8 +1637,8 @@ func TestAsyncOperations(t *testing.T) {
 			chromedp.Click(`button[name="fetch"]`, chromedp.ByQuery),
 			// Loading state: button shows "Fetching..." and aria-busy.
 			e2etest.WaitForText(`button[name="fetch"]`, "Fetching...", 3*time.Second),
-			// Final state: either <blockquote> (success) or <mark> (error).
-			e2etest.WaitFor(`!!document.querySelector('blockquote') || !!document.querySelector('mark')`, 5*time.Second),
+			// Final state: either <blockquote> (success) or <del> (error).
+			e2etest.WaitFor(`!!document.querySelector('blockquote') || !!document.querySelector('del')`, 5*time.Second),
 			// Button must re-enable (exits "loading" status).
 			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
 		)
@@ -1640,7 +1653,7 @@ func TestAsyncOperations(t *testing.T) {
 		var outcome string
 		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
 			if (document.querySelector('blockquote')) return 'success';
-			if (document.querySelector('mark')) return 'error';
+			if (document.querySelector('del')) return 'error';
 			return 'none';
 		})()`, &outcome))
 		if outcome == "none" {

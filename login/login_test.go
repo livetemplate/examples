@@ -205,8 +205,12 @@ func TestLoginE2E(t *testing.T) {
 	// This message was pushed from the server at HH:MM:SS"}), which
 	// ServerWelcome renders into the ServerMessage <ins> element.
 	t.Run("Server Welcome Message via WebSocket Push", func(t *testing.T) {
+		// Use the explicit #server-welcome-message id rather than a bare
+		// `ins` selector so the test can't accidentally match a different
+		// <ins> element (e.g., a future generic success flash) and pass
+		// spuriously. The id lives on auth.html line 23.
 		err := chromedp.Run(ctx,
-			e2etest.WaitForText(`ins`, "pushed from the server", 5*time.Second),
+			e2etest.WaitForText(`#server-welcome-message`, "pushed from the server", 5*time.Second),
 		)
 		if err != nil {
 			var body string

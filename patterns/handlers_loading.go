@@ -37,22 +37,33 @@ func (c *LazyLoadController) OnConnect(state LazyLoadState, ctx *livetemplate.Co
 		return state, nil
 	}
 	// Session is guaranteed non-nil by livetemplate v0.8.18+ (every connect
-	// path wires WithSession), but the defensive check stays so a future
-	// regression that re-introduces nil sessions surfaces as "no push happens"
-	// rather than a panic. Note: if session is nil here, state.Loading
-	// remains true and the spinner is shown indefinitely. This is the
-	// documented JS-disabled fallback behaviour for the Lazy Loading
-	// pattern (see proposal §14) — JS-enabled clients always reach the
-	// WebSocket connect path that wires the session.
+	// path wires WithSession). The defensive check stays so a future
+	// framework regression surfaces as "no push happens" rather than a
+	// panic — but it should NOT be confused with the JS-disabled fallback.
+	// JS-disabled clients never reach OnConnect at all (no WebSocket = no
+	// OnConnect call); the JS-disabled spinner-forever case is created by
+	// Mount() returning Loading=true on the initial HTTP GET. The nil
+	// branch here is purely a defensive guard against framework bugs.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
 	}
+	// Reconnect-during-loading note: if the client disconnects and
+	// reconnects within the 2s window, OnConnect fires again and spawns
+	// a second goroutine while the first is still asleep. The first
+	// goroutine's TriggerAction will return an error when its session
+	// becomes invalid, so it exits cleanly via the cancellation pattern
+	// below — only the most recent goroutine completes successfully.
+	// This relies on framework session-invalidation semantics rather
+	// than an explicit guard, matching the documented Server Push
+	// pattern (proposal #31).
 	go func() {
 		time.Sleep(lazyLoadDelay)
-		_ = session.TriggerAction("dataLoaded", map[string]interface{}{
+		if err := session.TriggerAction("dataLoaded", map[string]interface{}{
 			"data": "Content loaded lazily at " + time.Now().Format("15:04:05"),
-		})
+		}); err != nil {
+			return // Session disconnected — stop cleanly.
+		}
 	}()
 	return state, nil
 }
@@ -72,13 +83,23 @@ func (c *LazyLoadController) Reload(state LazyLoadState, ctx *livetemplate.Conte
 	if session == nil {
 		return state, nil
 	}
+	// No explicit Running-style guard here (unlike ProgressBarController.Start)
+	// because the template hides the Reload button while Loading=true. The
+	// only way to re-trigger Reload during the 2s window is via a direct
+	// WebSocket message bypassing the rendered UI, which is intentional in
+	// the demo (a power user could send action: reload twice rapidly). If
+	// that happens, the first goroutine's TriggerAction returns an error
+	// when DataLoaded clears Loading and a second Reload starts; the err
+	// check below handles it.
 	state.Loading = true
 	state.Data = ""
 	go func() {
 		time.Sleep(lazyLoadDelay)
-		_ = session.TriggerAction("dataLoaded", map[string]interface{}{
+		if err := session.TriggerAction("dataLoaded", map[string]interface{}{
 			"data": "Content reloaded at " + time.Now().Format("15:04:05"),
-		})
+		}); err != nil {
+			return // Session disconnected — stop cleanly.
+		}
 	}()
 	return state, nil
 }

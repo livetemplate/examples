@@ -20,7 +20,7 @@
         <article>
             <h1>Dashboard</h1>
             {{if .ServerMessage}}
-            <ins style="display:block;text-decoration:none">{{.ServerMessage}}</ins>
+            <ins id="server-welcome-message" style="display:block;text-decoration:none">{{.ServerMessage}}</ins>
             {{end}}
             <section>
                 <p>Welcome, <strong>{{.Username}}</strong>!</p>
