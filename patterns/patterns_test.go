@@ -1582,7 +1582,10 @@ func TestProgressBar(t *testing.T) {
 			e2etest.WaitFor(`!!document.querySelector('progress')`, 3*time.Second),
 			// Progress element is mid-flight: above 0 and below 100.
 			// This proves the goroutine is actually ticking, not jumping.
-			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 3*time.Second),
+			// 5s timeout (matching Run_Again_Restarts_Timer) gives loaded
+			// CI runners a comfortable margin before the goroutine completes
+			// the full 5s run and the value reaches 100.
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
 			// Run Again button indicates the Done state.
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),

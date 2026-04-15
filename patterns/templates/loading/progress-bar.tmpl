@@ -8,12 +8,12 @@
     {{else if .Done}}
     <progress value="100" max="100"></progress>
     <p><small>100% complete</small></p>
-    {{/* FlashTag is intentionally rendered only inside the .Done branch:
-         flashes are ephemeral (consumed on first render), and the only
-         path that emits one is UpdateProgress when Progress >= 100. The
-         idle and Running branches don't need a FlashTag slot — there's
-         no controller path that emits a flash while either is the active
-         render state. */}}
+    {{/* FlashTag must live inside the .Done branch: UpdateProgress emits
+         the flash only when transitioning to Done, so they always render
+         together. Flashes are ephemeral (consumed on first render) — moving
+         this outside the branch would cause the flash to be consumed during
+         a Running or idle render before Done is reached, and the user would
+         never see it. */}}
     {{.lvt.FlashTag "success"}}
     <form method="POST">
         <button name="start">Run Again</button>
