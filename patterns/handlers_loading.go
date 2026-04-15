@@ -84,13 +84,16 @@ func (c *LazyLoadController) Reload(state LazyLoadState, ctx *livetemplate.Conte
 		return state, nil
 	}
 	// No explicit Running-style guard here (unlike ProgressBarController.Start)
-	// because the template hides the Reload button while Loading=true. The
-	// only way to re-trigger Reload during the 2s window is via a direct
-	// WebSocket message bypassing the rendered UI, which is intentional in
-	// the demo (a power user could send action: reload twice rapidly). If
-	// that happens, the first goroutine's TriggerAction returns an error
-	// when DataLoaded clears Loading and a second Reload starts; the err
-	// check below handles it.
+	// because the template hides the Reload button while Loading=true, so a
+	// click cannot re-trigger Reload during the 2s window. A direct WebSocket
+	// message could bypass the rendered UI and call Reload again; if that
+	// happens, both goroutines run to completion and both call TriggerAction
+	// successfully (TriggerAction errors only on session disconnect, not on
+	// state changes). The second goroutine's payload simply overwrites
+	// state.Data with a newer timestamp, which is harmless — the user sees
+	// the most recent reload's content. If stricter single-flight semantics
+	// are wanted later, copy ProgressBarController.Start's
+	// `if state.Loading { return state, nil }` guard to the top of this method.
 	state.Loading = true
 	state.Data = ""
 	go func() {

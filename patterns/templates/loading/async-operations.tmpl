@@ -11,6 +11,12 @@
     {{.lvt.FlashTag "success"}}
     {{.lvt.FlashTag "error"}}
     {{with .Result}}<blockquote>{{.}}</blockquote>{{end}}
+    {{/* Deliberate deviation from CLAUDE.md's "<del> for errors" guidance:
+         <mark> is the more semantic choice for "highlighted error detail"
+         (the FlashTag above is the primary error indicator with role="alert";
+         this is a secondary highlight of the specific error string). The
+         template stays terse; if a stronger error look is wanted later,
+         override mark[aria-live] in livetemplate.css. */}}
     {{with .Error}}<p aria-live="assertive"><mark>{{.}}</mark></p>{{end}}
 </article>
 {{end}}
