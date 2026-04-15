@@ -50,13 +50,21 @@ func (c *LazyLoadController) OnConnect(state LazyLoadState, ctx *livetemplate.Co
 	}
 	// Reconnect-during-loading note: if the client disconnects and
 	// reconnects within the 2s window, OnConnect fires again and spawns
-	// a second goroutine while the first is still asleep. The first
-	// goroutine's TriggerAction will return an error when its session
-	// becomes invalid, so it exits cleanly via the cancellation pattern
-	// below — only the most recent goroutine completes successfully.
-	// This relies on framework session-invalidation semantics rather
-	// than an explicit guard, matching the documented Server Push
-	// pattern (proposal #31).
+	// a second goroutine while the first is still asleep. Both goroutines
+	// dispatch via groupID lookup (registry.GetByGroup), and groupID is
+	// stable across reconnects (cookie-bound), so when each goroutine
+	// wakes one of two things happens:
+	//   (a) The reconnect hasn't completed yet → GetByGroup returns no
+	//       connections → TriggerAction returns "no connected sessions"
+	//       → goroutine exits via the cancellation pattern below.
+	//   (b) The reconnect has completed → both goroutines successfully
+	//       dispatch to the new connection. DataLoaded runs twice with
+	//       slightly different timestamps; the second call overwrites
+	//       Data. This is harmless — the user just sees the timestamp
+	//       update once. Loading=false is idempotent.
+	// No explicit dedup guard is needed for this demo. Production code
+	// that absolutely requires single-flight semantics should track the
+	// in-flight request ID in state and check it inside DataLoaded.
 	go func() {
 		time.Sleep(lazyLoadDelay)
 		if err := session.TriggerAction("dataLoaded", map[string]any{

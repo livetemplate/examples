@@ -1594,11 +1594,15 @@ func TestProgressBar(t *testing.T) {
 
 	t.Run("Run_Again_Restarts_Timer", func(t *testing.T) {
 		// The Run Again button starts the timer again. Progress must begin
-		// from below 100 and climb back to completion.
+		// from below 100, climb back to completion, AND re-emit the success
+		// flash. The flash assertion catches a regression where the second
+		// run completes silently (e.g., if the controller forgot to call
+		// SetFlash on the re-completion path).
 		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 3*time.Second),
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
+			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Run Again failed: %v", err)
