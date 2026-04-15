@@ -6,8 +6,8 @@
     <progress value="{{.Progress}}" max="100"></progress>
     <p><small>{{.Progress}}% complete</small></p>
     {{else if .Done}}
-    <progress value="100" max="100"></progress>
-    <p><small>100% complete</small></p>
+    <progress value="{{.Progress}}" max="100"></progress>
+    <p><small>{{.Progress}}% complete</small></p>
     {{/* FlashTag must live inside the .Done branch: UpdateProgress emits
          the flash only when transitioning to Done, so they always render
          together. Flashes are ephemeral (consumed on first render) — moving
