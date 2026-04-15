@@ -1674,13 +1674,21 @@ func TestAsyncOperations(t *testing.T) {
 			"success": "Fetch complete",
 			"error":   "Fetch failed",
 		}[outcome]
+		// Wait for the matching flash element to be injected before reading
+		// its text. Without this WaitFor, a race between the result render
+		// and the flash render could read an empty string and produce a
+		// confusing "expected non-empty" failure that masks the real cause.
+		flashSelector := fmt.Sprintf(`output[data-flash="%s"]`, outcome)
 		var flashText string
-		_ = chromedp.Run(ctx, chromedp.Evaluate(
-			`(() => { const el = document.querySelector('output[data-flash="`+outcome+`"]'); return el ? el.textContent.trim() : ""; })()`,
-			&flashText,
-		))
-		if flashText == "" {
-			t.Errorf("Outcome %q: expected output[data-flash=%q] to exist with non-empty text, got empty", outcome, outcome)
+		err = chromedp.Run(ctx,
+			e2etest.WaitFor(fmt.Sprintf(`!!document.querySelector('output[data-flash="%s"]')`, outcome), 3*time.Second),
+			chromedp.Evaluate(
+				fmt.Sprintf(`(() => { const el = document.querySelector('output[data-flash="%s"]'); return el ? el.textContent.trim() : ""; })()`, outcome),
+				&flashText,
+			),
+		)
+		if err != nil {
+			t.Fatalf("Outcome %q: failed to read %s: %v", outcome, flashSelector, err)
 		}
 		if !strings.Contains(flashText, expectedFlashText) {
 			t.Errorf("Outcome %q: flash text = %q, want it to contain %q", outcome, flashText, expectedFlashText)

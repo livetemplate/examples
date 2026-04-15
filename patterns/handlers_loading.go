@@ -83,6 +83,17 @@ func (c *LazyLoadController) DataLoaded(state LazyLoadState, ctx *livetemplate.C
 }
 
 func (c *LazyLoadController) Reload(state LazyLoadState, ctx *livetemplate.Context) (LazyLoadState, error) {
+	// Re-entrancy guard, symmetric with ProgressBarController.Start and
+	// AsyncOpsController.Fetch. The template hides the Reload button while
+	// Loading=true so a click cannot re-trigger this during the 2s window,
+	// but a direct WebSocket message bypassing the rendered UI could —
+	// without this guard, two goroutines would both write state.Data and
+	// the second timestamp would overwrite the first. Harmless for a demo,
+	// but the asymmetry would be a trap for readers pattern-matching from
+	// this file.
+	if state.Loading {
+		return state, nil
+	}
 	// Check session BEFORE mutating state. With livetemplate v0.8.18+ this
 	// is always non-nil, but the early return ensures the UI does not
 	// transition into Loading=true with no goroutine to ever clear it
@@ -91,17 +102,6 @@ func (c *LazyLoadController) Reload(state LazyLoadState, ctx *livetemplate.Conte
 	if session == nil {
 		return state, nil
 	}
-	// No explicit Running-style guard here (unlike ProgressBarController.Start)
-	// because the template hides the Reload button while Loading=true, so a
-	// click cannot re-trigger Reload during the 2s window. A direct WebSocket
-	// message could bypass the rendered UI and call Reload again; if that
-	// happens, both goroutines run to completion and both call TriggerAction
-	// successfully (TriggerAction errors only on session disconnect, not on
-	// state changes). The second goroutine's payload simply overwrites
-	// state.Data with a newer timestamp, which is harmless — the user sees
-	// the most recent reload's content. If stricter single-flight semantics
-	// are wanted later, copy ProgressBarController.Start's
-	// `if state.Loading { return state, nil }` guard to the top of this method.
 	state.Loading = true
 	state.Data = ""
 	go func() {
