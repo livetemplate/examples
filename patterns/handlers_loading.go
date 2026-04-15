@@ -59,7 +59,7 @@ func (c *LazyLoadController) OnConnect(state LazyLoadState, ctx *livetemplate.Co
 	// pattern (proposal #31).
 	go func() {
 		time.Sleep(lazyLoadDelay)
-		if err := session.TriggerAction("dataLoaded", map[string]interface{}{
+		if err := session.TriggerAction("dataLoaded", map[string]any{
 			"data": "Content loaded lazily at " + time.Now().Format("15:04:05"),
 		}); err != nil {
 			return // Session disconnected — stop cleanly.
@@ -98,7 +98,7 @@ func (c *LazyLoadController) Reload(state LazyLoadState, ctx *livetemplate.Conte
 	state.Data = ""
 	go func() {
 		time.Sleep(lazyLoadDelay)
-		if err := session.TriggerAction("dataLoaded", map[string]interface{}{
+		if err := session.TriggerAction("dataLoaded", map[string]any{
 			"data": "Content reloaded at " + time.Now().Format("15:04:05"),
 		}); err != nil {
 			return // Session disconnected — stop cleanly.
@@ -124,6 +124,18 @@ func lazyLoadingHandler(baseOpts []livetemplate.Option) http.Handler {
 // 10% to 100% in 10% increments every 500ms. The goroutine exits cleanly if
 // session.TriggerAction returns an error (session disconnected) — this is the
 // canonical cancellation pattern documented in the Server Push pattern (#31).
+//
+// Reconnect semantics — why no OnConnect:
+// ProgressBarState has no `lvt:"persist"` struct tags, so `h.persistable == nil`
+// in the framework and `restorePersistedState` returns (nil, false). On every
+// WebSocket connect (including reconnects after a network blip), mount.go falls
+// through to `cloneStateTyped()` and produces fresh zero-value state
+// (Running=false, Done=false, Progress=0). The "stuck Running=true with no
+// goroutine" scenario therefore cannot occur — reconnecting always shows the
+// Start button again. LazyLoadController needs OnConnect because the spinner
+// vs. data swap is the *whole point* of that pattern; here the pattern is the
+// goroutine ticking the bar, and a mid-run disconnect simply ends that demo
+// (the user clicks Start again on the next page load).
 type ProgressBarController struct{}
 
 const (
@@ -151,7 +163,7 @@ func (c *ProgressBarController) Start(state ProgressBarState, ctx *livetemplate.
 	go func() {
 		for i := progressStep; i <= 100; i += progressStep {
 			time.Sleep(progressTickRate)
-			if err := session.TriggerAction("updateProgress", map[string]interface{}{
+			if err := session.TriggerAction("updateProgress", map[string]any{
 				"progress": i,
 			}); err != nil {
 				return // Session disconnected — stop cleanly.
@@ -189,6 +201,17 @@ func progressBarHandler(baseOpts []livetemplate.Option) http.Handler {
 // and pushes a "fetchResult" action with either a success payload or an error
 // payload. Demonstrates the minimal state-machine shape you'd use for any
 // async RPC (database query, HTTP API, job queue, etc.).
+//
+// Reconnect semantics — why no OnConnect (same reasoning as ProgressBarController):
+// AsyncOpsState has no `lvt:"persist"` tags, so a reconnect mid-fetch produces
+// fresh zero-value state (Status="") via cloneStateTyped, not a stuck
+// Status="loading". The user always sees the Fetch Data button after a
+// reconnect. The in-flight goroutine's eventual TriggerAction either lands on
+// the new connection (showing a result the user didn't initiate — harmless,
+// since this is a demo) or errors out cleanly when the goroutine's session
+// is gone. Adding OnConnect to "recover" loading state would actively make
+// this worse by trying to restore Status="loading" against a goroutine that
+// the framework has already torn down.
 type AsyncOpsController struct{}
 
 const asyncFetchDelay = 2 * time.Second
@@ -228,14 +251,14 @@ func (c *AsyncOpsController) Fetch(state AsyncOpsState, ctx *livetemplate.Contex
 		// cancel — readers learning the pattern from this example should
 		// see the idiomatic form everywhere.
 		if rand.Intn(3) == 0 {
-			if err := session.TriggerAction("fetchResult", map[string]interface{}{
+			if err := session.TriggerAction("fetchResult", map[string]any{
 				"success": false,
 				"error":   "Connection timed out",
 			}); err != nil {
 				return // Session disconnected — stop cleanly.
 			}
 		} else {
-			if err := session.TriggerAction("fetchResult", map[string]interface{}{
+			if err := session.TriggerAction("fetchResult", map[string]any{
 				"success": true,
 				"result":  "Data fetched successfully at " + time.Now().Format("15:04:05"),
 			}); err != nil {
