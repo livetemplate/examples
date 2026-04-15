@@ -4,6 +4,9 @@
     <p><small>The page renders immediately; content arrives from the server ~2s later via a goroutine pushing <code>session.TriggerAction</code>.</small></p>
     {{if .Loading}}
     <p aria-busy="true">Loading content...</p>
+    <noscript>
+        <p><small>This pattern requires JavaScript: the spinner is replaced when a WebSocket message arrives. With JS disabled, the spinner stays forever.</small></p>
+    </noscript>
     {{else}}
     <blockquote>{{.Data}}</blockquote>
     <form method="POST">

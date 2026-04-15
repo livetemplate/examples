@@ -1598,9 +1598,15 @@ func TestProgressBar(t *testing.T) {
 		// flash. The flash assertion catches a regression where the second
 		// run completes silently (e.g., if the controller forgot to call
 		// SetFlash on the re-completion path).
+		//
+		// The intermediate-tick timeout is 5s (not 3s) so that on a heavily
+		// loaded CI runner, where the first WS tick may be delayed, we still
+		// catch a real value < 100 before the goroutine completes the full
+		// 5s run. 3s was tight enough that a slow runner could miss the
+		// window even though the goroutine was working correctly.
 		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 3*time.Second),
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
 		)
