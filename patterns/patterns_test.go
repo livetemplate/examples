@@ -1620,7 +1620,7 @@ func TestAsyncOperations(t *testing.T) {
 			e2etest.WaitForWebSocketReady(5*time.Second),
 			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
 			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
-			chromedp.Evaluate(`!!document.querySelector('blockquote') || !!document.querySelector('del')`, &hasResult),
+			chromedp.Evaluate(`!!document.querySelector('blockquote') || !!document.querySelector('mark')`, &hasResult),
 		)
 		if err != nil {
 			t.Fatalf("Initial load failed: %v", err)
@@ -1637,8 +1637,8 @@ func TestAsyncOperations(t *testing.T) {
 			chromedp.Click(`button[name="fetch"]`, chromedp.ByQuery),
 			// Loading state: button shows "Fetching..." and aria-busy.
 			e2etest.WaitForText(`button[name="fetch"]`, "Fetching...", 3*time.Second),
-			// Final state: either <blockquote> (success) or <del> (error).
-			e2etest.WaitFor(`!!document.querySelector('blockquote') || !!document.querySelector('del')`, 5*time.Second),
+			// Final state: either <blockquote> (success) or <mark> (error).
+			e2etest.WaitFor(`!!document.querySelector('blockquote') || !!document.querySelector('mark')`, 5*time.Second),
 			// Button must re-enable (exits "loading" status).
 			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
 		)
@@ -1653,7 +1653,7 @@ func TestAsyncOperations(t *testing.T) {
 		var outcome string
 		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
 			if (document.querySelector('blockquote')) return 'success';
-			if (document.querySelector('del')) return 'error';
+			if (document.querySelector('mark')) return 'error';
 			return 'none';
 		})()`, &outcome))
 		if outcome == "none" {

@@ -11,6 +11,6 @@
     {{.lvt.FlashTag "success"}}
     {{.lvt.FlashTag "error"}}
     {{with .Result}}<blockquote>{{.}}</blockquote>{{end}}
-    {{with .Error}}<del style="display:block;text-decoration:none">{{.}}</del>{{end}}
+    {{with .Error}}<p><mark>{{.}}</mark></p>{{end}}
 </article>
 {{end}}
