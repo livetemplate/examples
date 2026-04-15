@@ -1,0 +1,26 @@
+{{define "content"}}
+<article>
+    <h3>Progress Bar</h3>
+    <p><small>A background goroutine ticks progress from 10% to 100% via WebSocket pushes — no polling.</small></p>
+    {{if or .Running .Done}}
+    <progress value="{{.Progress}}" max="100"></progress>
+    <p><small>{{.Progress}}% complete</small></p>
+    {{end}}
+    {{if .Done}}
+    {{/* FlashTag must live inside the .Done branch: UpdateProgress emits
+         the flash only when transitioning to Done, so they always render
+         together. Flashes are ephemeral (consumed on first render) — moving
+         this outside the branch would cause the flash to be consumed during
+         a Running or idle render before Done is reached, and the user would
+         never see it. */}}
+    {{.lvt.FlashTag "success"}}
+    <form method="POST">
+        <button name="start">Run Again</button>
+    </form>
+    {{else if not .Running}}
+    <form method="POST">
+        <button name="start">Start Job</button>
+    </form>
+    {{end}}
+</article>
+{{end}}

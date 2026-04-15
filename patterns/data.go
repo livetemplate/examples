@@ -258,9 +258,9 @@ func allPatterns() []PatternCategory {
 		{
 			Name: "Loading & Progress",
 			Patterns: []PatternLink{
-				{Name: "Lazy Loading", Path: "/patterns/loading/lazy-loading", Description: "Load content after page render via server push"},
-				{Name: "Progress Bar", Path: "/patterns/loading/progress-bar", Description: "WebSocket-pushed progress updates"},
-				{Name: "Async Operations", Path: "/patterns/loading/async-operations", Description: "Loading/success/error state machine"},
+				{Name: "Lazy Loading", Path: "/patterns/loading/lazy-loading", Description: "Load content after page render via server push", Implemented: true},
+				{Name: "Progress Bar", Path: "/patterns/loading/progress-bar", Description: "WebSocket-pushed progress updates", Implemented: true},
+				{Name: "Async Operations", Path: "/patterns/loading/async-operations", Description: "Loading/success/error state machine", Implemented: true},
 			},
 		},
 		{

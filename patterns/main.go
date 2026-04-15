@@ -85,6 +85,11 @@ func main() {
 	mux.Handle("/patterns/search/active-search", activeSearchHandler(baseOpts))
 	mux.Handle("/patterns/search/url-filters", urlFiltersHandler(baseOpts))
 
+	// Category: Loading & Progress (#14–#16)
+	mux.Handle("/patterns/loading/lazy-loading", lazyLoadingHandler(baseOpts))
+	mux.Handle("/patterns/loading/progress-bar", progressBarHandler(baseOpts))
+	mux.Handle("/patterns/loading/async-operations", asyncOperationsHandler(baseOpts))
+
 	// Client library and CSS (dev mode)
 	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
 		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {

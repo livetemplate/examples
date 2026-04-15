@@ -1,0 +1,17 @@
+{{define "content"}}
+<article>
+    <h3>Lazy Loading</h3>
+    <p><small>The page renders immediately; content arrives from the server ~2s later via a goroutine pushing <code>session.TriggerAction</code>.</small></p>
+    <noscript>
+        <p><small>This pattern requires JavaScript: the spinner is replaced when a WebSocket message arrives. With JS disabled, the spinner stays forever.</small></p>
+    </noscript>
+    {{if .Loading}}
+    <p aria-busy="true">Loading content...</p>
+    {{else}}
+    <blockquote>{{.Data}}</blockquote>
+    <form method="POST">
+        <button name="reload" class="secondary">Reload</button>
+    </form>
+    {{end}}
+</article>
+{{end}}

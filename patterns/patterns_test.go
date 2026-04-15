@@ -1457,3 +1457,299 @@ func TestInfiniteScroll(t *testing.T) {
 		}
 	})
 }
+
+// --- Session 3: Loading & Progress ---
+
+func TestLazyLoading(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/loading/lazy-loading"
+
+	t.Run("Initial_Load_Shows_Spinner", func(t *testing.T) {
+		// The page should render immediately with the spinner; the content
+		// blockquote must be absent until the goroutine fires (~2s later).
+		var hasBlockquote bool
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`p[aria-busy="true"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			chromedp.Evaluate(`!!document.querySelector('blockquote')`, &hasBlockquote),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+		if hasBlockquote {
+			t.Error("Blockquote should not be present while still loading")
+		}
+	})
+
+	t.Run("Data_Arrives_Via_Server_Push", func(t *testing.T) {
+		// The goroutine sleeps 2s then pushes via TriggerAction. 5s timeout
+		// is generous. After arrival, the spinner must be gone.
+		var hasSpinner bool
+		err := chromedp.Run(ctx,
+			e2etest.WaitForText(`blockquote`, "Content loaded lazily", 5*time.Second),
+			chromedp.Evaluate(`!!document.querySelector('p[aria-busy="true"]')`, &hasSpinner),
+		)
+		if err != nil {
+			t.Fatalf("Data did not arrive: %v", err)
+		}
+		if hasSpinner {
+			t.Error("Spinner should be gone after data arrives")
+		}
+	})
+
+	t.Run("Reload_Refetches_Fresh_Content", func(t *testing.T) {
+		// Click Reload; spinner reappears; new content arrives via a fresh
+		// goroutine push. The two strings have different prefixes ("Content
+		// loaded lazily at …" vs "Content reloaded at …"), so an inequality
+		// check between them is trivially true and would not actually prove
+		// that a second goroutine ran. Instead, assert directly on the
+		// expected prefix transitions: firstContent must be the
+		// initial-load message, secondContent must be the reload message.
+		// Both prefixes are produced by separate goroutine paths, so this
+		// assertion proves real second-goroutine execution.
+		var firstContent, secondContent string
+		err := chromedp.Run(ctx,
+			chromedp.Text(`blockquote`, &firstContent, chromedp.ByQuery),
+			chromedp.Click(`button[name="reload"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`p[aria-busy="true"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`blockquote`, "Content reloaded", 5*time.Second),
+			chromedp.Text(`blockquote`, &secondContent, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Reload failed: %v", err)
+		}
+		if !strings.Contains(firstContent, "Content loaded lazily") {
+			t.Errorf("First content was not the initial load message: %q", firstContent)
+		}
+		if strings.Contains(firstContent, "Content reloaded") {
+			t.Errorf("First content already had the reload prefix — test ordering broken: %q", firstContent)
+		}
+		if !strings.Contains(secondContent, "Content reloaded") {
+			t.Errorf("Second content did not have the reload prefix: %q", secondContent)
+		}
+		if strings.Contains(secondContent, "Content loaded lazily") {
+			t.Errorf("Second content still had the initial-load prefix: %q", secondContent)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Lazy Loading — page showing a blockquote with lazily-loaded content and a secondary 'Reload' button below")
+}
+
+func TestProgressBar(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/loading/progress-bar"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		var hasProgress bool
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			chromedp.Evaluate(`!!document.querySelector('progress')`, &hasProgress),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+		if hasProgress {
+			t.Error("<progress> should not be present before Start is clicked")
+		}
+	})
+
+	t.Run("Start_Runs_To_Completion", func(t *testing.T) {
+		// Click Start; progress element appears and ticks up. Goroutine runs
+		// 10 × 500ms = 5s, so wait 10s for completion and the success flash.
+		// The intermediate-tick assertion (value > 0 AND value < 100) catches
+		// a regression where the goroutine skips intermediate ticks and jumps
+		// straight to 100 — a `value > 0` check alone would also be satisfied
+		// by an instant 100, missing the bug.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('progress')`, 3*time.Second),
+			// Progress element is mid-flight: above 0 and below 100.
+			// This proves the goroutine is actually ticking, not jumping.
+			// 5s timeout (matching Run_Again_Restarts_Timer) gives loaded
+			// CI runners a comfortable margin before the goroutine completes
+			// the full 5s run and the value reaches 100.
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
+			// Run Again button indicates the Done state.
+			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
+			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Progress bar did not complete: %v", err)
+		}
+	})
+
+	t.Run("Run_Again_Restarts_Timer", func(t *testing.T) {
+		// The Run Again button starts the timer again. Progress must begin
+		// from below 100, climb back to completion, AND re-emit the success
+		// flash. The flash assertion catches a regression where the second
+		// run completes silently (e.g., if the controller forgot to call
+		// SetFlash on the re-completion path).
+		//
+		// The intermediate-tick timeout is 5s (not 3s) so that on a heavily
+		// loaded CI runner, where the first WS tick may be delayed, we still
+		// catch a real value < 100 before the goroutine completes the full
+		// 5s run. 3s was tight enough that a slow runner could miss the
+		// window even though the goroutine was working correctly.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
+			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
+			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Run Again failed: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Progress Bar — completed state showing a full progress bar, a 'Job complete' success flash below it, and a 'Run Again' button")
+}
+
+func TestAsyncOperations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/loading/async-operations"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		var hasResult bool
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			chromedp.Evaluate(`!!document.querySelector('blockquote') || !!document.querySelector('mark')`, &hasResult),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+		if hasResult {
+			t.Error("Result/error display should not be present before Fetch is clicked")
+		}
+	})
+
+	t.Run("Fetch_Transitions_Through_Loading_To_Result", func(t *testing.T) {
+		// Click Fetch → transient loading state → final success OR error.
+		// The branch is random (~33% error rate). Tests must tolerate either.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="fetch"]`, chromedp.ByQuery),
+			// Loading state: button shows "Fetching..." and aria-busy.
+			e2etest.WaitForText(`button[name="fetch"]`, "Fetching...", 3*time.Second),
+			// Final state: either <blockquote> (success) or <mark> (error).
+			e2etest.WaitFor(`!!document.querySelector('blockquote') || !!document.querySelector('mark')`, 5*time.Second),
+			// Button must re-enable (exits "loading" status).
+			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Async flow did not complete: %v", err)
+		}
+		// Exactly one of success or error must be present, plus the matching
+		// flash. The flash text is asserted against the controller's exact
+		// SetFlash message, not just the element presence — an empty
+		// <output data-flash=""> placeholder would satisfy a presence-only
+		// check and silently mask a regression where SetFlash wasn't called.
+		//
+		// `outcome` is read first, then both the wait-for-flash and the
+		// flash-text read are batched into a single chromedp.Run so the
+		// outcome value can't drift between the read and the wait.
+		var outcome string
+		err = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+			if (document.querySelector('blockquote')) return 'success';
+			if (document.querySelector('mark')) return 'error';
+			return 'none';
+		})()`, &outcome))
+		if err != nil {
+			t.Fatalf("Failed to read outcome: %v", err)
+		}
+		if outcome == "none" {
+			t.Fatal("No outcome (neither success nor error) rendered")
+		}
+		// Map outcome → expected flash text from the controller.
+		// Mirrors AsyncOpsController.FetchResult ctx.SetFlash calls.
+		expectedFlashText := map[string]string{
+			"success": "Fetch complete",
+			"error":   "Fetch failed",
+		}[outcome]
+		flashSelector := fmt.Sprintf(`output[data-flash="%s"]`, outcome)
+		var flashText string
+		err = chromedp.Run(ctx,
+			e2etest.WaitFor(fmt.Sprintf(`!!document.querySelector('%s')`, flashSelector), 3*time.Second),
+			chromedp.Evaluate(
+				fmt.Sprintf(`(() => { const el = document.querySelector('%s'); return el ? el.textContent.trim() : ""; })()`, flashSelector),
+				&flashText,
+			),
+		)
+		if err != nil {
+			t.Fatalf("Outcome %q: failed to read %s: %v", outcome, flashSelector, err)
+		}
+		if !strings.Contains(flashText, expectedFlashText) {
+			t.Errorf("Outcome %q: flash text = %q, want it to contain %q", outcome, flashText, expectedFlashText)
+		}
+	})
+
+	// Regression test for the AsyncOpsController.Fetch Running guard.
+	// Without the guard, two rapid `fetch` actions sent via direct
+	// WebSocket message (bypassing the template-disabled button) would
+	// each spawn a goroutine that calls TriggerAction("fetchResult"),
+	// resulting in two state transitions, two SetFlash calls, and
+	// potentially malformed rendered state. With the guard, the second
+	// Fetch is a no-op (state.Status == "loading" → return early).
+	//
+	// This test asserts the user-visible invariant: concurrent Fetch
+	// calls leave the UI in a single consistent state with exactly one
+	// result element (blockquote OR mark, never both, never stacked).
+	// It does not directly verify the guard rejected the second call —
+	// detecting that from the rendered HTML is hard because the state
+	// machine is idempotent in its final state — but it does prove the
+	// guard's user-visible promise (concurrent Fetches don't break the
+	// page) holds.
+	t.Run("Concurrent_Fetch_Reaches_Single_Result", func(t *testing.T) {
+		var resultCount int
+		err := chromedp.Run(ctx,
+			// Wait for idle state from the previous subtest.
+			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 3*time.Second),
+			// Send two Fetch actions in immediate sequence via direct WS,
+			// bypassing the rendered button (which would be disabled
+			// after the first click).
+			chromedp.Evaluate(`(() => {
+				window.liveTemplateClient.send({action: 'fetch'});
+				window.liveTemplateClient.send({action: 'fetch'});
+			})()`, nil),
+			// Wait for the cycle to complete: button returns to "Fetch Data".
+			// Total time: ~2s for the goroutine sleep + WS roundtrip.
+			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 5*time.Second),
+			// Count result elements. Exactly one of (blockquote, mark) must
+			// be present. If two goroutines somehow corrupted the state
+			// machine, we might see zero, two of either, or both.
+			chromedp.Evaluate(`document.querySelectorAll('blockquote, mark').length`, &resultCount),
+		)
+		if err != nil {
+			t.Fatalf("Concurrent Fetch test failed: %v", err)
+		}
+		if resultCount != 1 {
+			t.Errorf("Expected exactly 1 result element after concurrent Fetch, got %d", resultCount)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Async Operations — 'Fetch Data' button followed by either a success flash and blockquote with fetch result, or an error flash and mark element with an error message")
+}

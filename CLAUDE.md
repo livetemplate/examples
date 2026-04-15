@@ -164,9 +164,9 @@ All examples use [Pico CSS](https://picocss.com/docs) exclusively:
 - Use semantic HTML — Pico auto-styles: `<article>` (cards), `<dialog>` (modals), `<details>` (accordions), `<table>`, `<nav>`, `<progress>`
 - Use Pico classes sparingly: `.container`, `.grid`, `.secondary`, `.contrast`, `.outline`
 - Use `aria-invalid="true"` for form validation errors, `<small>` for helper/error text
-- Use `<ins>` for success messages, `<del>` for error messages, using the standardized inline style `style="display:block;text-decoration:none"` when rendering them as block-level alerts
-- Use `<s>` for strikethrough text (e.g., completed todos), `<del>` for removed/error content
-- Use `<mark>` for highlighted/badge text
+- Use `<ins>` for success messages, `<del>` for primary error messages, using the standardized inline style `style="display:block;text-decoration:none"` when rendering them as block-level alerts
+- Use `<s>` for strikethrough text (e.g., completed todos), `<del>` for removed content and primary error alerts
+- Use `<mark>` for highlighted/badge text and for secondary inline error detail alongside a primary `FlashTag`/`<del>` alert. Wrap in `aria-live="assertive"` when the detail is the sole announcement. (Rule of thumb: `<del>` is the primary alert; `<mark>` is a secondary highlight on the same page.)
 - Use `<progress>` for progress bars
 - Use `<hgroup>` for title + subtitle groupings
 - Use `<fieldset role="group">` for inline input+button groups
