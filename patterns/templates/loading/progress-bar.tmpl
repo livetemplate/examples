@@ -7,6 +7,7 @@
     <p><small>{{.Progress}}% complete</small></p>
     {{else if .Done}}
     <progress value="100" max="100"></progress>
+    <p><small>100% complete</small></p>
     {{.lvt.FlashTag "success"}}
     <form method="POST">
         <button name="start">Run Again</button>

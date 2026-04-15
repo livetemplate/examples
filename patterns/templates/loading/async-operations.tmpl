@@ -11,6 +11,6 @@
     {{.lvt.FlashTag "success"}}
     {{.lvt.FlashTag "error"}}
     {{with .Result}}<blockquote>{{.}}</blockquote>{{end}}
-    {{with .Error}}<p><mark>{{.}}</mark></p>{{end}}
+    {{with .Error}}<p aria-live="assertive"><mark>{{.}}</mark></p>{{end}}
 </article>
 {{end}}

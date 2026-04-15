@@ -191,6 +191,15 @@ type AsyncOpsController struct{}
 const asyncFetchDelay = 2 * time.Second
 
 func (c *AsyncOpsController) Fetch(state AsyncOpsState, ctx *livetemplate.Context) (AsyncOpsState, error) {
+	// Re-entrancy guard: block concurrent Fetch while one is already in
+	// flight. The button is template-disabled during loading, but a direct
+	// WebSocket message bypassing the rendered UI could otherwise spawn
+	// two parallel goroutines that both call TriggerAction("fetchResult"),
+	// producing two state transitions and two SetFlash calls on the same
+	// session. Mirrors the Running guard in ProgressBarController.Start.
+	if state.Status == "loading" {
+		return state, nil
+	}
 	// Check session BEFORE setting Status="loading". With livetemplate
 	// v0.8.18+ this is always non-nil, but if it ever became nil the
 	// previous ordering (mutate first, check second) would leave the
@@ -209,16 +218,26 @@ func (c *AsyncOpsController) Fetch(state AsyncOpsState, ctx *livetemplate.Contex
 		// program startup — no rand.Seed call is needed. Tests must assert
 		// {success OR error}, not a specific branch, since either may fire
 		// on any given run.
+		//
+		// Both branches use the same `if err := …; err != nil { return }`
+		// pattern as the other controllers for consistency, even though
+		// this is a single-shot goroutine where there's nothing else to
+		// cancel — readers learning the pattern from this example should
+		// see the idiomatic form everywhere.
 		if rand.Intn(3) == 0 {
-			_ = session.TriggerAction("fetchResult", map[string]interface{}{
+			if err := session.TriggerAction("fetchResult", map[string]interface{}{
 				"success": false,
 				"error":   "Connection timed out",
-			})
+			}); err != nil {
+				return // Session disconnected — stop cleanly.
+			}
 		} else {
-			_ = session.TriggerAction("fetchResult", map[string]interface{}{
+			if err := session.TriggerAction("fetchResult", map[string]interface{}{
 				"success": true,
 				"result":  "Data fetched successfully at " + time.Now().Format("15:04:05"),
-			})
+			}); err != nil {
+				return // Session disconnected — stop cleanly.
+			}
 		}
 	}()
 	return state, nil
