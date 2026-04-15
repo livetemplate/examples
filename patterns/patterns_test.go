@@ -1668,12 +1668,19 @@ func TestAsyncOperations(t *testing.T) {
 		// SetFlash message, not just the element presence — an empty
 		// <output data-flash=""> placeholder would satisfy a presence-only
 		// check and silently mask a regression where SetFlash wasn't called.
+		//
+		// `outcome` is read first, then both the wait-for-flash and the
+		// flash-text read are batched into a single chromedp.Run so the
+		// outcome value can't drift between the read and the wait.
 		var outcome string
-		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+		err = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
 			if (document.querySelector('blockquote')) return 'success';
 			if (document.querySelector('mark')) return 'error';
 			return 'none';
 		})()`, &outcome))
+		if err != nil {
+			t.Fatalf("Failed to read outcome: %v", err)
+		}
 		if outcome == "none" {
 			t.Fatal("No outcome (neither success nor error) rendered")
 		}
@@ -1683,16 +1690,12 @@ func TestAsyncOperations(t *testing.T) {
 			"success": "Fetch complete",
 			"error":   "Fetch failed",
 		}[outcome]
-		// Wait for the matching flash element to be injected before reading
-		// its text. Without this WaitFor, a race between the result render
-		// and the flash render could read an empty string and produce a
-		// confusing "expected non-empty" failure that masks the real cause.
 		flashSelector := fmt.Sprintf(`output[data-flash="%s"]`, outcome)
 		var flashText string
 		err = chromedp.Run(ctx,
-			e2etest.WaitFor(fmt.Sprintf(`!!document.querySelector('output[data-flash="%s"]')`, outcome), 3*time.Second),
+			e2etest.WaitFor(fmt.Sprintf(`!!document.querySelector('%s')`, flashSelector), 3*time.Second),
 			chromedp.Evaluate(
-				fmt.Sprintf(`(() => { const el = document.querySelector('output[data-flash="%s"]'); return el ? el.textContent.trim() : ""; })()`, outcome),
+				fmt.Sprintf(`(() => { const el = document.querySelector('%s'); return el ? el.textContent.trim() : ""; })()`, flashSelector),
 				&flashText,
 			),
 		)
