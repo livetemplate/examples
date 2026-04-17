@@ -133,8 +133,10 @@ func (c *BulkUpdateController) BulkUpdate(state BulkUpdateState, ctx *livetempla
 		state.Users[i].Active = newActive
 	}
 	if changed == 0 {
+		ctx.ClearFlash("success")
 		ctx.SetFlash("info", "No changes")
 	} else {
+		ctx.ClearFlash("info")
 		ctx.SetFlash("success", fmt.Sprintf("Updated %d user(s)", changed))
 	}
 	return state, nil
