@@ -63,7 +63,8 @@
             <form name="add">
                 <label>
                     Title
-                    <input name="title" required placeholder="Enter item title">
+                    <input name="title" required placeholder="Enter item title" {{.lvt.AriaInvalid "title"}}>
+                    {{.lvt.ErrorTag "title"}}
                 </label>
                 <footer>
                     <fieldset role="group">

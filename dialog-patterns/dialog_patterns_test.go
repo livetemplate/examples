@@ -279,16 +279,52 @@ func TestDialogPatternsE2E(t *testing.T) {
 			t.Fatalf("Failed to open dialog: %v", err)
 		}
 
-		// The input has `required`, so browser validation prevents empty submission.
-		// Remove `required` via JS to test server-side validation.
+		// Remove `required` via JS so the empty form reaches the server for validation.
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`document.querySelector('dialog#add-dialog input[name="title"]').removeAttribute('required')`, nil),
 			chromedp.Clear(`dialog#add-dialog input[name="title"]`, chromedp.ByQuery),
 			chromedp.Click(`dialog#add-dialog button[type="submit"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`true`, 2*time.Second), // wait for server response
+			e2etest.WaitFor(`document.querySelector('dialog#add-dialog small') !== null`, 10*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Failed to submit empty form: %v", err)
+			t.Fatalf("Failed to submit empty form or validation error not shown: %v", err)
+		}
+
+		// Dialog should stay open while showing validation errors
+		var dialogOpen bool
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.getElementById('add-dialog').open`, &dialogOpen),
+		)
+		if err != nil {
+			t.Fatalf("Failed to check dialog state: %v", err)
+		}
+		if !dialogOpen {
+			t.Error("Dialog should remain open when showing validation errors")
+		}
+
+		// Validation error <small> tag should be visible inside the dialog
+		var errorText string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('dialog#add-dialog small').textContent`, &errorText),
+		)
+		if err != nil {
+			t.Fatalf("Failed to read error text: %v", err)
+		}
+		if errorText == "" {
+			t.Error("Validation error message should not be empty")
+		}
+		t.Logf("Validation error shown: %q", errorText)
+
+		// Input should have aria-invalid="true"
+		var ariaInvalid string
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('dialog#add-dialog input[name="title"]').getAttribute('aria-invalid')`, &ariaInvalid),
+		)
+		if err != nil {
+			t.Fatalf("Failed to check aria-invalid: %v", err)
+		}
+		if ariaInvalid != "true" {
+			t.Errorf("Input should have aria-invalid='true', got %q", ariaInvalid)
 		}
 
 		// Item count should remain 3 (unchanged — fresh session has seed items)
@@ -301,7 +337,7 @@ func TestDialogPatternsE2E(t *testing.T) {
 			t.Error("Item count should still be '3 items' after failed empty submission")
 		}
 
-		t.Log("✅ Empty title submission rejected by server, item count unchanged")
+		t.Log("✅ Validation errors shown inside open dialog, item count unchanged")
 	})
 
 	t.Run("Delete_Item", func(t *testing.T) {

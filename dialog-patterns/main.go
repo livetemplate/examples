@@ -10,9 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
+
+var validate = validator.New()
 
 type DialogController struct{}
 
@@ -23,6 +26,10 @@ type DialogState struct {
 type Item struct {
 	ID    string
 	Title string
+}
+
+type AddInput struct {
+	Title string `json:"title" validate:"required,min=3"`
 }
 
 func (c *DialogController) Mount(state DialogState, ctx *livetemplate.Context) (DialogState, error) {
@@ -37,12 +44,12 @@ func (c *DialogController) Mount(state DialogState, ctx *livetemplate.Context) (
 }
 
 func (c *DialogController) Add(state DialogState, ctx *livetemplate.Context) (DialogState, error) {
-	title := ctx.GetString("title")
-	if title == "" {
-		return state, fmt.Errorf("title is required")
+	var input AddInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return state, err
 	}
 	id := fmt.Sprintf("%d", time.Now().UnixNano())
-	state.Items = append(state.Items, Item{ID: id, Title: title})
+	state.Items = append(state.Items, Item{ID: id, Title: input.Title})
 	return state, nil
 }
 
