@@ -279,14 +279,9 @@ func TestDialogPatternsE2E(t *testing.T) {
 			t.Fatalf("Failed to open dialog: %v", err)
 		}
 
-		// The input has `required` and `minlength`, so browser validation prevents
-		// empty submission. Remove both via JS to test server-side validation.
+		// Remove `required` via JS so the empty form reaches the server for validation.
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`(() => {
-				const inp = document.querySelector('dialog#add-dialog input[name="title"]');
-				inp.removeAttribute('required');
-				inp.removeAttribute('minlength');
-			})()`, nil),
+			chromedp.Evaluate(`document.querySelector('dialog#add-dialog input[name="title"]').removeAttribute('required')`, nil),
 			chromedp.Clear(`dialog#add-dialog input[name="title"]`, chromedp.ByQuery),
 			chromedp.Click(`dialog#add-dialog button[type="submit"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`document.querySelector('dialog#add-dialog small') !== null`, 10*time.Second),
