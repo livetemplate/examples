@@ -147,7 +147,7 @@ func valueSelectHandler(baseOpts []livetemplate.Option) http.Handler {
 type InfiniteScrollController struct{}
 
 // LoadMore is dispatched by the client-side IntersectionObserver when
-// <div id="scroll-sentinel"> becomes visible. Uses the larger
+// <div lvt-scroll-sentinel> becomes visible. Uses the larger
 // infiniteScrollDataset (100 items) so the auto-pagination cascade is
 // actually visible during the demo; ClickToLoad uses the 25-item
 // listDataset which only needs a couple of clicks.

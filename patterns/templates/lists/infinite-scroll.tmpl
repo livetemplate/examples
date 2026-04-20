@@ -1,7 +1,7 @@
 {{define "content"}}
 <article>
     <h3>Infinite Scroll</h3>
-    <p><small>A single <code>&lt;div id="scroll-sentinel"&gt;</code> at the end of the list is watched by the client's IntersectionObserver. When it enters the viewport, the client dispatches <code>load_more</code> automatically — no client JS to wire up. Dataset has 100 items; scroll to watch pages append.</small></p>
+    <p><small>A single <code>&lt;div lvt-scroll-sentinel&gt;</code> at the end of the list is watched by the client's IntersectionObserver. When it enters the viewport, the client dispatches <code>load_more</code> automatically — no client JS to wire up. Dataset has 100 items; scroll to watch pages append.</small></p>
     <table>
         <thead><tr><th>ID</th><th>Name</th><th>Email</th></tr></thead>
         <tbody>
@@ -15,7 +15,7 @@
         </tbody>
     </table>
     {{if .HasMore}}
-    <div id="scroll-sentinel"><small aria-busy="true">Loading more…</small></div>
+    <div lvt-scroll-sentinel><small aria-busy="true">Loading more…</small></div>
     {{else}}
     <p><small>End of list.</small></p>
     {{end}}
