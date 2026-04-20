@@ -1345,7 +1345,7 @@ func TestURLFilters(t *testing.T) {
 
 // --- Pattern #10: Infinite Scroll ---
 
-// TestInfiniteScroll verifies the #scroll-sentinel IntersectionObserver
+// TestInfiniteScroll verifies the [lvt-scroll-sentinel] IntersectionObserver
 // wiring and the loadMorePending throttle. In headless Chrome the short
 // first page keeps the sentinel intersecting, so page 2 auto-advances;
 // subsequent pages require an explicit scroll because the sentinel has
@@ -1416,7 +1416,7 @@ func TestInfiniteScroll(t *testing.T) {
 		// Scroll once
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const s = document.getElementById('scroll-sentinel');
+				const s = document.querySelector('[lvt-scroll-sentinel]');
 				if (s) s.scrollIntoView({ block: 'center' });
 			})()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr[data-key]').length > `+fmt.Sprintf("%d", baseline), 5*time.Second),
@@ -1429,7 +1429,7 @@ func TestInfiniteScroll(t *testing.T) {
 		_ = chromedp.Run(ctx, chromedp.Evaluate(`document.querySelectorAll('tbody tr[data-key]').length`, &afterFirstScroll))
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const s = document.getElementById('scroll-sentinel');
+				const s = document.querySelector('[lvt-scroll-sentinel]');
 				if (s) s.scrollIntoView({ block: 'center' });
 			})()`, nil),
 			e2etest.WaitFor(`document.querySelectorAll('tbody tr[data-key]').length > `+fmt.Sprintf("%d", afterFirstScroll), 5*time.Second),
