@@ -68,6 +68,8 @@ func (c *ConfirmDialogController) Mount(state ConfirmDialogState, ctx *livetempl
 func (c *ConfirmDialogController) Delete(state ConfirmDialogState, ctx *livetemplate.Context) (ConfirmDialogState, error) {
 	// "value" is the framework key for the clicked submit button's value
 	// attribute (independent of the button's name). Same idiom as dialog-patterns.
+	// id is a server-rendered Item.ID echoed back via the form, NOT free-form
+	// user input — no escaping/allowlist check is needed.
 	id := ctx.GetString("value")
 	// Unknown ids are tolerated as a no-op — the next render reconciles any
 	// drift between client and server item lists without surfacing a flash.
