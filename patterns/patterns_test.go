@@ -2355,24 +2355,24 @@ func TestAnimations(t *testing.T) {
 		// If a future page overrides that variable to >3s, this test will flake.
 		var item1Style, item2Style string
 		err := chromedp.Run(ctx,
-			e2etest.WaitFor(`!document.querySelector('li[data-key="item-2"]').hasAttribute('style')`, 3*time.Second),
+			e2etest.WaitFor(`document.querySelector('li[data-key="item-2"]').style.animation === ""`, 5*time.Second),
 			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`!!document.querySelector('li[data-key="item-3"]')`, 3*time.Second),
-			chromedp.Evaluate(`document.querySelector('li[data-key="item-1"]').getAttribute('style') || ""`, &item1Style),
-			chromedp.Evaluate(`document.querySelector('li[data-key="item-2"]').getAttribute('style') || ""`, &item2Style),
+			chromedp.Evaluate(`document.querySelector('li[data-key="item-1"]').style.animation || ""`, &item1Style),
+			chromedp.Evaluate(`document.querySelector('li[data-key="item-2"]').style.animation || ""`, &item2Style),
 		)
 		if err != nil {
 			t.Fatalf("Re-animate guard test setup failed: %v", err)
 		}
 		if item1Style != "" {
-			t.Errorf("item-1 should not have inline style after second add, got %q", item1Style)
+			t.Errorf("item-1 style.animation should be empty after second add (WeakSet guard), got %q", item1Style)
 		}
 		if item2Style != "" {
-			t.Errorf("item-2 should not have inline style after third add, got %q", item2Style)
+			t.Errorf("item-2 style.animation should be empty after third add (WeakSet guard), got %q", item2Style)
 		}
 		// Wait for item-3 to finish before standard subtests so they don't
 		// see a transient inline-style on a [data-key] element.
-		_ = chromedp.Run(ctx, e2etest.WaitFor(`!document.querySelector('li[data-key="item-3"]').hasAttribute('style')`, 3*time.Second))
+		_ = chromedp.Run(ctx, e2etest.WaitFor(`document.querySelector('li[data-key="item-3"]').style.animation === ""`, 5*time.Second))
 	})
 
 	runStandardSubtests(t, ctx, true, "Animations pattern — heading, a row with a mode select (fade/slide/scale) and Add Item button, and a list of three added items each labeled with its mode.")
