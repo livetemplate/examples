@@ -313,12 +313,11 @@ func TestCrossHandlerNavigation(t *testing.T) {
 	})
 
 	t.Run("Index_To_Modal_Dialog_No_Stale_Dom", func(t *testing.T) {
-		// Regression: navigating from index to a Session 4 navigation pattern
-		// must not leak any index-page category names ("Forms & Editing",
-		// "Lists & Data", etc.) into the new pattern's wrapper. The category
-		// strings are specific enough that any presence is a regression
-		// signal — Modal Dialog renders its own h4 ("Edit profile") inside
-		// the dialog, so a raw h4-count check would false-positive.
+		// Regression: navigating from index to a navigation pattern must
+		// not leak the index page's category names ("Forms & Editing",
+		// "Lists & Data", etc.) into the new pattern's wrapper. We check
+		// for those specific strings rather than counting <h4>s — Modal
+		// Dialog has its own legitimate h4 inside the dialog.
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(baseURL),
 			e2etest.WaitForWebSocketReady(5*time.Second),

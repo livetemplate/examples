@@ -11,28 +11,20 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
-// validateNav is a single per-process validator instance shared by all
-// navigation-category controllers that use BindAndValidate. The validator
-// package recommends a singleton because internal struct/field caches are
-// computed lazily on first access.
+// validateNav is the per-process validator shared by navigation-category
+// controllers. The validator package caches struct/field metadata internally,
+// so a single instance is faster than constructing one per request.
 var validateNav = validator.New()
 
 // --- Pattern #17: Modal Dialog ---
 
-// ModalDialogController demonstrates a native <dialog> element triggered via
-// the Invoker Commands API (command/commandfor). The form inside the dialog
-// uses BindAndValidate so invalid submissions surface field-scoped errors via
-// {{.lvt.ErrorTag}} that render INSIDE the still-open dialog — exercising the
-// client v0.8.33 morphdom fix that allows child updates inside open dialogs.
-//
-// On a successful save the framework's diff updates the dialog wrapper and
-// the browser closes the dialog as part of normal form-submit handling; the
-// success flash then becomes visible on the page beneath the trigger button.
+// ModalDialogController demonstrates a native <dialog> opened via the Invoker
+// Commands API (command/commandfor). On invalid submit the form's field errors
+// must render inside the still-open dialog — that's the load-bearing behavior
+// this pattern shows; on valid submit the dialog closes and a flash appears
+// outside it.
 type ModalDialogController struct{}
 
-// modalDialogInput mirrors the form fields. Validator tags drive the
-// per-field error messages that {{.lvt.ErrorTag "name"}} renders inside the
-// dialog when validation fails.
 type modalDialogInput struct {
 	Name  string `json:"name"  validate:"required,min=3"`
 	Email string `json:"email" validate:"required,email"`
@@ -65,16 +57,10 @@ func modalDialogHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // --- Pattern #18: Confirm Dialog ---
 
-// ConfirmDialogController demonstrates a CSP-compliant confirmation flow: each
-// row owns its own <dialog id="confirm-{{.ID}}"> opened via command="show-modal"
-// commandfor="confirm-{{.ID}}". The Delete action reads the item id from the
-// submit button's value attribute, NOT a hidden input — see CLAUDE.md and the
-// patterns proposal for the rationale ("button name=delete value={{.ID}}").
-//
-// Items live on the controller (singleton, never cloned) behind a sync.Mutex,
-// so deletes persist across page reloads within a process. We don't use one
-// here because demo cardinality is small (5 items) and the user-visible
-// "Restore" button is intentionally absent — refreshing reseeds.
+// ConfirmDialogController gates a destructive action behind a per-row
+// <dialog id="confirm-{{.ID}}">. The Delete action reads the item id from the
+// submit button's value attribute (the canonical Tier-1 row-action shape),
+// not a hidden input.
 type ConfirmDialogController struct{}
 
 const confirmDialogItemCount = 5
@@ -106,12 +92,10 @@ func confirmDialogHandler(baseOpts []livetemplate.Option) http.Handler {
 // --- Pattern #19: Tabs (HATEOAS) ---
 
 // TabsController is Mount-only. Tab clicks are <a href="?tab=…"> which the
-// client routes through the WebSocket as the reserved __navigate__ action
-// (library v0.8.19+, client v0.8.26+). The server re-runs Mount() with the
-// new query params; ctx.Action() returns "" inside that re-run (the action
-// loop sets it via WithAction("")), so the same `if ctx.Action() == ""`
-// guard used on initial GET also runs on tab switches. Compare to Pattern
-// #13 (URL-Preserved Filters) which uses the same shape.
+// framework routes through the WebSocket as the reserved __navigate__ action;
+// the server re-runs Mount() with the new query params and ctx.Action() is ""
+// inside that re-run, so the same `if ctx.Action() == ""` guard used on initial
+// GET also covers tab switches.
 type TabsController struct{}
 
 var validTabs = map[string]bool{"overview": true, "settings": true, "activity": true}
@@ -141,11 +125,9 @@ func tabsHandler(baseOpts []livetemplate.Option) http.Handler {
 // --- Pattern #20: SPA Navigation ---
 
 // SPANavController demonstrates the framework's automatic link interception:
-// same-pathname query-string changes use the in-band __navigate__ action over
-// WebSocket, while cross-pathname links trigger a full reconnect. The Step
-// counter ([1, 3]) showcases the same-pathname path; cross-pathname is shown
-// via links to other pattern handlers; lvt-nav:no-intercept is shown via an
-// external link.
+// same-pathname query-string changes go through the in-band __navigate__ action
+// over WebSocket, cross-pathname links trigger a full reconnect, and external
+// targets opt out with lvt-nav:no-intercept.
 type SPANavController struct{}
 
 const spaNavMaxStep = 3
@@ -178,10 +160,9 @@ func spaNavigationHandler(baseOpts []livetemplate.Option) http.Handler {
 // --- Pattern #21: Keyboard Shortcuts ---
 
 // ShortcutsController is Tier-2: it uses lvt-on:window:keydown bindings to
-// drive a command-palette-style overlay. Open binds "/", Close binds "Escape"
-// inside the open panel. A small ring buffer of activity log entries doubles
-// as visual feedback in the rendered HTML — handy for the e2e tests since
-// the panel state can be confirmed without screen-scraping the overlay.
+// drive a command-palette-style overlay. "/" opens the panel; "Escape" closes
+// it (bound only while the panel is rendered). A bounded log of recent open/
+// close events surfaces the state in the page itself.
 type ShortcutsController struct{}
 
 const shortcutsLogMax = 5

@@ -1796,17 +1796,13 @@ func TestModalDialog(t *testing.T) {
 	})
 
 	t.Run("Submit_Invalid_Form_Stays_Open_With_Field_Errors", func(t *testing.T) {
-		// Disable HTML5 validation so the empty input reaches the server,
-		// where the validator's `required,min=3` tag emits a field-level
-		// error. The error renders inside the still-open dialog — this is
-		// the v0.8.33 morphdom child-update fix in action.
+		// noValidate=true bypasses HTML5 form validation so the empty input
+		// reaches the server's validator, which is what we want to exercise.
 		err := chromedp.Run(ctx,
-			// Make sure the dialog is open from the previous subtest.
 			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 3*time.Second),
 			chromedp.Evaluate(`document.querySelector('dialog#edit-dialog form').noValidate = true`, nil),
 			chromedp.Clear(`dialog#edit-dialog input[name="name"]`, chromedp.ByQuery),
 			chromedp.Click(`dialog#edit-dialog button[type="submit"]`, chromedp.ByQuery),
-			// The error tag is rendered with a <small> wrapper by ErrorTag.
 			e2etest.WaitFor(`(() => { const d = document.getElementById('edit-dialog'); return d.open && d.querySelector('input[name="name"][aria-invalid="true"]') !== null; })()`, 5*time.Second),
 		)
 		if err != nil {
@@ -1817,7 +1813,7 @@ func TestModalDialog(t *testing.T) {
 			t.Fatalf("Read dialog state failed: %v", err)
 		}
 		if !dialogOpen {
-			t.Error("Dialog should remain open after invalid submit (v0.8.33 fix)")
+			t.Error("Dialog should remain open after invalid submit")
 		}
 		var errorText string
 		if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => { const s = document.querySelector('dialog#edit-dialog small'); return s ? s.textContent.trim() : ""; })()`, &errorText)); err != nil {
@@ -1830,15 +1826,9 @@ func TestModalDialog(t *testing.T) {
 
 	t.Run("Submit_Valid_Form_Closes_Dialog_And_Updates_State", func(t *testing.T) {
 		err := chromedp.Run(ctx,
-			// Re-open the dialog (previous subtest left it open) and fill in
-			// a valid Name + Email. We rely on the seed Email being still
-			// valid; just type a fresh Name.
 			chromedp.Clear(`dialog#edit-dialog input[name="name"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`dialog#edit-dialog input[name="name"]`, "Grace Hopper", chromedp.ByQuery),
 			chromedp.Click(`dialog#edit-dialog button[type="submit"]`, chromedp.ByQuery),
-			// Either: the dialog closes (matches dialog-patterns behavior) AND
-			// flash text appears beneath the trigger button. We assert flash
-			// presence first since that's the user-visible success signal.
 			e2etest.WaitForText(`output[data-flash="success"]`, "Profile saved", 5*time.Second),
 		)
 		if err != nil {
@@ -1875,9 +1865,6 @@ func TestModalDialog(t *testing.T) {
 	})
 
 	t.Run("Browser_Back_Closes_Dialog", func(t *testing.T) {
-		// Continuing from the previous subtest's state: dialog open, hash set.
-		// History.back() should pop to the prior state with no #edit-dialog,
-		// at which point hash-link.ts:handlePopstate sweeps the open dialog.
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 3*time.Second),
 			chromedp.Evaluate(`history.back()`, nil),
@@ -1966,7 +1953,6 @@ func TestConfirmDialog(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Delete via confirm failed: %v", err)
 		}
-		// The deleted row's data-key must be gone from the DOM.
 		var hasDeleted bool
 		if err := chromedp.Run(ctx, chromedp.Evaluate(`!!document.querySelector('tr[data-key="3"]')`, &hasDeleted)); err != nil {
 			t.Fatalf("Deleted row check failed: %v", err)
@@ -1977,9 +1963,7 @@ func TestConfirmDialog(t *testing.T) {
 	})
 
 	t.Run("Per_Item_Hash_Link_Opens_Specific_Dialog", func(t *testing.T) {
-		// A direct navigation with a hash fragment must auto-activate the
-		// matching dialog (client v0.8.30+ hash-link). Use confirm-1 since
-		// confirm-3 was just deleted in the previous subtest.
+		// confirm-3 was just deleted, so use confirm-1.
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(url+"#confirm-1"),
 			e2etest.WaitForWebSocketReady(5*time.Second),
@@ -2036,10 +2020,8 @@ func TestTabs(t *testing.T) {
 	})
 
 	t.Run("Tab_Switch_Uses_WebSocket_Not_HTTP", func(t *testing.T) {
-		// Listen for any HTTP request to the tabs URL while clicking
-		// Activity. The __navigate__ fast path must not trigger a fetch().
-		// We stash hits from a fetch override on window so we can read it
-		// after the click. The override is removed after the assertion.
+		// Override window.fetch to count HTTP requests to the tabs URL.
+		// The __navigate__ in-band path must not trigger any.
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
 				window.__navHttpHits = 0;
@@ -2191,10 +2173,8 @@ func TestKeyboardShortcuts(t *testing.T) {
 	})
 
 	t.Run("Slash_Key_Opens_Panel", func(t *testing.T) {
-		// Dispatching a synthetic KeyboardEvent at the window is the
-		// standard headless-Chrome workaround when chromedp.KeyEvent
-		// would deliver to the focused element rather than window
-		// (where lvt-on:window:keydown listens).
+		// chromedp.KeyEvent delivers to the focused element; lvt-on:window:keydown
+		// listens at the window, so we dispatch a synthetic event there.
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', bubbles: true}))`, nil),
 			e2etest.WaitForText(`h4`, "Command Panel", 5*time.Second),
