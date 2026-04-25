@@ -13,7 +13,13 @@ import (
 
 // validateNav is the per-process validator shared by navigation-category
 // controllers. The validator package caches struct/field metadata internally,
-// so a single instance is faster than constructing one per request.
+// so a singleton is faster than constructing one per request.
+//
+// We use BindAndValidate (not ctx.ValidateForm) for Modal Dialog because
+// ExtractFormSchema's HTML5-attribute parsing does not currently surface a
+// form schema for forms inside a <dialog>; the explicit struct + validator
+// tags is the same shape used by examples/dialog-patterns and works reliably
+// across all form-positioning cases.
 var validateNav = validator.New()
 
 // --- Pattern #17: Modal Dialog ---
@@ -102,9 +108,10 @@ var validTabs = map[string]bool{"overview": true, "settings": true, "activity": 
 
 func (c *TabsController) Mount(state TabsState, ctx *livetemplate.Context) (TabsState, error) {
 	if ctx.Action() == "" {
-		if t := ctx.GetString("tab"); validTabs[t] {
+		t := ctx.GetString("tab")
+		if t != "" && validTabs[t] {
 			state.ActiveTab = t
-		} else if state.ActiveTab == "" {
+		} else if t != "" || !validTabs[state.ActiveTab] {
 			state.ActiveTab = "overview"
 		}
 	}

@@ -329,53 +329,25 @@ func TestCrossHandlerNavigation(t *testing.T) {
 			t.Fatalf("Index → Modal Dialog navigation failed: %v", err)
 		}
 		var leakedText string
-		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => {
 			const wrapper = document.querySelector('[data-lvt-id]');
 			if (!wrapper) return "no-wrapper";
 			const text = wrapper.textContent || "";
 			const leaks = ["Forms & Editing", "Lists & Data", "Search & Filtering", "Loading & Progress", "Visual Feedback", "Real-Time"];
 			return leaks.find(s => text.includes(s)) || "";
-		})()`, &leakedText))
+		})()`, &leakedText)); err != nil {
+			t.Fatalf("Leak-detection script failed to evaluate: %v", err)
+		}
+		if leakedText == "no-wrapper" {
+			t.Fatalf("Wrapper element [data-lvt-id] not found after navigation")
+		}
 		if leakedText != "" {
 			t.Errorf("Stale index category text %q leaked into Modal Dialog wrapper", leakedText)
 		}
 	})
 
-	t.Run("Tabs_Same_Pathname_Uses_WebSocket", func(t *testing.T) {
-		// On the Tabs pattern, clicking a tab link is a same-pathname
-		// query-string change. The client routes it via WebSocket
-		// (__navigate__) instead of an HTTP fetch — verify by overriding
-		// window.fetch and counting hits during the click.
-		err := chromedp.Run(ctx,
-			chromedp.Navigate(baseURL+"/patterns/navigation/tabs"),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			chromedp.WaitVisible(`a[href="?tab=overview"][aria-current="page"]`, chromedp.ByQuery),
-			chromedp.Evaluate(`(() => {
-				window.__crossNavHits = 0;
-				window.__origCrossFetch = window.fetch;
-				window.fetch = function(input, init) {
-					try {
-						const u = typeof input === 'string' ? input : input.url;
-						if (u && u.includes('/patterns/navigation/tabs')) window.__crossNavHits++;
-					} catch (e) {}
-					return window.__origCrossFetch.apply(window, arguments);
-				};
-			})()`, nil),
-			chromedp.Click(`a[href="?tab=settings"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`!!document.querySelector('a[href="?tab=settings"][aria-current="page"]')`, 5*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("Tab switch failed: %v", err)
-		}
-		var hits int
-		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__crossNavHits`, &hits)); err != nil {
-			t.Fatalf("HTTP hit count read failed: %v", err)
-		}
-		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { window.fetch = window.__origCrossFetch; })()`, nil))
-		if hits != 0 {
-			t.Errorf("Tab switch must use WebSocket __navigate__, got %d HTTP hits", hits)
-		}
-	})
+	// Tabs same-pathname __navigate__ is covered by
+	// TestTabs/Tab_Switch_Uses_WebSocket_Not_HTTP in patterns_test.go.
 
 	t.Run("SPA_Navigation_Cross_Pathname_Reconnects", func(t *testing.T) {
 		// From the SPA Navigation page, clicking a cross-pathname link to

@@ -1830,9 +1830,10 @@ func TestModalDialog(t *testing.T) {
 			chromedp.SendKeys(`dialog#edit-dialog input[name="name"]`, "Grace Hopper", chromedp.ByQuery),
 			chromedp.Click(`dialog#edit-dialog button[type="submit"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Profile saved", 5*time.Second),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === false`, 5*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Valid form submit did not produce success flash: %v", err)
+			t.Fatalf("Valid form submit did not produce success flash + dialog close: %v", err)
 		}
 		var bodyText string
 		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.body.textContent`, &bodyText)); err != nil {
@@ -2021,7 +2022,12 @@ func TestTabs(t *testing.T) {
 
 	t.Run("Tab_Switch_Uses_WebSocket_Not_HTTP", func(t *testing.T) {
 		// Override window.fetch to count HTTP requests to the tabs URL.
-		// The __navigate__ in-band path must not trigger any.
+		// The __navigate__ in-band path must not trigger any. t.Cleanup
+		// guarantees the restore even if a chromedp step fails mid-flow,
+		// so a failure here cannot pollute later subtests.
+		t.Cleanup(func() {
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { if (window.__origFetch) { window.fetch = window.__origFetch; delete window.__origFetch; } })()`, nil))
+		})
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
 				window.__navHttpHits = 0;
@@ -2045,8 +2051,6 @@ func TestTabs(t *testing.T) {
 		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__navHttpHits`, &hits)); err != nil {
 			t.Fatalf("HTTP hit count read failed: %v", err)
 		}
-		// Restore fetch.
-		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { window.fetch = window.__origFetch; })()`, nil))
 		if hits != 0 {
 			t.Errorf("Same-pathname tab switch should use WebSocket __navigate__, not HTTP fetch (got %d HTTP hits)", hits)
 		}
@@ -2104,6 +2108,9 @@ func TestSPANavigation(t *testing.T) {
 	})
 
 	t.Run("Same_Pathname_Step_Update_No_HTTP", func(t *testing.T) {
+		t.Cleanup(func() {
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { if (window.__origFetch2) { window.fetch = window.__origFetch2; delete window.__origFetch2; } })()`, nil))
+		})
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
 				window.__spaHttpHits = 0;
@@ -2126,7 +2133,6 @@ func TestSPANavigation(t *testing.T) {
 		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__spaHttpHits`, &hits)); err != nil {
 			t.Fatalf("HTTP hit count read failed: %v", err)
 		}
-		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { window.fetch = window.__origFetch2; })()`, nil))
 		if hits != 0 {
 			t.Errorf("Same-pathname step update should use WebSocket __navigate__, got %d HTTP hits", hits)
 		}

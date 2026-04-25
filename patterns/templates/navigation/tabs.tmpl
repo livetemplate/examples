@@ -16,19 +16,15 @@
         <h4>Overview</h4>
         <p>This pattern uses a single <code>Mount</code> handler reading the <code>tab</code> query parameter. The active link is marked with <code>aria-current="page"</code> for screen readers and visually styled by Pico CSS.</p>
     </section>
-    {{end}}
-
-    {{if eq .ActiveTab "settings"}}
+    {{else if eq .ActiveTab "settings"}}
     <section>
         <h4>Settings</h4>
         <p>Tab content is rendered server-side from the same template — switching tabs is a re-render, not a partial fragment. Bookmark <code>?tab=settings</code> and the deep link works on next load too.</p>
     </section>
-    {{end}}
-
-    {{if eq .ActiveTab "activity"}}
+    {{else if eq .ActiveTab "activity"}}
     <section>
         <h4>Activity</h4>
-        <p>Unknown <code>tab</code> values fall back silently to <strong>Overview</strong>. The valid set lives in <code>validTabs</code> on the controller; bookmarks with stale values stay safe.</p>
+        <p>Unknown <code>tab</code> values fall back silently to <strong>Overview</strong>. The valid set lives in a <code>validTabs</code> allowlist; bookmarks with stale values stay safe.</p>
     </section>
     {{end}}
 </article>
