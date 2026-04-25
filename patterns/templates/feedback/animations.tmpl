@@ -1,0 +1,27 @@
+{{define "content"}}
+<article>
+    <h3>Animations</h3>
+    <p><small>Declarative entry animations: <code>lvt-fx:animate="fade|slide|scale"</code> plays once per new element. Switch the mode and add an item — the new row animates in with the selected effect. Existing rows do <strong>not</strong> re-animate on subsequent renders (a WeakSet guard ensures one-shot semantics). Duration via <code>--lvt-animate-duration</code> CSS variable (default 500ms).</small></p>
+
+    <form method="POST">
+        <fieldset role="group">
+            <select name="mode" aria-label="Animation mode">
+                <option value="fade" {{if eq .Mode "fade"}}selected{{end}}>Fade</option>
+                <option value="slide" {{if eq .Mode "slide"}}selected{{end}}>Slide</option>
+                <option value="scale" {{if eq .Mode "scale"}}selected{{end}}>Scale</option>
+            </select>
+            <button name="add">Add Item</button>
+        </fieldset>
+    </form>
+
+    {{if .Items}}
+    <ul>
+        {{range .Items}}
+        <li data-key="{{.ID}}" lvt-fx:animate="{{.Mode}}">{{.Name}} — added at {{.Time}}</li>
+        {{end}}
+    </ul>
+    {{else}}
+    <p><em>No items yet. Pick a mode and click Add Item.</em></p>
+    {{end}}
+</article>
+{{end}}

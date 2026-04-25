@@ -276,10 +276,10 @@ func allPatterns() []PatternCategory {
 		{
 			Name: "Visual Feedback",
 			Patterns: []PatternLink{
-				{Name: "Animations", Path: "/patterns/feedback/animations", Description: "Entry animations with lvt-fx:animate"},
-				{Name: "Loading States", Path: "/patterns/feedback/loading-states", Description: "Auto aria-busy and custom loading text"},
-				{Name: "Highlight on Change", Path: "/patterns/feedback/highlight", Description: "Visual flash on DOM updates"},
-				{Name: "Flash Messages", Path: "/patterns/feedback/flash-messages", Description: "Toast notifications via ctx.SetFlash"},
+				{Name: "Animations", Path: "/patterns/feedback/animations", Description: "Entry animations with lvt-fx:animate", Implemented: true},
+				{Name: "Loading States", Path: "/patterns/feedback/loading-states", Description: "Auto aria-busy and custom loading text", Implemented: true},
+				{Name: "Highlight on Change", Path: "/patterns/feedback/highlight", Description: "Visual flash on DOM updates", Implemented: true},
+				{Name: "Flash Messages", Path: "/patterns/feedback/flash-messages", Description: "Toast notifications via ctx.SetFlash", Implemented: true},
 			},
 		},
 		{

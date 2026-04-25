@@ -97,6 +97,12 @@ func main() {
 	mux.Handle("/patterns/navigation/spa-navigation", spaNavigationHandler(baseOpts))
 	mux.Handle("/patterns/navigation/keyboard-shortcuts", keyboardShortcutsHandler(baseOpts))
 
+	// Category: Visual Feedback (#22–#25)
+	mux.Handle("/patterns/feedback/animations", animationsHandler(baseOpts))
+	mux.Handle("/patterns/feedback/loading-states", loadingStatesHandler(baseOpts))
+	mux.Handle("/patterns/feedback/highlight", highlightHandler(baseOpts))
+	mux.Handle("/patterns/feedback/flash-messages", flashMessagesHandler(baseOpts))
+
 	// Client library and CSS (dev mode)
 	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
 		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {

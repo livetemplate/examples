@@ -1,0 +1,47 @@
+{{define "content"}}
+<article>
+    <h3>Loading States</h3>
+    <p><small>Three layers of feedback during a slow action. All three forms call the same <code>slowSave</code> action (sleeps 2s server-side) so you can see the different presentations side by side.</small></p>
+
+    <section>
+        <h4>Tier 1 — Automatic</h4>
+        <p><small>The framework adds <code>aria-busy="true"</code> to the form and <code>disabled</code> to its <code>&lt;fieldset&gt;</code> while the action is in flight. No directives needed.</small></p>
+        <form method="POST">
+            <fieldset role="group">
+                <input name="data" placeholder="Type something…" aria-label="Tier 1 input">
+                <button name="slowSave">Save (2s)</button>
+            </fieldset>
+        </form>
+    </section>
+
+    <section>
+        <h4>Tier 2 — <code>lvt-form:disable-with</code></h4>
+        <p><small>Custom button text during pending. Restored when the action completes.</small></p>
+        <form method="POST">
+            <fieldset role="group">
+                <input name="data" placeholder="Type something…" aria-label="Tier 2a input">
+                <button name="slowSave" lvt-form:disable-with="Saving…">Save (2s)</button>
+            </fieldset>
+        </form>
+    </section>
+
+    <section>
+        <h4>Tier 2 — <code>lvt-el:setAttr</code> reactive attribute</h4>
+        <p><small>Toggle <code>aria-busy</code> via <code>:on:pending</code> / <code>:on:done</code>. Multi-action pages can scope this to a specific action (e.g. <code>:on:slowSave:pending</code>); leaving the action name out matches every action's lifecycle, which is fine here.</small></p>
+        <form method="POST">
+            <fieldset role="group">
+                <input name="data" placeholder="Type something…" aria-label="Tier 2b input">
+                <button name="slowSave"
+                    lvt-el:setAttr:on:pending="aria-busy:true"
+                    lvt-el:setAttr:on:done="aria-busy:false">Save (2s)</button>
+            </fieldset>
+        </form>
+    </section>
+
+    {{/* All three sections call the same `slowSave` action, so this single
+         indicator updates regardless of which form was submitted. */}}
+    {{if .LastSave}}
+    <p><small>Last save: <strong>{{.LastSave}}</strong></small></p>
+    {{end}}
+</article>
+{{end}}

@@ -2280,3 +2280,374 @@ func TestKeyboardShortcuts(t *testing.T) {
 
 	runStandardSubtests(t, ctx, false, "Keyboard Shortcuts — page heading with shortcut hints (kbd elements for / and Escape), an 'Open panel' button when closed, and an Activity log with recent open/close entries.")
 }
+
+func TestAnimations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/feedback/animations"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`select[name="mode"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("Add_Plays_Fade_Animation", func(t *testing.T) {
+		// Click Add with default mode "fade". The directive sets
+		// element.style.animation = "lvt-fade-in 500ms ease-out" on the new
+		// row. The keystone assertion is "directive applied the keyframe"
+		// — cleanup is verified by the Existing_Rows subtest below, which
+		// asserts items 1 and 2 have no inline style after a third add.
+		var anim string
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('li[data-key="item-1"]')`, 3*time.Second),
+			chromedp.Evaluate(`document.querySelector('li[data-key="item-1"]').style.animation`, &anim),
+		)
+		if err != nil {
+			t.Fatalf("Add did not produce item-1: %v", err)
+		}
+		if !strings.Contains(anim, "lvt-fade-in") {
+			t.Errorf("expected style.animation to contain 'lvt-fade-in', got %q", anim)
+		}
+	})
+
+	t.Run("Mode_Switch_Affects_New_Rows", func(t *testing.T) {
+		// Switch select to "slide" via DOM (the value is form-submitted with
+		// Add). The next row's `lvt-fx:animate="{{$.Mode}}"` resolves to slide,
+		// so style.animation should contain lvt-slide-in. After the render,
+		// the select must still show "slide" (server state echoed via the
+		// `selected` attribute).
+		var anim, selectVal string
+		err := chromedp.Run(ctx,
+			chromedp.SetValue(`select[name="mode"]`, "slide", chromedp.ByQuery),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('li[data-key="item-2"]')`, 3*time.Second),
+			chromedp.Evaluate(`document.querySelector('li[data-key="item-2"]').style.animation`, &anim),
+			chromedp.Evaluate(`document.querySelector('select[name="mode"]').value`, &selectVal),
+		)
+		if err != nil {
+			t.Fatalf("Slide-mode add failed: %v", err)
+		}
+		if !strings.Contains(anim, "lvt-slide-in") {
+			t.Errorf("expected style.animation to contain 'lvt-slide-in', got %q", anim)
+		}
+		if selectVal != "slide" {
+			t.Errorf("mode select did not retain 'slide' across re-render, got %q", selectVal)
+		}
+	})
+
+	t.Run("Existing_Rows_Do_Not_Re_animate", func(t *testing.T) {
+		// Wait for item-2 animation to complete, then add item-3. The WeakSet
+		// guard in directives.ts must prevent items 1 and 2 from re-animating.
+		// Note: the 3s timeout assumes the default 500ms `--lvt-animate-duration`.
+		// If a future page overrides that variable to >3s, this test will flake.
+		var item1Style, item2Style string
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`!document.querySelector('li[data-key="item-2"]').hasAttribute('style')`, 3*time.Second),
+			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('li[data-key="item-3"]')`, 3*time.Second),
+			chromedp.Evaluate(`document.querySelector('li[data-key="item-1"]').getAttribute('style') || ""`, &item1Style),
+			chromedp.Evaluate(`document.querySelector('li[data-key="item-2"]').getAttribute('style') || ""`, &item2Style),
+		)
+		if err != nil {
+			t.Fatalf("Re-animate guard test setup failed: %v", err)
+		}
+		if item1Style != "" {
+			t.Errorf("item-1 should not have inline style after second add, got %q", item1Style)
+		}
+		if item2Style != "" {
+			t.Errorf("item-2 should not have inline style after third add, got %q", item2Style)
+		}
+		// Wait for item-3 to finish before standard subtests so they don't
+		// see a transient inline-style on a [data-key] element.
+		_ = chromedp.Run(ctx, e2etest.WaitFor(`!document.querySelector('li[data-key="item-3"]').hasAttribute('style')`, 3*time.Second))
+	})
+
+	runStandardSubtests(t, ctx, true, "Animations pattern — heading, a row with a mode select (fade/slide/scale) and Add Item button, and a list of three added items each labeled with its mode.")
+}
+
+func TestLoadingStates(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/feedback/loading-states"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`section:nth-of-type(1) button[name="slowSave"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("Tier1_Fieldset_Disabled_During_Pending", func(t *testing.T) {
+		// Submit Tier 1 form with typed input. While the action is in flight
+		// (2s sleep), the fieldset should carry `disabled` and the form
+		// should be aria-busy. After completion, both reset AND the input
+		// auto-clears (default form-reset behavior; would need `lvt-form:preserve`
+		// to retain).
+		var inputValue string
+		err := chromedp.Run(ctx,
+			chromedp.SendKeys(`section:nth-of-type(1) input[name="data"]`, "hello", chromedp.ByQuery),
+			chromedp.Click(`section:nth-of-type(1) button[name="slowSave"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('section:nth-of-type(1) fieldset').disabled === true`, 1*time.Second),
+			e2etest.WaitFor(`document.querySelector('section:nth-of-type(1) form').getAttribute('aria-busy') === 'true'`, 1*time.Second),
+			e2etest.WaitFor(`document.querySelector('section:nth-of-type(1) fieldset').disabled === false`, 8*time.Second),
+			chromedp.Evaluate(`document.querySelector('section:nth-of-type(1) input[name="data"]').value`, &inputValue),
+		)
+		if err != nil {
+			t.Fatalf("Tier 1 fieldset auto-disable failed: %v", err)
+		}
+		if inputValue != "" {
+			t.Errorf("Tier 1 input did not auto-reset after submit, got %q", inputValue)
+		}
+	})
+
+	t.Run("DisableWith_Replaces_Button_Text", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`section:nth-of-type(2) button[name="slowSave"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`section:nth-of-type(2) button[name="slowSave"]`, "Saving", 1*time.Second),
+			e2etest.WaitForText(`section:nth-of-type(2) button[name="slowSave"]`, "Save (2s)", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("disable-with text replacement failed: %v", err)
+		}
+	})
+
+	t.Run("SetAttr_Pending_Sets_AriaBusy", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`section:nth-of-type(3) button[name="slowSave"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('section:nth-of-type(3) button[name="slowSave"]').getAttribute('aria-busy') === 'true'`, 1*time.Second),
+			e2etest.WaitFor(`document.querySelector('section:nth-of-type(3) button[name="slowSave"]').getAttribute('aria-busy') === 'false'`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("setAttr:on:pending toggle failed: %v", err)
+		}
+	})
+
+	t.Run("Submit_Updates_LastSave", func(t *testing.T) {
+		// Multiple <small> elements on the page (breadcrumb + section descriptions),
+		// so check the document body's text.
+		err := chromedp.Run(ctx,
+			e2etest.WaitForText(`body`, "Last save:", 8*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Last save indicator never appeared: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, true, "Loading States pattern — three sections (Tier 1 automatic, Tier 2 disable-with, Tier 2 setAttr) each with an input and Save (2s) button, plus a 'Last save:' timestamp below.")
+}
+
+func TestHighlightOnChange(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/feedback/highlight"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	// UI_Standards is intentionally NOT run for this pattern. The highlight
+	// directive's whole job is to add an inline background-color and
+	// transition for the visual flash, which fires on every render walk that
+	// touches the subtree — including the first paint. After cleanup,
+	// directives.ts leaves an empty `style=""` attribute (animate's cleanup
+	// at directives.ts:230-232 calls `removeAttribute('style')`; highlight
+	// does not). The "no inline styles" rule isn't a meaningful guarantee
+	// for a pattern whose entire premise is inline styling — Visual_Check
+	// plus the interaction subtests below cover the right behavior.
+	// Follow-up: open an issue to mirror animate's cleanup in the highlight
+	// branch so downstream users get cleaner DOM.
+
+	t.Run("Increment_Flashes_Both_Highlight_Targets", func(t *testing.T) {
+		// directives.ts sets style.backgroundColor at T+0 then reverts at T+50ms,
+		// while style.transition stays set for the full --lvt-highlight-duration
+		// (500ms). The transition assertion has a much wider polling window
+		// than the bg-color one and is just as load-bearing — the transition
+		// IS the visual flash. Use Array.from + .filter to count only the
+		// inner highlight cards (page wrappers don't carry the directive).
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`(() => {
+				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
+				if (els.length < 2) return false;
+				return els.every(el => (el.style.transition || "").includes('background-color'));
+			})()`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Highlight transition not applied to both targets: %v", err)
+		}
+	})
+
+	t.Run("Highlight_Cleans_Up_After_Duration", func(t *testing.T) {
+		// directives.ts highlight cycle: 50ms delay + 500ms transition. The
+		// WaitFor polls until both bg + transition are clear, with a 2s
+		// budget that comfortably covers the 550ms cycle.
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`(() => {
+				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
+				return els.every(el => el.style.backgroundColor === '' && el.style.transition === '');
+			})()`, 2*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Highlight did not clean up: %v", err)
+		}
+	})
+
+	t.Run("Counter_Increments_On_Both_Mirrors", func(t *testing.T) {
+		// Counter is at 1 from the prior `Increment_Flashes_Both_Highlight_Targets`
+		// subtest; this click brings it to 2. Both mirrors must reflect the
+		// shared `.Counter` value.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`body`, "Counter A: 2", 3*time.Second),
+			e2etest.WaitForText(`body`, "Counter B (mirror): 2", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Counter increment not reflected on mirrors: %v", err)
+		}
+	})
+
+	t.Run("Visual_Check", func(t *testing.T) {
+		e2etest.ValidateScreenshotWithLLM(t, ctx, "Highlight on Change pattern — heading, an Increment button, and two cards 'Counter A' and 'Counter B (mirror)' both showing the same number 2.")
+	})
+}
+
+func TestFlashMessages(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/feedback/flash-messages"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="save"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("Empty_Save_Shows_Error_Flash", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="save"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash="error"]`, "Name is required", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Empty save did not surface error flash: %v", err)
+		}
+	})
+
+	t.Run("Valid_Save_Shows_Success_Clears_Error", func(t *testing.T) {
+		var nameValue string
+		err := chromedp.Run(ctx,
+			chromedp.SendKeys(`input[name="name"]`, "Ada", chromedp.ByQuery),
+			chromedp.Click(`button[name="save"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash="success"]`, "Saved: Ada", 3*time.Second),
+			// Error flash should be gone (ClearFlash("error") in the controller).
+			e2etest.WaitFor(`!document.querySelector('output[data-flash="error"]')`, 3*time.Second),
+			// Form auto-resets on success — the name input must be cleared.
+			chromedp.Evaluate(`document.querySelector('input[name="name"]').value`, &nameValue),
+		)
+		if err != nil {
+			t.Fatalf("Valid save did not clear error / set success: %v", err)
+		}
+		if nameValue != "" {
+			t.Errorf("name input did not auto-reset after successful save, got %q", nameValue)
+		}
+	})
+
+	t.Run("Notify_Persists_Until_Dismiss", func(t *testing.T) {
+		// 2s idle is enough to prove persistence — info has no FlashExpiry,
+		// so any prune timer would have fired by now if one existed. Wall-
+		// clock waits like this can't be condition-based (proving absence-
+		// of-change), but 2s is comfortably below the success-flash 5s
+		// expiry from the previous subtest.
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="notify"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash="info"]`, "Heads up", 3*time.Second),
+			chromedp.Sleep(2*time.Second),
+			e2etest.WaitFor(`!!document.querySelector('output[data-flash="info"]')`, 1*time.Second),
+			chromedp.Click(`button[name="dismissNotify"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!document.querySelector('output[data-flash="info"]')`, 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Notify→Dismiss lifecycle failed: %v", err)
+		}
+	})
+
+	t.Run("Success_AutoExpires_After_FlashExpiry", func(t *testing.T) {
+		// FlashExpiry is render-driven: pruneExpiredFlash runs inside
+		// getMessages before the snapshot, so the next render after the
+		// deadline ships clean HTML. Wait past the expiry, click Notify
+		// to trigger a render, and assert success is gone in the same
+		// response that introduces info.
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('input[name="name"]').value = ""`, nil),
+			chromedp.SendKeys(`input[name="name"]`, "Bob", chromedp.ByQuery),
+			chromedp.Click(`button[name="save"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash="success"]`, "Saved: Bob", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Could not seed a success flash: %v", err)
+		}
+		// chromedp.Sleep is unavoidable here — we're literally waiting on
+		// wall-clock for the FlashExpiry deadline to elapse. Sleep past 5s
+		// (the expiry duration), then click Notify to trigger a render.
+		err = chromedp.Run(ctx,
+			chromedp.Sleep(5500*time.Millisecond),
+			chromedp.Click(`button[name="notify"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash="info"]`, "Heads up", 3*time.Second),
+			e2etest.WaitFor(`!document.querySelector('output[data-flash="success"]')`, 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Success flash did not auto-expire after FlashExpiry: %v", err)
+		}
+	})
+
+	// pico=false: page uses {{.lvt.FlashTag}}, which renders <output data-flash>;
+	// the Pico validator (chrome.go:967) prefers <ins>/<del>, but this pattern
+	// IS the FlashTag demo, so the standard subtests use the non-Pico variant.
+	runStandardSubtests(t, ctx, false, "Flash Messages pattern — heading, two forms (one with a Name input + Save, one with Notify and Dismiss buttons), and an info flash 'Heads up — this stays until you dismiss it' visible.")
+}

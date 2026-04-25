@@ -1,0 +1,17 @@
+{{define "content"}}
+<article>
+    <h3>Highlight on Change</h3>
+    <p><small><code>lvt-fx:highlight="flash"</code> flashes a temporary background color whenever a render touches the element's subtree. Both displays below share the <em>same</em> counter — clicking Increment flashes <strong>both</strong>, demonstrating that the directive is per-element, not per-changed-value. Duration via <code>--lvt-highlight-duration</code> (default 500ms); color via <code>--lvt-highlight-color</code> (default amber <code>#ffc107</code>).</small></p>
+
+    <form method="POST">
+        <button name="increment">Increment</button>
+    </form>
+
+    <div lvt-fx:highlight="flash">
+        <p>Counter A: <strong>{{.Counter}}</strong></p>
+    </div>
+    <div lvt-fx:highlight="flash">
+        <p>Counter B (mirror): <strong>{{.Counter}}</strong></p>
+    </div>
+</article>
+{{end}}
