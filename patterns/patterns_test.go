@@ -2527,6 +2527,9 @@ func TestHighlightOnChange(t *testing.T) {
 	})
 
 	t.Run("Counter_Increments_On_Both_Mirrors", func(t *testing.T) {
+		// Counter is at 1 from the prior `Increment_Flashes_Both_Highlight_Targets`
+		// subtest; this click brings it to 2. Both mirrors must reflect the
+		// shared `.Counter` value.
 		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`body`, "Counter A: 2", 3*time.Second),
