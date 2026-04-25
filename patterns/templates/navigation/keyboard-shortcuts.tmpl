@@ -10,13 +10,13 @@
         </header>
         {{/* Decorative — wiring the search to a Change()/Submit() handler is out of scope for the keyboard-shortcut demo. */}}
         <input type="search" placeholder="Type a command…" autofocus aria-label="Command search">
-        <form name="closePanel">
+        <form method="POST" name="closePanel">
             <button name="close" class="secondary">Close</button>
         </form>
     </article>
     {{else}}
     <p><small>Panel is closed. Press <kbd>/</kbd> or click the button to open.</small></p>
-    <form name="openPanel">
+    <form method="POST" name="openPanel">
         <button name="open">Open panel</button>
     </form>
     {{end}}

@@ -1842,6 +1842,20 @@ func TestModalDialog(t *testing.T) {
 		if !strings.Contains(bodyText, "Grace Hopper") {
 			t.Error("Saved Name 'Grace Hopper' not visible in page text")
 		}
+		// Re-open the dialog and verify the form input now reflects the saved
+		// state (the value="{{.Name}}" template expression should have rerendered).
+		var nameValue string
+		err = chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="edit-dialog"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 5*time.Second),
+			chromedp.Value(`dialog#edit-dialog input[name="name"]`, &nameValue, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Re-open dialog to verify form state failed: %v", err)
+		}
+		if nameValue != "Grace Hopper" {
+			t.Errorf("Form input not repopulated from saved state; got %q, want %q", nameValue, "Grace Hopper")
+		}
 	})
 
 	t.Run("Open_Via_Hash_Link", func(t *testing.T) {

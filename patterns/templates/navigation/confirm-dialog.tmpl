@@ -33,7 +33,7 @@
                 <h4>Delete &ldquo;{{.Name}}&rdquo;?</h4>
             </header>
             <p>This cannot be undone.</p>
-            <form name="delete">
+            <form method="POST" name="delete">
                 <footer>
                     <fieldset role="group">
                         <button type="button" command="close" commandfor="confirm-{{.ID}}" class="secondary">Cancel</button>
