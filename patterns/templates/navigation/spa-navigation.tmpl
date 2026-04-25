@@ -1,0 +1,35 @@
+{{define "content"}}
+<article>
+    <h3>SPA Navigation</h3>
+    <p><small>Every <code>&lt;a&gt;</code> link inside the LiveTemplate wrapper is auto-intercepted. Same-pathname links use the in-band WebSocket <code>__navigate__</code> action; cross-pathname links fetch and reconnect transparently. External targets opt out with <code>lvt-nav:no-intercept</code>.</small></p>
+
+    <section>
+        <h4>Same-pathname (in-band <code>__navigate__</code>)</h4>
+        <p>Click these to update <code>?step=</code> without an HTTP round-trip. The page does not reload &mdash; only this section re-renders.</p>
+        <nav aria-label="Step">
+            <ul>
+                <li><a href="?step=1" {{if eq .Step 1}}aria-current="page"{{end}}>Step 1</a></li>
+                <li><a href="?step=2" {{if eq .Step 2}}aria-current="page"{{end}}>Step 2</a></li>
+                <li><a href="?step=3" {{if eq .Step 3}}aria-current="page"{{end}}>Step 3</a></li>
+            </ul>
+        </nav>
+        <p><strong>Step {{.Step}} of 3.</strong></p>
+    </section>
+
+    <section>
+        <h4>Cross-pathname (WebSocket reconnect)</h4>
+        <p>Each pattern is its own handler with its own <code>data-lvt-id</code>. Clicking these links triggers a fetch + DOM swap + WebSocket reconnect &mdash; <strong>without</strong> a hard page reload.</p>
+        <ul>
+            <li><a href="/patterns/navigation/modal-dialog">Modal Dialog</a></li>
+            <li><a href="/patterns/navigation/tabs">Tabs (HATEOAS)</a></li>
+            <li><a href="/">Back to index</a></li>
+        </ul>
+    </section>
+
+    <section>
+        <h4>Opt-out (<code>lvt-nav:no-intercept</code>)</h4>
+        <p>External links should opt out so the browser handles them natively.</p>
+        <p><a href="https://example.com" lvt-nav:no-intercept rel="noopener" target="_blank">example.com</a> &mdash; opt-out via <code>lvt-nav:no-intercept</code></p>
+    </section>
+</article>
+{{end}}

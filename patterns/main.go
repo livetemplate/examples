@@ -90,6 +90,13 @@ func main() {
 	mux.Handle("/patterns/loading/progress-bar", progressBarHandler(baseOpts))
 	mux.Handle("/patterns/loading/async-operations", asyncOperationsHandler(baseOpts))
 
+	// Category: Dialogs, Tabs & Navigation (#17–#21)
+	mux.Handle("/patterns/navigation/modal-dialog", modalDialogHandler(baseOpts))
+	mux.Handle("/patterns/navigation/confirm-dialog", confirmDialogHandler(baseOpts))
+	mux.Handle("/patterns/navigation/tabs", tabsHandler(baseOpts))
+	mux.Handle("/patterns/navigation/spa-navigation", spaNavigationHandler(baseOpts))
+	mux.Handle("/patterns/navigation/keyboard-shortcuts", keyboardShortcutsHandler(baseOpts))
+
 	// Client library and CSS (dev mode)
 	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
 		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {

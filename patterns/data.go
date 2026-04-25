@@ -266,11 +266,11 @@ func allPatterns() []PatternCategory {
 		{
 			Name: "Dialogs, Tabs & Navigation",
 			Patterns: []PatternLink{
-				{Name: "Modal Dialog", Path: "/patterns/navigation/modal-dialog", Description: "Native dialog with command/commandfor"},
-				{Name: "Confirm Dialog", Path: "/patterns/navigation/confirm-dialog", Description: "CSP-compliant confirmation flow"},
-				{Name: "Tabs (HATEOAS)", Path: "/patterns/navigation/tabs", Description: "Server-driven tabs via SPA navigation"},
-				{Name: "SPA Navigation", Path: "/patterns/navigation/spa-navigation", Description: "Auto link interception with pushState"},
-				{Name: "Keyboard Shortcuts", Path: "/patterns/navigation/keyboard-shortcuts", Description: "Global keyboard event binding"},
+				{Name: "Modal Dialog", Path: "/patterns/navigation/modal-dialog", Description: "Native dialog with command/commandfor", Implemented: true},
+				{Name: "Confirm Dialog", Path: "/patterns/navigation/confirm-dialog", Description: "CSP-compliant confirmation flow", Implemented: true},
+				{Name: "Tabs (HATEOAS)", Path: "/patterns/navigation/tabs", Description: "Server-driven tabs via SPA navigation", Implemented: true},
+				{Name: "SPA Navigation", Path: "/patterns/navigation/spa-navigation", Description: "Auto link interception with pushState", Implemented: true},
+				{Name: "Keyboard Shortcuts", Path: "/patterns/navigation/keyboard-shortcuts", Description: "Global keyboard event binding", Implemented: true},
 			},
 		},
 		{

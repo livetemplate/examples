@@ -312,6 +312,104 @@ func TestCrossHandlerNavigation(t *testing.T) {
 		}
 	})
 
+	t.Run("Index_To_Modal_Dialog_No_Stale_Dom", func(t *testing.T) {
+		// Regression: navigating from index to a Session 4 navigation pattern
+		// must not leak any index-page category names ("Forms & Editing",
+		// "Lists & Data", etc.) into the new pattern's wrapper. The category
+		// strings are specific enough that any presence is a regression
+		// signal — Modal Dialog renders its own h4 ("Edit profile") inside
+		// the dialog, so a raw h4-count check would false-positive.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`h2`, chromedp.ByQuery),
+			chromedp.Click(`a[href="/patterns/navigation/modal-dialog"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h3`, "Modal Dialog", 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Index → Modal Dialog navigation failed: %v", err)
+		}
+		var leakedText string
+		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+			const wrapper = document.querySelector('[data-lvt-id]');
+			if (!wrapper) return "no-wrapper";
+			const text = wrapper.textContent || "";
+			const leaks = ["Forms & Editing", "Lists & Data", "Search & Filtering", "Loading & Progress", "Visual Feedback", "Real-Time"];
+			return leaks.find(s => text.includes(s)) || "";
+		})()`, &leakedText))
+		if leakedText != "" {
+			t.Errorf("Stale index category text %q leaked into Modal Dialog wrapper", leakedText)
+		}
+	})
+
+	t.Run("Tabs_Same_Pathname_Uses_WebSocket", func(t *testing.T) {
+		// On the Tabs pattern, clicking a tab link is a same-pathname
+		// query-string change. The client routes it via WebSocket
+		// (__navigate__) instead of an HTTP fetch — verify by overriding
+		// window.fetch and counting hits during the click.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL+"/patterns/navigation/tabs"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="?tab=overview"][aria-current="page"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`(() => {
+				window.__crossNavHits = 0;
+				window.__origCrossFetch = window.fetch;
+				window.fetch = function(input, init) {
+					try {
+						const u = typeof input === 'string' ? input : input.url;
+						if (u && u.includes('/patterns/navigation/tabs')) window.__crossNavHits++;
+					} catch (e) {}
+					return window.__origCrossFetch.apply(window, arguments);
+				};
+			})()`, nil),
+			chromedp.Click(`a[href="?tab=settings"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('a[href="?tab=settings"][aria-current="page"]')`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Tab switch failed: %v", err)
+		}
+		var hits int
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__crossNavHits`, &hits)); err != nil {
+			t.Fatalf("HTTP hit count read failed: %v", err)
+		}
+		_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { window.fetch = window.__origCrossFetch; })()`, nil))
+		if hits != 0 {
+			t.Errorf("Tab switch must use WebSocket __navigate__, got %d HTTP hits", hits)
+		}
+	})
+
+	t.Run("SPA_Navigation_Cross_Pathname_Reconnects", func(t *testing.T) {
+		// From the SPA Navigation page, clicking a cross-pathname link to
+		// another pattern must change the wrapper's data-lvt-id (the new
+		// handler is a separate handler, so it gets a fresh wrapper id) and
+		// surface the new pattern's content.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL+"/patterns/navigation/spa-navigation"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="/patterns/navigation/tabs"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load SPA Navigation page: %v", err)
+		}
+		var oldID, newID string
+		err = chromedp.Run(ctx,
+			chromedp.AttributeValue(`[data-lvt-id]`, "data-lvt-id", &oldID, nil, chromedp.ByQuery),
+			chromedp.Click(`a[href="/patterns/navigation/tabs"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h3`, "Tabs (HATEOAS)", 10*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			chromedp.AttributeValue(`[data-lvt-id]`, "data-lvt-id", &newID, nil, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Cross-pathname click + reconnect failed: %v", err)
+		}
+		if oldID == "" || newID == "" {
+			t.Errorf("data-lvt-id values should be present (old=%q, new=%q)", oldID, newID)
+		}
+		if oldID == newID {
+			t.Errorf("Cross-pathname navigation must reconnect with a fresh wrapper id; got same id %q before and after", oldID)
+		}
+	})
+
 	t.Run("WebSocket_Works_After_Navigation", func(t *testing.T) {
 		// Start fresh at index
 		err := chromedp.Run(ctx,
