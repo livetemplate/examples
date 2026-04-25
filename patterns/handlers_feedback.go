@@ -24,6 +24,7 @@ func (c *AnimationsController) Add(state AnimationsState, ctx *livetemplate.Cont
 		ID:   fmt.Sprintf("item-%d", len(state.Items)+1),
 		Name: fmt.Sprintf("Item %d (%s)", len(state.Items)+1, state.Mode),
 		Time: time.Now().Format("15:04:05"),
+		Mode: state.Mode,
 	})
 	return state, nil
 }

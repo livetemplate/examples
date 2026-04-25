@@ -17,7 +17,7 @@
     {{if .Items}}
     <ul>
         {{range .Items}}
-        <li data-key="{{.ID}}" lvt-fx:animate="{{$.Mode}}">{{.Name}} — added at {{.Time}}</li>
+        <li data-key="{{.ID}}" lvt-fx:animate="{{.Mode}}">{{.Name}} — added at {{.Time}}</li>
         {{end}}
     </ul>
     {{else}}

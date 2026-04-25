@@ -4,6 +4,7 @@ type AnimationItem struct {
 	ID   string
 	Name string
 	Time string
+	Mode string
 }
 
 type AnimationsState struct {

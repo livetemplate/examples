@@ -2501,7 +2501,7 @@ func TestHighlightOnChange(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`(() => {
-				const els = Array.from(document.querySelectorAll('article')).filter(el => el.hasAttribute('lvt-fx:highlight'));
+				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
 				if (els.length < 2) return false;
 				return els.every(el => (el.style.transition || "").includes('background-color'));
 			})()`, 5*time.Second),
@@ -2517,7 +2517,7 @@ func TestHighlightOnChange(t *testing.T) {
 		// budget that comfortably covers the 550ms cycle.
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`(() => {
-				const els = Array.from(document.querySelectorAll('article')).filter(el => el.hasAttribute('lvt-fx:highlight'));
+				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
 				return els.every(el => el.style.backgroundColor === '' && el.style.transition === '');
 			})()`, 2*time.Second),
 		)
