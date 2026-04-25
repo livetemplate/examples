@@ -1753,3 +1753,530 @@ func TestAsyncOperations(t *testing.T) {
 
 	runStandardSubtests(t, ctx, false, "Async Operations — 'Fetch Data' button followed by either a success flash and blockquote with fetch result, or an error flash and mark element with an error message")
 }
+
+// --- Pattern #17: Modal Dialog ---
+
+func TestModalDialog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/navigation/modal-dialog"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[commandfor="edit-dialog"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+		var dialogOpen bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.getElementById('edit-dialog').open`, &dialogOpen)); err != nil {
+			t.Fatalf("Read dialog state failed: %v", err)
+		}
+		if dialogOpen {
+			t.Error("Dialog should be closed on initial load")
+		}
+	})
+
+	t.Run("Open_Via_Button", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="edit-dialog"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Open via button failed: %v", err)
+		}
+	})
+
+	t.Run("Submit_Invalid_Form_Stays_Open_With_Field_Errors", func(t *testing.T) {
+		// noValidate=true bypasses HTML5 form validation so the empty input
+		// reaches the server's validator, which is what we want to exercise.
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 3*time.Second),
+			chromedp.Evaluate(`document.querySelector('dialog#edit-dialog form').noValidate = true`, nil),
+			chromedp.Clear(`dialog#edit-dialog input[name="name"]`, chromedp.ByQuery),
+			chromedp.Click(`dialog#edit-dialog button[type="submit"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`(() => { const d = document.getElementById('edit-dialog'); return d.open && d.querySelector('input[name="name"][aria-invalid="true"]') !== null; })()`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Invalid form submit did not produce field error inside open dialog: %v", err)
+		}
+		var dialogOpen bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.getElementById('edit-dialog').open`, &dialogOpen)); err != nil {
+			t.Fatalf("Read dialog state failed: %v", err)
+		}
+		if !dialogOpen {
+			t.Error("Dialog should remain open after invalid submit")
+		}
+		var errorText string
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => { const s = document.querySelector('dialog#edit-dialog small'); return s ? s.textContent.trim() : ""; })()`, &errorText)); err != nil {
+			t.Fatalf("Read error text failed: %v", err)
+		}
+		if errorText == "" {
+			t.Error("Expected a field error message inside the dialog, found none")
+		}
+	})
+
+	t.Run("Submit_Valid_Form_Closes_Dialog_And_Updates_State", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Clear(`dialog#edit-dialog input[name="name"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`dialog#edit-dialog input[name="name"]`, "Grace Hopper", chromedp.ByQuery),
+			chromedp.Click(`dialog#edit-dialog button[type="submit"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`output[data-flash="success"]`, "Profile saved", 5*time.Second),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === false`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Valid form submit did not produce success flash + dialog close: %v", err)
+		}
+		var bodyText string
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.body.textContent`, &bodyText)); err != nil {
+			t.Fatalf("Read body text failed: %v", err)
+		}
+		if !strings.Contains(bodyText, "Grace Hopper") {
+			t.Error("Saved Name 'Grace Hopper' not visible in page text")
+		}
+		// Re-open the dialog and verify the form input now reflects the saved
+		// state (the value="{{.Name}}" template expression should have rerendered).
+		var nameValue string
+		err = chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="edit-dialog"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 5*time.Second),
+			chromedp.Value(`dialog#edit-dialog input[name="name"]`, &nameValue, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Re-open dialog to verify form state failed: %v", err)
+		}
+		if nameValue != "Grace Hopper" {
+			t.Errorf("Form input not repopulated from saved state; got %q, want %q", nameValue, "Grace Hopper")
+		}
+	})
+
+	t.Run("Open_Via_Hash_Link", func(t *testing.T) {
+		// Reset to a clean URL first (no #hash), then click the hash anchor.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="#edit-dialog"]`, chromedp.ByQuery),
+			chromedp.Click(`a[href="#edit-dialog"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Open via hash link failed: %v", err)
+		}
+		var hash string
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`location.hash`, &hash)); err != nil {
+			t.Fatalf("Read hash failed: %v", err)
+		}
+		if hash != "#edit-dialog" {
+			t.Errorf("Expected #edit-dialog after hash-link click, got %q", hash)
+		}
+	})
+
+	t.Run("Browser_Back_Closes_Dialog", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === true`, 3*time.Second),
+			chromedp.Evaluate(`history.back()`, nil),
+			e2etest.WaitFor(`document.getElementById('edit-dialog').open === false`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Browser Back did not close the dialog: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Modal Dialog — page heading, profile summary, an 'Edit profile' button, and an 'Open via URL hash' secondary link. The dialog itself is closed at this point.")
+}
+
+// --- Pattern #18: Confirm Dialog ---
+
+func TestConfirmDialog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/navigation/confirm-dialog"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[commandfor="confirm-1"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+		var rowCount int
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelectorAll('tbody tr[data-key]').length`, &rowCount)); err != nil {
+			t.Fatalf("Row count read failed: %v", err)
+		}
+		if rowCount != confirmDialogItemCount {
+			t.Errorf("Expected %d rows, got %d", confirmDialogItemCount, rowCount)
+		}
+	})
+
+	t.Run("Open_Specific_Item_Confirm", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="confirm-2"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('confirm-2').open === true`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Open confirm-2 failed: %v", err)
+		}
+		var otherOpen bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.getElementById('confirm-1').open || document.getElementById('confirm-3').open`, &otherOpen)); err != nil {
+			t.Fatalf("Sibling dialog state read failed: %v", err)
+		}
+		if otherOpen {
+			t.Error("Sibling confirm dialogs should remain closed")
+		}
+	})
+
+	t.Run("Cancel_Closes_Without_Deleting", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`dialog#confirm-2 button[command="close"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('confirm-2').open === false`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Cancel close failed: %v", err)
+		}
+		var rowCount int
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`document.querySelectorAll('tbody tr[data-key]').length`, &rowCount)); err != nil {
+			t.Fatalf("Row count read failed: %v", err)
+		}
+		if rowCount != confirmDialogItemCount {
+			t.Errorf("Expected %d rows after cancel, got %d", confirmDialogItemCount, rowCount)
+		}
+	})
+
+	t.Run("Confirm_Deletes_Item", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[commandfor="confirm-3"][command="show-modal"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.getElementById('confirm-3').open === true`, 5*time.Second),
+			chromedp.Click(`dialog#confirm-3 button[name="delete"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, confirmDialogItemCount-1, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Delete via confirm failed: %v", err)
+		}
+		var rowExists bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`!!document.querySelector('tr[data-key="3"]')`, &rowExists)); err != nil {
+			t.Fatalf("Row existence check failed: %v", err)
+		}
+		if rowExists {
+			t.Error("Row with data-key=3 should be removed after delete")
+		}
+	})
+
+	t.Run("Per_Item_Hash_Link_Opens_Specific_Dialog", func(t *testing.T) {
+		// confirm-3 was just deleted, so use confirm-1.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"#confirm-1"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitFor(`document.getElementById('confirm-1') && document.getElementById('confirm-1').open === true`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Direct hash-link did not open confirm-1: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Confirm Dialog — page heading, table of items each with a Delete button, and one open dialog showing 'Delete \"<name>\"?' confirmation prompt with Cancel and Delete buttons.")
+}
+
+// --- Pattern #19: Tabs (HATEOAS) ---
+
+func TestTabs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/navigation/tabs"
+
+	t.Run("Default_Tab_Is_Overview", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="?tab=overview"][aria-current="page"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Default tab not Overview: %v", err)
+		}
+	})
+
+	t.Run("Click_Settings_Tab_Activates_It", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`a[href="?tab=settings"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('a[href="?tab=settings"][aria-current="page"]')`, 5*time.Second),
+			e2etest.WaitForText(`section h4`, "Settings", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Settings tab click failed: %v", err)
+		}
+		var overviewActive bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`!!document.querySelector('a[href="?tab=overview"][aria-current="page"]')`, &overviewActive)); err != nil {
+			t.Fatalf("Overview state read failed: %v", err)
+		}
+		if overviewActive {
+			t.Error("Overview tab should no longer be active after Settings click")
+		}
+	})
+
+	t.Run("Tab_Switch_Uses_WebSocket_Not_HTTP", func(t *testing.T) {
+		// Override window.fetch to count HTTP requests to the tabs URL.
+		// The __navigate__ in-band path must not trigger any. t.Cleanup
+		// guarantees the restore even if a chromedp step fails mid-flow,
+		// so a failure here cannot pollute later subtests.
+		t.Cleanup(func() {
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { if (window.__origFetch) { window.fetch = window.__origFetch; delete window.__origFetch; } })()`, nil))
+		})
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				window.__navHttpHits = 0;
+				window.__origFetch = window.fetch;
+				window.fetch = function(input, init) {
+					try {
+						const u = typeof input === 'string' ? input : input.url;
+						if (u && u.includes('/patterns/navigation/tabs')) window.__navHttpHits++;
+					} catch (e) {}
+					return window.__origFetch.apply(window, arguments);
+				};
+			})()`, nil),
+			chromedp.Click(`a[href="?tab=activity"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`!!document.querySelector('a[href="?tab=activity"][aria-current="page"]')`, 5*time.Second),
+			e2etest.WaitForText(`section h4`, "Activity", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Activity tab click failed: %v", err)
+		}
+		var hits int
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__navHttpHits`, &hits)); err != nil {
+			t.Fatalf("HTTP hit count read failed: %v", err)
+		}
+		if hits != 0 {
+			t.Errorf("Same-pathname tab switch should use WebSocket __navigate__, not HTTP fetch (got %d HTTP hits)", hits)
+		}
+	})
+
+	t.Run("Direct_URL_Load_Activates_Tab", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"?tab=settings"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="?tab=settings"][aria-current="page"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`section h4`, "Settings", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Direct URL load with ?tab=settings failed: %v", err)
+		}
+	})
+
+	t.Run("Invalid_Tab_Falls_Back_To_Default", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"?tab=garbage"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="?tab=overview"][aria-current="page"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Invalid tab fallback failed: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Tabs (HATEOAS) — page heading, three-tab nav with the Overview tab marked active, and an Overview content section beneath.")
+}
+
+// --- Pattern #20: SPA Navigation ---
+
+func TestSPANavigation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/navigation/spa-navigation"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="?step=1"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			e2etest.WaitForText(`section p strong`, "Step 1 of 3", 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("Same_Pathname_Step_Update_No_HTTP", func(t *testing.T) {
+		t.Cleanup(func() {
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { if (window.__origFetchSPA) { window.fetch = window.__origFetchSPA; delete window.__origFetchSPA; } })()`, nil))
+		})
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				window.__spaHttpHits = 0;
+				window.__origFetchSPA = window.fetch;
+				window.fetch = function(input, init) {
+					try {
+						const u = typeof input === 'string' ? input : input.url;
+						if (u && u.includes('/patterns/navigation/spa-navigation')) window.__spaHttpHits++;
+					} catch (e) {}
+					return window.__origFetchSPA.apply(window, arguments);
+				};
+			})()`, nil),
+			chromedp.Click(`a[href="?step=2"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`section p strong`, "Step 2 of 3", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Step-2 click failed: %v", err)
+		}
+		var hits int
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__spaHttpHits`, &hits)); err != nil {
+			t.Fatalf("HTTP hit count read failed: %v", err)
+		}
+		if hits != 0 {
+			t.Errorf("Same-pathname step update should use WebSocket __navigate__, got %d HTTP hits", hits)
+		}
+	})
+
+	t.Run("External_Link_Has_No_Intercept_Attribute", func(t *testing.T) {
+		var hasAttr bool
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`!!document.querySelector('a[href="https://example.com"][lvt-nav\\:no-intercept]')`, &hasAttr),
+		)
+		if err != nil {
+			t.Fatalf("External link attribute check failed: %v", err)
+		}
+		if !hasAttr {
+			t.Error("External example.com link must carry lvt-nav:no-intercept opt-out attribute")
+		}
+	})
+
+	t.Run("Step_3_Direct_URL_Activates", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"?step=3"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForText(`section p strong`, "Step 3 of 3", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Direct ?step=3 load failed: %v", err)
+		}
+	})
+
+	t.Run("Out_Of_Range_Step_Falls_Back_To_Default", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"?step=99"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForText(`section p strong`, "Step 1 of 3", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Out-of-range ?step= did not fall back to Step 1: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "SPA Navigation — page heading and three sections: same-pathname step nav with Step indicator, cross-pathname links to other patterns, and an external link section.")
+}
+
+// --- Pattern #21: Keyboard Shortcuts ---
+
+func TestKeyboardShortcuts(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/navigation/keyboard-shortcuts"
+
+	t.Run("Initial_Load", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="open"]`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("Open_Button_Click_Opens_Panel", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="open"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h4`, "Command Panel", 5*time.Second),
+			chromedp.Click(`button[name="close"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`button`, "Open panel", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Open-button Tier-1 fallback failed: %v", err)
+		}
+	})
+
+	t.Run("Slash_Key_Opens_Panel", func(t *testing.T) {
+		// chromedp.KeyEvent delivers to the focused element; lvt-on:window:keydown
+		// listens at the window, so we dispatch a synthetic event there.
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', bubbles: true}))`, nil),
+			e2etest.WaitForText(`h4`, "Command Panel", 5*time.Second),
+			e2etest.WaitFor(`(() => {
+				const items = document.querySelectorAll('ul li small');
+				return Array.from(items).some(el => (el.textContent || "").includes("Opened panel"));
+			})()`, 3*time.Second),
+		)
+		if err != nil {
+			var html string
+			_ = chromedp.Run(ctx, chromedp.OuterHTML(`body`, &html, chromedp.ByQuery))
+			t.Fatalf("Slash key did not open panel: %v\nrendered body:\n%s", err, html)
+		}
+	})
+
+	t.Run("Escape_Closes_Panel", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}))`, nil),
+			e2etest.WaitForText(`button`, "Open panel", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Escape did not close panel: %v", err)
+		}
+		var logHasClose bool
+		// `ul li small` matches the layout's category breadcrumb too, so
+		// scan all matches for the "Closed panel" entry rather than relying
+		// on the first match.
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`Array.from(document.querySelectorAll('ul li small')).some(el => (el.textContent || "").includes('Closed panel'))`, &logHasClose)); err != nil {
+			t.Fatalf("Log read failed: %v", err)
+		}
+		if !logHasClose {
+			t.Error("Activity log should contain a 'Closed panel' entry")
+		}
+	})
+
+	t.Run("Tier1_Form_Fallback_Works", func(t *testing.T) {
+		// Re-open via /, then close via the in-panel form button (which
+		// works without keyboard or JS as a Tier-1 fallback).
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', {key: '/', bubbles: true}))`, nil),
+			e2etest.WaitForText(`h4`, "Command Panel", 5*time.Second),
+			chromedp.Click(`button[name="close"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`button`, "Open panel", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Tier-1 form fallback close failed: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Keyboard Shortcuts — page heading with shortcut hints (kbd elements for / and Escape), an 'Open panel' button when closed, and an Activity log with recent open/close entries.")
+}

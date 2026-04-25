@@ -1,0 +1,38 @@
+{{define "content"}}
+{{/* Bind the "/" listener only when the panel is closed and the "Escape" listener only when it is open — keeps stray keypresses from triggering no-op WebSocket round-trips. */}}
+{{if .PanelOpen}}
+<article lvt-on:window:keydown="close" lvt-key="Escape">
+{{else}}
+<article lvt-on:window:keydown="open" lvt-key="/">
+{{end}}
+    <h3>Keyboard Shortcuts</h3>
+    <p><small>Press <kbd>/</kbd> to open the command panel and <kbd>Escape</kbd> to close it. Bindings use <code>lvt-on:window:keydown</code> with the <code>lvt-key</code> filter; both global and Tier-1 form fallbacks work.</small></p>
+
+    {{if .PanelOpen}}
+    <article aria-label="Command panel">
+        <header>
+            <h4>Command Panel</h4>
+        </header>
+        {{/* Decorative — wiring to a Change()/Submit() handler is out of scope for the keyboard-shortcut demo. disabled removes the false affordance of a working search box. */}}
+        <input type="search" placeholder="Type a command…" disabled aria-label="Command search">
+        <form method="POST" name="close">
+            <button name="close" class="secondary">Close</button>
+        </form>
+    </article>
+    {{else}}
+    <p><small>Panel is closed. Press <kbd>/</kbd> or click the button to open.</small></p>
+    <form method="POST" name="open">
+        <button name="open">Open panel</button>
+    </form>
+    {{end}}
+
+    <h4>Activity</h4>
+    {{if .Log}}
+    <ul>
+        {{range .Log}}<li><small>{{.}}</small></li>{{end}}
+    </ul>
+    {{else}}
+    <p><small>No activity yet.</small></p>
+    {{end}}
+</article>
+{{end}}

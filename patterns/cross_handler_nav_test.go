@@ -312,6 +312,75 @@ func TestCrossHandlerNavigation(t *testing.T) {
 		}
 	})
 
+	t.Run("Index_To_Modal_Dialog_No_Stale_Dom", func(t *testing.T) {
+		// Regression: navigating from index to a navigation pattern must
+		// not leak the index page's category names ("Forms & Editing",
+		// "Lists & Data", etc.) into the new pattern's wrapper. We check
+		// for those specific strings rather than counting <h4>s — Modal
+		// Dialog has its own legitimate h4 inside the dialog.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`h2`, chromedp.ByQuery),
+			chromedp.Click(`a[href="/patterns/navigation/modal-dialog"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h3`, "Modal Dialog", 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Index → Modal Dialog navigation failed: %v", err)
+		}
+		var leakedText string
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+			const wrapper = document.querySelector('[data-lvt-id]');
+			if (!wrapper) return "no-wrapper";
+			const text = wrapper.textContent || "";
+			const leaks = ["Forms & Editing", "Lists & Data", "Search & Filtering", "Loading & Progress", "Visual Feedback", "Real-Time"];
+			return leaks.find(s => text.includes(s)) || "";
+		})()`, &leakedText)); err != nil {
+			t.Fatalf("Leak-detection script failed to evaluate: %v", err)
+		}
+		if leakedText == "no-wrapper" {
+			t.Fatalf("Wrapper element [data-lvt-id] not found after navigation")
+		}
+		if leakedText != "" {
+			t.Errorf("Stale index category text %q leaked into Modal Dialog wrapper", leakedText)
+		}
+	})
+
+	// Tabs same-pathname __navigate__ is covered by
+	// TestTabs/Tab_Switch_Uses_WebSocket_Not_HTTP in patterns_test.go.
+
+	t.Run("SPA_Navigation_Cross_Pathname_Reconnects", func(t *testing.T) {
+		// From the SPA Navigation page, clicking a cross-pathname link to
+		// another pattern must change the wrapper's data-lvt-id (the new
+		// handler is a separate handler, so it gets a fresh wrapper id) and
+		// surface the new pattern's content.
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(baseURL+"/patterns/navigation/spa-navigation"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`a[href="/patterns/navigation/tabs"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load SPA Navigation page: %v", err)
+		}
+		var oldID, newID string
+		err = chromedp.Run(ctx,
+			chromedp.AttributeValue(`[data-lvt-id]`, "data-lvt-id", &oldID, nil, chromedp.ByQuery),
+			chromedp.Click(`a[href="/patterns/navigation/tabs"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h3`, "Tabs (HATEOAS)", 10*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			chromedp.AttributeValue(`[data-lvt-id]`, "data-lvt-id", &newID, nil, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Cross-pathname click + reconnect failed: %v", err)
+		}
+		if oldID == "" || newID == "" {
+			t.Errorf("data-lvt-id values should be present (old=%q, new=%q)", oldID, newID)
+		}
+		if oldID == newID {
+			t.Errorf("Cross-pathname navigation must reconnect with a fresh wrapper id; got same id %q before and after", oldID)
+		}
+	})
+
 	t.Run("WebSocket_Works_After_Navigation", func(t *testing.T) {
 		// Start fresh at index
 		err := chromedp.Run(ctx,

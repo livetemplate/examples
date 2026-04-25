@@ -1,0 +1,31 @@
+{{define "content"}}
+<article>
+    <h3>Tabs (HATEOAS)</h3>
+    <p><small>Server-driven tabs. Each tab is a query-param link (<code>?tab=…</code>); the framework intercepts the click and routes it through the WebSocket via the in-band <code>__navigate__</code> action (server v0.8.19+, client v0.8.26+). No HTTP round-trip; <code>Mount()</code> re-runs with the new param.</small></p>
+
+    <nav aria-label="Sections">
+        <ul>
+            <li><a href="?tab=overview" {{if eq .ActiveTab "overview"}}aria-current="page"{{end}}>Overview</a></li>
+            <li><a href="?tab=settings" {{if eq .ActiveTab "settings"}}aria-current="page"{{end}}>Settings</a></li>
+            <li><a href="?tab=activity" {{if eq .ActiveTab "activity"}}aria-current="page"{{end}}>Activity</a></li>
+        </ul>
+    </nav>
+
+    {{if eq .ActiveTab "overview"}}
+    <section>
+        <h4>Overview</h4>
+        <p>This pattern uses a single <code>Mount</code> handler reading the <code>tab</code> query parameter. The active link is marked with <code>aria-current="page"</code> for screen readers and visually styled by Pico CSS.</p>
+    </section>
+    {{else if eq .ActiveTab "settings"}}
+    <section>
+        <h4>Settings</h4>
+        <p>Tab content is rendered server-side from the same template — switching tabs is a re-render, not a partial fragment. Bookmark <code>?tab=settings</code> and the deep link works on next load too.</p>
+    </section>
+    {{else if eq .ActiveTab "activity"}}
+    <section>
+        <h4>Activity</h4>
+        <p>Unknown <code>tab</code> values fall back silently to <strong>Overview</strong>. The valid set lives in a <code>validTabs</code> allowlist; bookmarks with stale values stay safe.</p>
+    </section>
+    {{end}}
+</article>
+{{end}}

@@ -1,0 +1,51 @@
+{{define "content"}}
+<article>
+    <h3>Confirm Dialog</h3>
+    <p><small>Per-item confirmation gated by a native <code>&lt;dialog&gt;</code> with no inline JS. Each row owns its own dialog id (<code>confirm-{{`{{.ID}}`}}</code>) so URL hashes can deep-link to a specific row's confirmation.</small></p>
+
+    {{if .Items}}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Items}}
+            <tr data-key="{{.ID}}">
+                <td>{{.Name}}</td>
+                <td><small>{{.Email}}</small></td>
+                <td>
+                    <button command="show-modal" commandfor="confirm-{{.ID}}" class="compact secondary outline">Delete</button>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    {{/* Dialogs render outside the table — <dialog> inside <tbody> is invalid HTML. */}}
+    {{range .Items}}
+    <dialog id="confirm-{{.ID}}">
+        <article>
+            <header>
+                <h4>Delete &ldquo;{{.Name}}&rdquo;?</h4>
+            </header>
+            <p>This cannot be undone.</p>
+            <form method="POST" name="delete">
+                <footer>
+                    <fieldset role="group">
+                        <button type="button" command="close" commandfor="confirm-{{.ID}}" class="secondary">Cancel</button>
+                        <button name="delete" value="{{.ID}}" class="contrast">Delete</button>
+                    </fieldset>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+    {{end}}
+    {{else}}
+    <p><small>All items deleted. Reload the page or navigate away and back to reseed the list.</small></p>
+    {{end}}
+</article>
+{{end}}

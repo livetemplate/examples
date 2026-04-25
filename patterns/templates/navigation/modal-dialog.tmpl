@@ -1,0 +1,44 @@
+{{define "content"}}
+<article>
+    <h3>Modal Dialog</h3>
+    <p><small>Native <code>&lt;dialog&gt;</code> opened via the Invoker Commands API (<code>command="show-modal"</code> + <code>commandfor</code>) or directly via a hash link (<code>&lt;a href="#edit-dialog"&gt;</code>, client v0.8.30+). Submitting the form with valid input closes the dialog and shows a success flash; invalid input keeps it open with field errors rendered inside (client v0.8.33+).</small></p>
+
+    <dl>
+        <dt><strong>Profile</strong></dt>
+        <dd>{{.Name}} &middot; <small>{{.Email}}</small>{{if .SavedAt}} &middot; <small>Saved at {{.SavedAt}}</small>{{end}}</dd>
+    </dl>
+
+    <fieldset role="group">
+        <button command="show-modal" commandfor="edit-dialog">Edit profile</button>
+        <a href="#edit-dialog" role="button" class="secondary outline">Open via URL hash</a>
+    </fieldset>
+
+    {{.lvt.FlashTag "success"}}
+
+    <dialog id="edit-dialog">
+        <article>
+            <header>
+                <h4>Edit profile</h4>
+            </header>
+            <form method="POST">
+                <label>
+                    Name
+                    <input name="name" value="{{.Name}}" required minlength="3" {{.lvt.AriaInvalid "name"}}>
+                    {{.lvt.ErrorTag "name"}}
+                </label>
+                <label>
+                    Email
+                    <input type="email" name="email" value="{{.Email}}" required {{.lvt.AriaInvalid "email"}}>
+                    {{.lvt.ErrorTag "email"}}
+                </label>
+                <footer>
+                    <fieldset role="group">
+                        <button name="save" type="submit">Save</button>
+                        <button type="button" command="close" commandfor="edit-dialog" class="secondary">Cancel</button>
+                    </fieldset>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+</article>
+{{end}}
