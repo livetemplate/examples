@@ -66,6 +66,8 @@ func (c *ConfirmDialogController) Mount(state ConfirmDialogState, ctx *livetempl
 }
 
 func (c *ConfirmDialogController) Delete(state ConfirmDialogState, ctx *livetemplate.Context) (ConfirmDialogState, error) {
+	// "value" is the framework key for the clicked submit button's value
+	// attribute (independent of the button's name). Same idiom as dialog-patterns.
 	id := ctx.GetString("value")
 	state.Items = slices.DeleteFunc(state.Items, func(it Item) bool { return it.ID == id })
 	return state, nil
@@ -126,6 +128,7 @@ const spaNavMaxStep = 3
 
 func (c *SPANavController) Mount(state SPANavState, ctx *livetemplate.Context) (SPANavState, error) {
 	if ctx.Action() == "" {
+		// Out-of-range or non-integer step → fall through to the default below.
 		if s := ctx.GetString("step"); s != "" {
 			if n, err := strconv.Atoi(s); err == nil && n >= 1 && n <= spaNavMaxStep {
 				state.Step = n
