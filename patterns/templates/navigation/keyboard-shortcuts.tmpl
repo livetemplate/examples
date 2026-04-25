@@ -8,8 +8,8 @@
         <header>
             <h4>Command Panel</h4>
         </header>
-        {{/* Decorative — wiring to a Change()/Submit() handler is out of scope for the keyboard-shortcut demo. autofocus may also intercept the first Escape keypress in some browsers (search input clears its value before bubbling); for production use, defer focus to a wrapper or drop autofocus. */}}
-        <input type="search" placeholder="Type a command…" autofocus aria-label="Command search">
+        {{/* Decorative — wiring to a Change()/Submit() handler is out of scope for the keyboard-shortcut demo. autofocus is intentionally omitted: <input type="search"> intercepts the first Escape (clearing its value) before the window-level keydown listener sees it. */}}
+        <input type="search" placeholder="Type a command…" aria-label="Command search">
         <form method="POST" name="close">
             <button name="close" class="secondary">Close</button>
         </form>
