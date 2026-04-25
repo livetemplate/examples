@@ -69,6 +69,8 @@ func (c *ConfirmDialogController) Delete(state ConfirmDialogState, ctx *livetemp
 	// "value" is the framework key for the clicked submit button's value
 	// attribute (independent of the button's name). Same idiom as dialog-patterns.
 	id := ctx.GetString("value")
+	// Unknown ids are tolerated as a no-op — the next render reconciles any
+	// drift between client and server item lists without surfacing a flash.
 	state.Items = slices.DeleteFunc(state.Items, func(it Item) bool { return it.ID == id })
 	return state, nil
 }

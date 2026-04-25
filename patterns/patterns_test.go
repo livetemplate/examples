@@ -2165,6 +2165,28 @@ func TestSPANavigation(t *testing.T) {
 		}
 	})
 
+	t.Run("Step_3_Direct_URL_Activates", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"?step=3"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForText(`section p strong`, "Step 3 of 3", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Direct ?step=3 load failed: %v", err)
+		}
+	})
+
+	t.Run("Out_Of_Range_Step_Falls_Back_To_Default", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url+"?step=99"),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForText(`section p strong`, "Step 1 of 3", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Out-of-range ?step= did not fall back to Step 1: %v", err)
+		}
+	})
+
 	runStandardSubtests(t, ctx, false, "SPA Navigation — page heading and three sections: same-pathname step nav with Step indicator, cross-pathname links to other patterns, and an external link section.")
 }
 
