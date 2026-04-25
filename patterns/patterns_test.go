@@ -1954,11 +1954,11 @@ func TestConfirmDialog(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Delete via confirm failed: %v", err)
 		}
-		var hasDeleted bool
-		if err := chromedp.Run(ctx, chromedp.Evaluate(`!!document.querySelector('tr[data-key="3"]')`, &hasDeleted)); err != nil {
-			t.Fatalf("Deleted row check failed: %v", err)
+		var rowExists bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`!!document.querySelector('tr[data-key="3"]')`, &rowExists)); err != nil {
+			t.Fatalf("Row existence check failed: %v", err)
 		}
-		if hasDeleted {
+		if rowExists {
 			t.Error("Row with data-key=3 should be removed after delete")
 		}
 	})
@@ -2109,18 +2109,18 @@ func TestSPANavigation(t *testing.T) {
 
 	t.Run("Same_Pathname_Step_Update_No_HTTP", func(t *testing.T) {
 		t.Cleanup(func() {
-			_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { if (window.__origFetch2) { window.fetch = window.__origFetch2; delete window.__origFetch2; } })()`, nil))
+			_ = chromedp.Run(ctx, chromedp.Evaluate(`(() => { if (window.__origFetchSPA) { window.fetch = window.__origFetchSPA; delete window.__origFetchSPA; } })()`, nil))
 		})
 		err := chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
 				window.__spaHttpHits = 0;
-				window.__origFetch2 = window.fetch;
+				window.__origFetchSPA = window.fetch;
 				window.fetch = function(input, init) {
 					try {
 						const u = typeof input === 'string' ? input : input.url;
 						if (u && u.includes('/patterns/navigation/spa-navigation')) window.__spaHttpHits++;
 					} catch (e) {}
-					return window.__origFetch2.apply(window, arguments);
+					return window.__origFetchSPA.apply(window, arguments);
 				};
 			})()`, nil),
 			chromedp.Click(`a[href="?step=2"]`, chromedp.ByQuery),
@@ -2175,6 +2175,18 @@ func TestKeyboardShortcuts(t *testing.T) {
 		)
 		if err != nil {
 			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("Open_Button_Click_Opens_Panel", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="open"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`h4`, "Command Panel", 5*time.Second),
+			chromedp.Click(`button[name="close"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`button`, "Open panel", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Open-button Tier-1 fallback failed: %v", err)
 		}
 	})
 

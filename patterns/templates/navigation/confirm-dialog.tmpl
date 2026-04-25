@@ -25,6 +25,7 @@
         </tbody>
     </table>
 
+    {{/* Dialogs render outside the table — <dialog> inside <tbody> is invalid HTML. */}}
     {{range .Items}}
     <dialog id="confirm-{{.ID}}">
         <article>
@@ -32,7 +33,7 @@
                 <h4>Delete &ldquo;{{.Name}}&rdquo;?</h4>
             </header>
             <p>This cannot be undone.</p>
-            <form name="confirmDelete">
+            <form name="delete">
                 <footer>
                     <fieldset role="group">
                         <button type="button" command="close" commandfor="confirm-{{.ID}}" class="secondary">Cancel</button>

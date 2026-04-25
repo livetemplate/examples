@@ -11,24 +11,13 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
-// validateNav is the per-process validator shared by navigation-category
-// controllers. The validator package caches struct/field metadata internally,
-// so a singleton is faster than constructing one per request.
-//
-// We use BindAndValidate (not ctx.ValidateForm) for Modal Dialog because
-// ExtractFormSchema's HTML5-attribute parsing does not currently surface a
-// form schema for forms inside a <dialog>; the explicit struct + validator
-// tags is the same shape used by examples/dialog-patterns and works reliably
-// across all form-positioning cases.
+// ctx.ValidateForm doesn't surface a schema for forms inside <dialog>;
+// use BindAndValidate (the dialog-patterns shape) instead.
 var validateNav = validator.New()
 
 // --- Pattern #17: Modal Dialog ---
 
-// ModalDialogController demonstrates a native <dialog> opened via the Invoker
-// Commands API (command/commandfor). On invalid submit the form's field errors
-// must render inside the still-open dialog — that's the load-bearing behavior
-// this pattern shows; on valid submit the dialog closes and a flash appears
-// outside it.
+// On invalid submit, field errors must render inside the still-open dialog.
 type ModalDialogController struct{}
 
 type modalDialogInput struct {
@@ -63,10 +52,8 @@ func modalDialogHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // --- Pattern #18: Confirm Dialog ---
 
-// ConfirmDialogController gates a destructive action behind a per-row
-// <dialog id="confirm-{{.ID}}">. The Delete action reads the item id from the
-// submit button's value attribute (the canonical Tier-1 row-action shape),
-// not a hidden input.
+// The Delete action reads the item id from the submit button's value attribute
+// (the canonical Tier-1 row-action shape), not a hidden input.
 type ConfirmDialogController struct{}
 
 const confirmDialogItemCount = 5
@@ -97,11 +84,8 @@ func confirmDialogHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // --- Pattern #19: Tabs (HATEOAS) ---
 
-// TabsController is Mount-only. Tab clicks are <a href="?tab=…"> which the
-// framework routes through the WebSocket as the reserved __navigate__ action;
-// the server re-runs Mount() with the new query params and ctx.Action() is ""
-// inside that re-run, so the same `if ctx.Action() == ""` guard used on initial
-// GET also covers tab switches.
+// Mount-only: tab links use the in-band __navigate__ action, which re-runs
+// Mount with ctx.Action()=="" so the same guard covers initial GET.
 type TabsController struct{}
 
 var validTabs = map[string]bool{"overview": true, "settings": true, "activity": true}
@@ -109,9 +93,14 @@ var validTabs = map[string]bool{"overview": true, "settings": true, "activity": 
 func (c *TabsController) Mount(state TabsState, ctx *livetemplate.Context) (TabsState, error) {
 	if ctx.Action() == "" {
 		t := ctx.GetString("tab")
-		if t != "" && validTabs[t] {
+		switch {
+		case t != "" && validTabs[t]:
 			state.ActiveTab = t
-		} else if t != "" || !validTabs[state.ActiveTab] {
+		case t != "":
+			// Explicit unknown tab → reset to overview (matches template promise).
+			state.ActiveTab = "overview"
+		case !validTabs[state.ActiveTab]:
+			// First load (no param, empty state) → default to overview.
 			state.ActiveTab = "overview"
 		}
 	}
@@ -131,10 +120,6 @@ func tabsHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // --- Pattern #20: SPA Navigation ---
 
-// SPANavController demonstrates the framework's automatic link interception:
-// same-pathname query-string changes go through the in-band __navigate__ action
-// over WebSocket, cross-pathname links trigger a full reconnect, and external
-// targets opt out with lvt-nav:no-intercept.
 type SPANavController struct{}
 
 const spaNavMaxStep = 3
@@ -166,10 +151,8 @@ func spaNavigationHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // --- Pattern #21: Keyboard Shortcuts ---
 
-// ShortcutsController is Tier-2: it uses lvt-on:window:keydown bindings to
-// drive a command-palette-style overlay. "/" opens the panel; "Escape" closes
-// it (bound only while the panel is rendered). A bounded log of recent open/
-// close events surfaces the state in the page itself.
+// Tier-2: lvt-on:window:keydown drives the panel; "/" opens, "Escape" closes
+// (bound only while the panel is rendered).
 type ShortcutsController struct{}
 
 const shortcutsLogMax = 5
