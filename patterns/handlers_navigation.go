@@ -110,6 +110,11 @@ func (c *TabsController) Mount(state TabsState, ctx *livetemplate.Context) (Tabs
 			state.ActiveTab = "overview"
 		}
 	}
+	// Invariant: by here ActiveTab is always in validTabs. Belt-and-suspenders
+	// in case a malformed message routes through Mount with ctx.Action() != "".
+	if !validTabs[state.ActiveTab] {
+		state.ActiveTab = "overview"
+	}
 	return state, nil
 }
 
