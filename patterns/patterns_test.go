@@ -2326,19 +2326,25 @@ func TestAnimations(t *testing.T) {
 	t.Run("Mode_Switch_Affects_New_Rows", func(t *testing.T) {
 		// Switch select to "slide" via DOM (the value is form-submitted with
 		// Add). The next row's `lvt-fx:animate="{{$.Mode}}"` resolves to slide,
-		// so style.animation should contain lvt-slide-in.
-		var anim string
+		// so style.animation should contain lvt-slide-in. After the render,
+		// the select must still show "slide" (server state echoed via the
+		// `selected` attribute).
+		var anim, selectVal string
 		err := chromedp.Run(ctx,
 			chromedp.SetValue(`select[name="mode"]`, "slide", chromedp.ByQuery),
 			chromedp.Click(`button[name="add"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`!!document.querySelector('li[data-key="item-2"]')`, 3*time.Second),
 			chromedp.Evaluate(`document.querySelector('li[data-key="item-2"]').style.animation`, &anim),
+			chromedp.Evaluate(`document.querySelector('select[name="mode"]').value`, &selectVal),
 		)
 		if err != nil {
 			t.Fatalf("Slide-mode add failed: %v", err)
 		}
 		if !strings.Contains(anim, "lvt-slide-in") {
 			t.Errorf("expected style.animation to contain 'lvt-slide-in', got %q", anim)
+		}
+		if selectVal != "slide" {
+			t.Errorf("mode select did not retain 'slide' across re-render, got %q", selectVal)
 		}
 	})
 
@@ -2393,17 +2399,25 @@ func TestLoadingStates(t *testing.T) {
 	})
 
 	t.Run("Tier1_Fieldset_Disabled_During_Pending", func(t *testing.T) {
-		// Submit Tier 1 form. While the action is in flight (2s sleep), the
-		// fieldset should carry `disabled` and the form should be aria-busy.
-		// After completion, both should reset.
+		// Submit Tier 1 form with typed input. While the action is in flight
+		// (2s sleep), the fieldset should carry `disabled` and the form
+		// should be aria-busy. After completion, both reset AND the input
+		// auto-clears (default form-reset behavior; would need `lvt-form:preserve`
+		// to retain).
+		var inputValue string
 		err := chromedp.Run(ctx,
+			chromedp.SendKeys(`section:nth-of-type(1) input[name="data"]`, "hello", chromedp.ByQuery),
 			chromedp.Click(`section:nth-of-type(1) button[name="slowSave"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`document.querySelector('section:nth-of-type(1) fieldset').disabled === true`, 1*time.Second),
 			e2etest.WaitFor(`document.querySelector('section:nth-of-type(1) form').getAttribute('aria-busy') === 'true'`, 1*time.Second),
 			e2etest.WaitFor(`document.querySelector('section:nth-of-type(1) fieldset').disabled === false`, 8*time.Second),
+			chromedp.Evaluate(`document.querySelector('section:nth-of-type(1) input[name="data"]').value`, &inputValue),
 		)
 		if err != nil {
 			t.Fatalf("Tier 1 fieldset auto-disable failed: %v", err)
+		}
+		if inputValue != "" {
+			t.Errorf("Tier 1 input did not auto-reset after submit, got %q", inputValue)
 		}
 	})
 
@@ -2498,13 +2512,14 @@ func TestHighlightOnChange(t *testing.T) {
 	})
 
 	t.Run("Highlight_Cleans_Up_After_Duration", func(t *testing.T) {
-		// 50ms initial delay + 500ms transition + safety buffer.
+		// directives.ts highlight cycle: 50ms delay + 500ms transition. The
+		// WaitFor polls until both bg + transition are clear, with a 2s
+		// budget that comfortably covers the 550ms cycle.
 		err := chromedp.Run(ctx,
-			chromedp.Sleep(1200*time.Millisecond),
 			e2etest.WaitFor(`(() => {
 				const els = Array.from(document.querySelectorAll('article')).filter(el => el.hasAttribute('lvt-fx:highlight'));
 				return els.every(el => el.style.backgroundColor === '' && el.style.transition === '');
-			})()`, 1*time.Second),
+			})()`, 2*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Highlight did not clean up: %v", err)
@@ -2560,36 +2575,40 @@ func TestFlashMessages(t *testing.T) {
 	})
 
 	t.Run("Valid_Save_Shows_Success_Clears_Error", func(t *testing.T) {
+		var nameValue string
 		err := chromedp.Run(ctx,
 			chromedp.SendKeys(`input[name="name"]`, "Ada", chromedp.ByQuery),
 			chromedp.Click(`button[name="save"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Saved: Ada", 3*time.Second),
 			// Error flash should be gone (ClearFlash("error") in the controller).
 			e2etest.WaitFor(`!document.querySelector('output[data-flash="error"]')`, 3*time.Second),
+			// Form auto-resets on success — the name input must be cleared.
+			chromedp.Evaluate(`document.querySelector('input[name="name"]').value`, &nameValue),
 		)
 		if err != nil {
 			t.Fatalf("Valid save did not clear error / set success: %v", err)
 		}
+		if nameValue != "" {
+			t.Errorf("name input did not auto-reset after successful save, got %q", nameValue)
+		}
 	})
 
 	t.Run("Notify_Persists_Until_Dismiss", func(t *testing.T) {
+		// 2s idle is enough to prove persistence — info has no FlashExpiry,
+		// so any prune timer would have fired by now if one existed. Wall-
+		// clock waits like this can't be condition-based (proving absence-
+		// of-change), but 2s is comfortably below the success-flash 5s
+		// expiry from the previous subtest.
 		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="notify"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`output[data-flash="info"]`, "Heads up", 3*time.Second),
-			// 6s idle — info has no FlashExpiry, so it must still be present.
-			chromedp.Sleep(6*time.Second),
+			chromedp.Sleep(2*time.Second),
 			e2etest.WaitFor(`!!document.querySelector('output[data-flash="info"]')`, 1*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("Info flash should have persisted: %v", err)
-		}
-		// Now dismiss it explicitly.
-		err = chromedp.Run(ctx,
 			chromedp.Click(`button[name="dismissNotify"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`!document.querySelector('output[data-flash="info"]')`, 3*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Dismiss did not clear info flash: %v", err)
+			t.Fatalf("Notify→Dismiss lifecycle failed: %v", err)
 		}
 	})
 
@@ -2608,6 +2627,9 @@ func TestFlashMessages(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Could not seed a success flash: %v", err)
 		}
+		// chromedp.Sleep is unavoidable here — we're literally waiting on
+		// wall-clock for the FlashExpiry deadline to elapse. Sleep past 5s
+		// (the expiry duration), then click Notify to trigger a render.
 		err = chromedp.Run(ctx,
 			chromedp.Sleep(5500*time.Millisecond),
 			chromedp.Click(`button[name="notify"]`, chromedp.ByQuery),

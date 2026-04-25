@@ -16,13 +16,6 @@ type AnimationsController struct{}
 
 var validAnimateModes = map[string]bool{"fade": true, "slide": true, "scale": true}
 
-func (c *AnimationsController) Mount(state AnimationsState, ctx *livetemplate.Context) (AnimationsState, error) {
-	if !validAnimateModes[state.Mode] {
-		state.Mode = "fade"
-	}
-	return state, nil
-}
-
 func (c *AnimationsController) Add(state AnimationsState, ctx *livetemplate.Context) (AnimationsState, error) {
 	if m := ctx.GetString("mode"); validAnimateModes[m] {
 		state.Mode = m
