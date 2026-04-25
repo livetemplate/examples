@@ -2351,6 +2351,8 @@ func TestAnimations(t *testing.T) {
 	t.Run("Existing_Rows_Do_Not_Re_animate", func(t *testing.T) {
 		// Wait for item-2 animation to complete, then add item-3. The WeakSet
 		// guard in directives.ts must prevent items 1 and 2 from re-animating.
+		// Note: the 3s timeout assumes the default 500ms `--lvt-animate-duration`.
+		// If a future page overrides that variable to >3s, this test will flake.
 		var item1Style, item2Style string
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`!document.querySelector('li[data-key="item-2"]').hasAttribute('style')`, 3*time.Second),

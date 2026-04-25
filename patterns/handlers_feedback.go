@@ -48,9 +48,7 @@ type LoadingStatesController struct{}
 const slowSaveDelay = 2 * time.Second
 
 func (c *LoadingStatesController) SlowSave(state LoadingStatesState, ctx *livetemplate.Context) (LoadingStatesState, error) {
-	// A real long-running handler should select on a cancel channel
-	// (e.g. ctx.Context().Done()) so the goroutine exits if the WebSocket
-	// disconnects mid-flight. Plain time.Sleep is fine for this 2s demo.
+	// Real handlers should honor ctx.Context().Done(); plain Sleep is fine for a 2s demo.
 	time.Sleep(slowSaveDelay)
 	state.LastSave = time.Now().Format("15:04:05")
 	return state, nil

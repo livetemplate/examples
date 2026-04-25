@@ -38,6 +38,8 @@
         </form>
     </section>
 
+    {{/* All three sections call the same `slowSave` action, so this single
+         indicator updates regardless of which form was submitted. */}}
     {{if .LastSave}}
     <p><small>Last save: <strong>{{.LastSave}}</strong></small></p>
     {{end}}
