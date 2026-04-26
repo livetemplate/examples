@@ -1572,49 +1572,69 @@ func TestProgressBar(t *testing.T) {
 
 	t.Run("Start_Runs_To_Completion", func(t *testing.T) {
 		// Click Start; progress element appears and ticks up. Goroutine runs
-		// 10 × 500ms = 5s, so wait 10s for completion and the success flash.
-		// The intermediate-tick assertion (value > 0 AND value < 100) catches
-		// a regression where the goroutine skips intermediate ticks and jumps
-		// straight to 100 — a `value > 0` check alone would also be satisfied
-		// by an instant 100, missing the bug.
-		err := chromedp.Run(ctx,
+		// 10 × 500ms = 5s. The intermediate-tick assertion (value > 0 AND
+		// value < 100) catches a regression where the goroutine skips
+		// intermediate ticks and jumps straight to 100 — a value > 0 check
+		// alone would also be satisfied by an instant 100, missing the bug.
+		//
+		// We use Sleep+Evaluate for the mid-flight check instead of a
+		// polled WaitFor: chromedp's tight Go-side polling competes with
+		// the browser main thread for morphdom-application time, and pushed
+		// renders during a tight poll often don't surface in the DOM until
+		// polling stops. Sleeping ~2s lands solidly in the 0..100 range
+		// (around tick 4 of 10) and gives the browser uncontested time to
+		// apply the pushed renders. The completion WaitForText doesn't have
+		// the same race because by then ALL pushed renders are in flight
+		// and the final state is stable.
+		if err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`!!document.querySelector('progress')`, 3*time.Second),
-			// Progress element is mid-flight: above 0 and below 100.
-			// This proves the goroutine is actually ticking, not jumping.
-			// 5s timeout (matching Run_Again_Restarts_Timer) gives loaded
-			// CI runners a comfortable margin before the goroutine completes
-			// the full 5s run and the value reaches 100.
-			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
-			// Run Again button indicates the Done state.
+			chromedp.Sleep(2*time.Second),
+		); err != nil {
+			t.Fatalf("Failed to set up mid-flight check: %v", err)
+		}
+		var midValue float64
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => { const p = document.querySelector('progress'); return p ? p.value : -1; })()`, &midValue),
+		); err != nil {
+			t.Fatalf("Failed reading mid-flight progress: %v", err)
+		}
+		if !(midValue > 0 && midValue < 100) {
+			t.Errorf("Expected mid-flight progress 0 < value < 100, got %v", midValue)
+		}
+		if err := chromedp.Run(ctx,
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
-		)
-		if err != nil {
+		); err != nil {
 			t.Fatalf("Progress bar did not complete: %v", err)
 		}
 	})
 
 	t.Run("Run_Again_Restarts_Timer", func(t *testing.T) {
-		// The Run Again button starts the timer again. Progress must begin
-		// from below 100, climb back to completion, AND re-emit the success
-		// flash. The flash assertion catches a regression where the second
-		// run completes silently (e.g., if the controller forgot to call
-		// SetFlash on the re-completion path).
-		//
-		// The intermediate-tick timeout is 5s (not 3s) so that on a heavily
-		// loaded CI runner, where the first WS tick may be delayed, we still
-		// catch a real value < 100 before the goroutine completes the full
-		// 5s run. 3s was tight enough that a slow runner could miss the
-		// window even though the goroutine was working correctly.
-		err := chromedp.Run(ctx,
+		// The Run Again button restarts the timer. Same Sleep+Evaluate
+		// approach as Start_Runs_To_Completion above for the mid-flight
+		// check; final state via WaitForText is fine because by then
+		// pushed renders are no longer in flight.
+		if err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
+			chromedp.Sleep(2*time.Second),
+		); err != nil {
+			t.Fatalf("Failed to set up mid-flight check: %v", err)
+		}
+		var midValue float64
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => { const p = document.querySelector('progress'); return p ? p.value : -1; })()`, &midValue),
+		); err != nil {
+			t.Fatalf("Failed reading mid-flight progress: %v", err)
+		}
+		if !(midValue > 0 && midValue < 100) {
+			t.Errorf("Expected mid-flight progress 0 < value < 100 on rerun, got %v", midValue)
+		}
+		if err := chromedp.Run(ctx,
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("Run Again failed: %v", err)
+		); err != nil {
+			t.Fatalf("Run Again did not complete: %v", err)
 		}
 	})
 
