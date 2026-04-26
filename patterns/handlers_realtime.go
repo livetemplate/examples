@@ -306,7 +306,7 @@ func (c *ServerPushController) StartTimer(state ServerPushState, ctx *livetempla
 			// session.TriggerAction returns an error when the session group has
 			// no live connections (livetemplate/session_impl.go:91-159). Bail
 			// out cleanly so the goroutine exits when the user closes the tab.
-			if err := session.TriggerAction("tick", map[string]interface{}{
+			if err := session.TriggerAction("tick", map[string]any{
 				"elapsed": i + 1,
 			}); err != nil {
 				return

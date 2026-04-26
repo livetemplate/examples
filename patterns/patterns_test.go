@@ -2771,12 +2771,20 @@ func TestBroadcasting(t *testing.T) {
 	}
 
 	t.Run("Send_From_Tab1_Appears_In_Peer", func(t *testing.T) {
+		var textVal string
 		if err := chromedp.Run(ctx,
 			chromedp.SendKeys(`input[name="text"]`, "hi from Alice", chromedp.ByQuery),
 			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`div.messages`, "hi from Alice", 3*time.Second),
+			// CLAUDE.md E2E #4: assert form fields cleared after submit.
+			// The compose form has no lvt-form:preserve, so the text input
+			// resets to empty after a successful Send re-renders the form.
+			chromedp.Evaluate(`document.querySelector('input[name="text"]').value`, &textVal),
 		); err != nil {
 			t.Fatalf("Tab 1 did not see its own message: %v", err)
+		}
+		if textVal != "" {
+			t.Errorf("text input did not reset after Send, got %q", textVal)
 		}
 		if err := chromedp.Run(peerCtx,
 			e2etest.WaitForText(`div.messages`, "hi from Alice", 3*time.Second),
@@ -2786,12 +2794,17 @@ func TestBroadcasting(t *testing.T) {
 	})
 
 	t.Run("Send_From_Peer_Appears_In_Tab1", func(t *testing.T) {
+		var textVal string
 		if err := chromedp.Run(peerCtx,
 			chromedp.SendKeys(`input[name="text"]`, "hi from Bob", chromedp.ByQuery),
 			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`div.messages`, "hi from Bob", 3*time.Second),
+			chromedp.Evaluate(`document.querySelector('input[name="text"]').value`, &textVal),
 		); err != nil {
 			t.Fatalf("Peer did not see its own message: %v", err)
+		}
+		if textVal != "" {
+			t.Errorf("peer text input did not reset after Send, got %q", textVal)
 		}
 		if err := chromedp.Run(ctx,
 			e2etest.WaitForText(`div.messages`, "hi from Bob", 3*time.Second),
