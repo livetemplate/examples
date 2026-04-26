@@ -89,7 +89,9 @@ func (c *BroadcastingController) Send(state BroadcastingState, ctx *livetemplate
 	}
 	c.mu.Lock()
 	c.nextID++
-	// No cap: this is a demo. Production apps would ring-buffer or paginate.
+	// No cap on c.messages: deliberately omitted to keep the demo focused
+	// on the BroadcastAction mechanism. Production apps would ring-buffer,
+	// paginate, or persist to a store with TTL.
 	c.messages = append(c.messages, BroadcastMessage{ID: c.nextID, User: state.Username, Text: text})
 	state.Messages = c.snapshotLocked()
 	c.mu.Unlock()
@@ -244,7 +246,9 @@ func livePreviewHandler(baseOpts []livetemplate.Option) http.Handler {
 	return tmpl.Handle(&LivePreviewController{}, livetemplate.AsState(&LivePreviewState{
 		Title:    "Live Preview",
 		Category: "Real-Time & Multi-User",
-		Preview:  "Hello, !",
+		// Preview is intentionally empty initially — Change builds the
+		// "Hello, …!" value as the user types. Mirrors live-preview/main.go's
+		// initial state (preview("")  → empty until the first Change fires).
 	}))
 }
 
@@ -254,6 +258,16 @@ type ServerPushController struct{}
 
 const serverPushTickInterval = 1 * time.Second
 const serverPushTickCount = 10
+
+// Running is intentionally NOT lvt:"persist". If the connection drops
+// mid-timer (browser refresh, network blip), the reconnected client
+// will see Running=false in its initial render — the goroutine on the
+// server keeps ticking and eventually fires TimerDone, so the client
+// will pop directly to the "Last completed: Xs" view rather than the
+// running view. Trade-off: a persisted Running flag could survive the
+// reconnect, but a stale "Running=true" with no in-flight goroutine is
+// a worse failure mode (the UI would be stuck forever waiting for ticks
+// that aren't coming).
 
 func (c *ServerPushController) StartTimer(state ServerPushState, ctx *livetemplate.Context) (ServerPushState, error) {
 	if state.Running {
