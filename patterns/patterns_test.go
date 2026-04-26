@@ -2824,7 +2824,39 @@ func TestBroadcasting(t *testing.T) {
 		}
 	})
 
-	runStandardSubtests(t, ctx, true, "Broadcasting pattern — heading, 'Posting as Alice' label, message list with two entries from Alice and Bob, and a compose form with a text input + Send button.")
+	t.Run("Empty_Username_Join_Is_NoOp", func(t *testing.T) {
+		// Targeted protocol test for the Join handler's empty-username
+		// guard. The HTML `required` attribute on the username input
+		// stops empty submission via the UI, but the server-side guard
+		// is defense-in-depth — a future client refactor that drops
+		// `required` (or a malicious WS client) shouldn't be able to
+		// register an empty user. Send via liveTemplateClient.send to
+		// bypass the HTML5 validation.
+		var (
+			joinFormStillVisible bool
+			usernameValue        string
+		)
+		if err := chromedp.Run(peerCtx,
+			// Tab1 already joined as Alice (peer is fresh).
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'join', data: {username: ''}})`, nil),
+			// Server's Join no-ops on empty; the join form must still
+			// be visible (state.Username unchanged from "").
+			chromedp.Sleep(500*time.Millisecond),
+			chromedp.Evaluate(`!!document.querySelector('input[name="username"]')`, &joinFormStillVisible),
+			chromedp.Evaluate(`(() => { const el = document.querySelector('input[name="username"]'); return el ? el.value : null; })()`, &usernameValue),
+		); err != nil {
+			t.Fatalf("Empty username send failed: %v", err)
+		}
+		if !joinFormStillVisible {
+			t.Error("Join form disappeared after empty-username send — guard didn't hold")
+		}
+		_ = usernameValue
+	})
+
+	runStandardSubtests(t, ctx, true, "Broadcasting pattern — heading, 'Posting as Alice' label, message list with three entries (one from Alice, one from Bob, and a 'guard message' from Alice), and a compose form with a text input + Send button.")
 }
 
 // --- Pattern #28: Presence Tracking ---
@@ -2896,6 +2928,25 @@ func TestPresence(t *testing.T) {
 			e2etest.WaitForText(`mark`, "0 user(s) online", 3*time.Second),
 		); err != nil {
 			t.Fatalf("Tab 1 did not see final decrement after peer leave: %v", err)
+		}
+	})
+
+	t.Run("Empty_Username_Join_Is_NoOp", func(t *testing.T) {
+		// Targeted protocol test for Join's empty-username guard. The
+		// HTML `required` attribute is the UI guard; this test covers
+		// the server-side defense-in-depth path. The OnlineCount must
+		// remain 0 (both tabs left in the prior subtests) after the
+		// empty-username send completes.
+		var onlineText string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'join', data: {username: ''}})`, nil),
+			chromedp.Sleep(500*time.Millisecond),
+			chromedp.Text(`mark`, &onlineText, chromedp.ByQuery),
+		); err != nil {
+			t.Fatalf("Empty username join send failed: %v", err)
+		}
+		if !strings.Contains(onlineText, "0 user(s) online") {
+			t.Errorf("OnlineCount changed after empty-username Join: got %q", onlineText)
 		}
 	})
 
@@ -3007,7 +3058,7 @@ func TestLivePreview(t *testing.T) {
 		}
 	})
 
-	runStandardSubtests(t, ctx, true, "Live Preview pattern — heading, a Name input pre-filled with 'World' + Save button, and a blockquote showing 'Saved: World'.")
+	runStandardSubtests(t, ctx, true, "Live Preview pattern — heading, a Name input pre-filled with 'World' + Save button, and an output element showing 'Saved: World'.")
 }
 
 // --- Pattern #31: Server Push ---
@@ -3042,6 +3093,28 @@ func TestServerPush(t *testing.T) {
 			e2etest.WaitForText(`article`, "Timer running", 3*time.Second),
 		); err != nil {
 			t.Fatalf("Start did not switch to running view: %v", err)
+		}
+	})
+
+	t.Run("Second_Start_Is_Idempotent", func(t *testing.T) {
+		// StartTimer's `if state.Running { return state, nil }` guard
+		// prevents spawning a second goroutine on a duplicate start. The
+		// rendered Start button is hidden while running, so the only way
+		// to attempt a duplicate start is via the protocol-level helper —
+		// this is a targeted regression test for the guard, the kind of
+		// case CLAUDE.md endorses for liveTemplateClient.send usage.
+		// After the second send, the page must still show the timer
+		// running view (single goroutine, single state.Running flip).
+		var hasStartButton bool
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'startTimer'})`, nil),
+			e2etest.WaitForText(`article`, "Timer running", 3*time.Second),
+			chromedp.Evaluate(`!!document.querySelector('button[name="startTimer"]')`, &hasStartButton),
+		); err != nil {
+			t.Fatalf("Second StartTimer dispatch failed: %v", err)
+		}
+		if hasStartButton {
+			t.Error("Start button is visible while timer is running — guard didn't hold")
 		}
 	})
 

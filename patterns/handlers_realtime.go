@@ -89,12 +89,14 @@ func (c *BroadcastingController) Send(state BroadcastingState, ctx *livetemplate
 	}
 	c.mu.Lock()
 	c.nextID++
+	// No cap: this is a demo. Production apps would ring-buffer or paginate.
 	c.messages = append(c.messages, BroadcastMessage{ID: c.nextID, User: state.Username, Text: text})
 	state.Messages = c.snapshotLocked()
 	c.mu.Unlock()
-	// BroadcastAction must come after the lock release (CLAUDE.md: avoid
-	// holding a lock while queuing broadcasts). Peers receive "NewMessage"
-	// and refresh their local copy.
+	// BroadcastAction must come after the lock release — holding the
+	// connection registry mutex while queuing broadcasts can deadlock with
+	// peer dispatches that take the same mutex from the other side. Peers
+	// receive "NewMessage" and refresh their local copy.
 	ctx.BroadcastAction("NewMessage", nil)
 	return state, nil
 }
