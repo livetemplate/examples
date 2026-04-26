@@ -1,0 +1,19 @@
+{{define "content"}}
+<article>
+    <h3>Server Push</h3>
+    <p><small><code>session.TriggerAction(name, data)</code> fires an action on the originating connection from a background goroutine. The handler updates state and the rendered tree is pushed to the browser. The call returns a non-nil error when the session group has no live connections — checking it on every iteration is the documented goroutine-cancellation pattern (no done channel needed).</small></p>
+
+    {{if .Running}}
+    <p aria-busy="true">Timer running: <strong>{{.Elapsed}}</strong> / {{.Total}}s</p>
+    {{else}}
+    <form method="POST">
+        <button name="startTimer">Start Timer</button>
+    </form>
+    {{if gt .Elapsed 0}}
+    <p><small>Last completed: <strong>{{.Elapsed}}s</strong></small></p>
+    {{end}}
+    {{end}}
+
+    <p><small><strong>Try:</strong> Click Start and watch the counter tick up once per second. The goroutine on the server pushes each tick via <code>session.TriggerAction("tick", {elapsed: …})</code>. If you close the tab mid-run, the next <code>TriggerAction</code> returns an error and the goroutine exits — no leak.</small></p>
+</article>
+{{end}}

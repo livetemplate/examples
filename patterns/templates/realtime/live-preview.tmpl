@@ -1,0 +1,18 @@
+{{define "content"}}
+<article>
+    <h3>Live Preview</h3>
+    <p><small>When the controller has a <code>Change()</code> method, the framework auto-binds it to <code>input</code>/<code>change</code> events on form fields with a 300ms debounce — no <code>lvt-on:input</code> attribute needed. The handler reads <code>ctx.GetString("input")</code> and updates <code>state.Preview</code> only; writing back to <code>state.Input</code> would patch the input's <code>value</code> attribute mid-typing and reset the cursor.</small></p>
+
+    <form method="POST">
+        <label for="live-input">Name</label>
+        <fieldset role="group">
+            <input id="live-input" name="input" value="{{.Input}}" placeholder="Type your name…">
+            <button name="submit">Save</button>
+        </fieldset>
+    </form>
+
+    <output id="preview" aria-label="Preview">{{.Preview}}</output>
+
+    <p><small><strong>Try:</strong> Type in the input — the preview updates ~300ms after you stop typing. Click Save to commit the value to <code>state.Input</code> (the field is <code>lvt:"persist"</code>, so it survives reconnect). The cursor never jumps because <code>Change()</code> only updates the preview.</small></p>
+</article>
+{{end}}

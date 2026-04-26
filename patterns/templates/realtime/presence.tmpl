@@ -1,0 +1,28 @@
+{{define "content"}}
+<article>
+    <h3>Presence Tracking</h3>
+    <p><small>Explicit Join/Leave actions update a mutex-guarded user map on the controller. Each mutation broadcasts <code>PresenceChanged</code> to peers, who recompute their local <code>OnlineCount</code> from the shared map.</small></p>
+
+    <p><mark aria-live="assertive">{{.OnlineCount}} user(s) online</mark></p>
+
+    {{if .Joined}}
+    <p>Logged in as <strong>{{.Username}}</strong></p>
+    <form method="POST">
+        <button name="leave" class="compact secondary">Leave</button>
+    </form>
+    {{else}}
+    <form method="POST">
+        <fieldset role="group">
+            <input name="username" placeholder="Pick a name…" aria-label="Username" required>
+            <button name="join">Join</button>
+        </fieldset>
+    </form>
+    {{end}}
+
+    <p><small><strong>Limitations</strong> (this is a pattern demo; production apps need more care):</small></p>
+    <ul>
+        <li><small><strong>Close-tab leak:</strong> Closing a tab without clicking Leave leaves the user in the online set — the framework's <code>OnDisconnect()</code> hook receives no state or context, so it can't identify which user disconnected. Production apps either track connections explicitly or run a heartbeat sweep.</small></li>
+        <li><small><strong>Same-username collision:</strong> The map keys on username, so two tabs joining as the same name register as one entry. When EITHER tab clicks Leave, the count drops to 0 even though the other tab is still "online" — connection-keyed tracking is the proper fix.</small></li>
+    </ul>
+</article>
+{{end}}

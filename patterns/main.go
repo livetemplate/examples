@@ -103,6 +103,14 @@ func main() {
 	mux.Handle("/patterns/feedback/highlight", highlightHandler(baseOpts))
 	mux.Handle("/patterns/feedback/flash-messages", flashMessagesHandler(baseOpts))
 
+	// Category: Real-Time & Multi-User (#26–#31)
+	mux.Handle("/patterns/realtime/multi-user-sync", multiUserSyncHandler(baseOpts))
+	mux.Handle("/patterns/realtime/broadcasting", broadcastingHandler(baseOpts))
+	mux.Handle("/patterns/realtime/presence", presenceHandler(baseOpts))
+	mux.Handle("/patterns/realtime/reconnection", reconnectionHandler(baseOpts))
+	mux.Handle("/patterns/realtime/live-preview", livePreviewHandler(baseOpts))
+	mux.Handle("/patterns/realtime/server-push", serverPushHandler(baseOpts))
+
 	// Client library and CSS (dev mode)
 	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
 		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {
