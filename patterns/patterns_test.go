@@ -2864,7 +2864,10 @@ func TestBroadcasting(t *testing.T) {
 		// idiom as Empty_Send_Appends_Nothing: fire empty + guard, wait
 		// for the guard's effect, conclude empty had no effect.
 		if err := chromedp.Run(peerCtx,
-			// Peer is fresh (no Join yet).
+			// Re-navigate to get a fresh join form. Peer was previously
+			// joined as Bob and sent messages; navigating resets its
+			// per-connection state so we can test the empty-username path
+			// against an unjoined client.
 			chromedp.Navigate(url),
 			e2etest.WaitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),

@@ -182,6 +182,10 @@ func (c *PresenceController) Leave(state PresenceState, ctx *livetemplate.Contex
 	return state, nil
 }
 
+// PresenceChanged refreshes only the shared OnlineCount. Username and
+// Joined are per-connection identity and must NOT be overwritten from a
+// peer broadcast — every connection's own Join/Leave is the only thing
+// that mutates those fields locally.
 func (c *PresenceController) PresenceChanged(state PresenceState, ctx *livetemplate.Context) (PresenceState, error) {
 	c.mu.RLock()
 	state.OnlineCount = len(c.onlineUsers)

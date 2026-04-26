@@ -11,7 +11,7 @@
         </fieldset>
     </form>
 
-    <output id="preview">{{.Preview}}</output>
+    <output id="preview" aria-label="Preview">{{.Preview}}</output>
 
     <p><small><strong>Try:</strong> Type in the input — the preview updates ~300ms after you stop typing. Click Save to commit the value to <code>state.Input</code> (the field is <code>lvt:"persist"</code>, so it survives reconnect). The cursor never jumps because <code>Change()</code> only updates the preview.</small></p>
 </article>
