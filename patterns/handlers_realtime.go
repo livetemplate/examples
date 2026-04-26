@@ -130,6 +130,17 @@ func newPresenceController() *PresenceController {
 	return &PresenceController{onlineUsers: make(map[string]bool)}
 }
 
+// Mount runs on every initial render. Without it a new visitor's
+// state.OnlineCount would default to 0 even when other users are
+// already in the shared map — they'd see "0 user(s) online" until
+// the next Join/Leave broadcast updates them.
+func (c *PresenceController) Mount(state PresenceState, ctx *livetemplate.Context) (PresenceState, error) {
+	c.mu.RLock()
+	state.OnlineCount = len(c.onlineUsers)
+	c.mu.RUnlock()
+	return state, nil
+}
+
 func (c *PresenceController) Join(state PresenceState, ctx *livetemplate.Context) (PresenceState, error) {
 	name := strings.TrimSpace(ctx.GetString("username"))
 	if name == "" {
@@ -248,13 +259,16 @@ func (c *ServerPushController) StartTimer(state ServerPushState, ctx *livetempla
 	if state.Running {
 		return state, nil
 	}
-	state.Running = true
-	state.Elapsed = 0
-	state.Total = serverPushTickCount
+	// Check session BEFORE flipping Running. Framework guarantees a
+	// session for WebSocket connections, but if it ever is nil we'd
+	// render "Timer running" with no goroutine to ever clear it.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
 	}
+	state.Running = true
+	state.Elapsed = 0
+	state.Total = serverPushTickCount
 	go func() {
 		ticker := time.NewTicker(serverPushTickInterval)
 		defer ticker.Stop()
