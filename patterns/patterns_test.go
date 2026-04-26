@@ -1576,65 +1576,34 @@ func TestProgressBar(t *testing.T) {
 		// value < 100) catches a regression where the goroutine skips
 		// intermediate ticks and jumps straight to 100 — a value > 0 check
 		// alone would also be satisfied by an instant 100, missing the bug.
-		//
-		// We use Sleep+Evaluate for the mid-flight check instead of a
-		// polled WaitFor: chromedp's tight Go-side polling competes with
-		// the browser main thread for morphdom-application time, and pushed
-		// renders during a tight poll often don't surface in the DOM until
-		// polling stops. Sleeping ~2s lands solidly in the 0..100 range
-		// (around tick 4 of 10) and gives the browser uncontested time to
-		// apply the pushed renders. The completion WaitForText doesn't have
-		// the same race because by then ALL pushed renders are in flight
-		// and the final state is stable.
-		if err := chromedp.Run(ctx,
+		// 5s timeout matches the goroutine's full duration so on loaded CI
+		// runners we still catch a real value < 100 before completion.
+		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`!!document.querySelector('progress')`, 3*time.Second),
-			chromedp.Sleep(2*time.Second),
-		); err != nil {
-			t.Fatalf("Failed to set up mid-flight check: %v", err)
-		}
-		var midValue float64
-		if err := chromedp.Run(ctx,
-			chromedp.Evaluate(`(() => { const p = document.querySelector('progress'); return p ? p.value : -1; })()`, &midValue),
-		); err != nil {
-			t.Fatalf("Failed reading mid-flight progress: %v", err)
-		}
-		if !(midValue > 0 && midValue < 100) {
-			t.Errorf("Expected mid-flight progress 0 < value < 100, got %v", midValue)
-		}
-		if err := chromedp.Run(ctx,
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
-		); err != nil {
+		)
+		if err != nil {
 			t.Fatalf("Progress bar did not complete: %v", err)
 		}
 	})
 
 	t.Run("Run_Again_Restarts_Timer", func(t *testing.T) {
-		// The Run Again button restarts the timer. Same Sleep+Evaluate
-		// approach as Start_Runs_To_Completion above for the mid-flight
-		// check; final state via WaitForText is fine because by then
-		// pushed renders are no longer in flight.
-		if err := chromedp.Run(ctx,
+		// The Run Again button starts the timer again. Progress must begin
+		// from below 100, climb back to completion, AND re-emit the success
+		// flash. The flash assertion catches a regression where the second
+		// run completes silently (e.g., if the controller forgot to call
+		// SetFlash on the re-completion path).
+		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
-			chromedp.Sleep(2*time.Second),
-		); err != nil {
-			t.Fatalf("Failed to set up mid-flight check: %v", err)
-		}
-		var midValue float64
-		if err := chromedp.Run(ctx,
-			chromedp.Evaluate(`(() => { const p = document.querySelector('progress'); return p ? p.value : -1; })()`, &midValue),
-		); err != nil {
-			t.Fatalf("Failed reading mid-flight progress: %v", err)
-		}
-		if !(midValue > 0 && midValue < 100) {
-			t.Errorf("Expected mid-flight progress 0 < value < 100 on rerun, got %v", midValue)
-		}
-		if err := chromedp.Run(ctx,
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value > 0 && document.querySelector('progress').value < 100`, 5*time.Second),
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
 			e2etest.WaitForText(`output[data-flash="success"]`, "Job complete", 3*time.Second),
-		); err != nil {
-			t.Fatalf("Run Again did not complete: %v", err)
+		)
+		if err != nil {
+			t.Fatalf("Run Again failed: %v", err)
 		}
 	})
 
@@ -2523,43 +2492,24 @@ func TestHighlightOnChange(t *testing.T) {
 		// short Sleep, read the recorded flag. This is robust to timing
 		// because the observer runs synchronously on the browser main thread
 		// the moment the directive sets the style.
-		var sawBothFlash bool
-		var debug string
-		if err := chromedp.Run(ctx,
-			chromedp.Evaluate(`(() => {
-				window._lvtHighlightLog = [];
-				window._lvtHighlightSawBoth = false;
-				const start = performance.now();
-				const check = (records, kind) => {
-					const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
-					const all = els.length >= 2 && els.every(el => (el.style.transition || "").includes('background-color'));
-					window._lvtHighlightLog.push({
-						t: Math.round(performance.now() - start),
-						kind,
-						records: records ? records.length : 0,
-						els: els.length,
-						transitions: els.map(el => el.style.transition),
-						guards: els.map(el => !!el.__lvtHighlighting),
-						all,
-					});
-					if (all) window._lvtHighlightSawBoth = true;
-				};
-				check(null, 'init');
-				const obs = new MutationObserver((records) => check(records, 'mut'));
-				obs.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
-				// Also record state at multiple timed checkpoints (in case
-				// the observer misses a brief window).
-				[10, 30, 50, 100, 200, 400, 600].forEach(ms => setTimeout(() => check(null, 'ts' + ms), ms));
-			})()`, nil),
+		// directives.ts sets style.transition for ~550ms per render-touch.
+		// The transition assertion has a wider polling window than the
+		// bg-color one (which clears at 50ms) and is just as load-bearing
+		// — the transition IS the visual flash. Use Array.from to count
+		// only the inner highlight cards (page wrappers don't carry the
+		// directive). The 5s WaitFor budget is generous; with the lvt
+		// chrome-throttling fix (livetemplate/lvt#314, v0.1.4) the polled
+		// approach reliably lands inside the directive's window.
+		err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			chromedp.Sleep(700*time.Millisecond),
-			chromedp.Evaluate(`window._lvtHighlightSawBoth`, &sawBothFlash),
-			chromedp.Evaluate(`JSON.stringify(window._lvtHighlightLog)`, &debug),
-		); err != nil {
-			t.Fatalf("Failed reading highlight observation: %v", err)
-		}
-		if !sawBothFlash {
-			t.Errorf("MutationObserver did not see the highlight flash on both targets after Increment\nlog=%s", debug)
+			e2etest.WaitFor(`(() => {
+				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
+				if (els.length < 2) return false;
+				return els.every(el => (el.style.transition || "").includes('background-color'));
+			})()`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Highlight transition not applied to both targets: %v", err)
 		}
 	})
 
@@ -2841,27 +2791,41 @@ func TestBroadcasting(t *testing.T) {
 	})
 
 	t.Run("Empty_Send_Appends_Nothing", func(t *testing.T) {
+		// Testing "no change after time T" without a wall-clock Sleep:
+		// fire the empty Send first, then a known-good "guard" Send, and
+		// wait for the guard message to appear. By the time the guard's
+		// render lands, the empty Send's no-op response (queued before
+		// the guard) has been processed too, so any spurious append from
+		// the empty would already be in the DOM. The final count must be
+		// baseline + 1 (the guard) — anything else means the empty Send
+		// appended.
 		var countBefore int
 		if err := chromedp.Run(ctx,
 			chromedp.Evaluate(`document.querySelectorAll('div.messages p[data-key]').length`, &countBefore),
 		); err != nil {
 			t.Fatalf("Could not count messages: %v", err)
 		}
-		// Submit empty: server's Send returns no-op state with no broadcast.
-		if err := chromedp.Run(ctx,
-			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
-			chromedp.Sleep(500*time.Millisecond),
-		); err != nil {
-			t.Fatalf("Empty send click failed: %v", err)
-		}
+		const guardText = "guard message"
 		var countAfter int
+		// Send empty + guard via direct WS sends (same idiom as
+		// TestAsyncOperations.Concurrent_Fetch_Reaches_Single_Result on
+		// patterns_test.go around line 1750). Direct sends avoid the
+		// chromedp.Click → form-pending-state → "Element is not focusable"
+		// race that breaks SendKeys when the next click follows immediately.
+		// The guard's broadcast lands in div.messages; that's the sync
+		// point. If the empty Send had appended, count would be +2.
 		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(fmt.Sprintf(`(() => {
+				window.liveTemplateClient.send({action: 'send', data: {text: ''}});
+				window.liveTemplateClient.send({action: 'send', data: {text: %q}});
+			})()`, guardText), nil),
+			e2etest.WaitForText(`div.messages`, guardText, 3*time.Second),
 			chromedp.Evaluate(`document.querySelectorAll('div.messages p[data-key]').length`, &countAfter),
 		); err != nil {
-			t.Fatalf("Could not count messages after empty send: %v", err)
+			t.Fatalf("Empty/guard send sequence failed: %v", err)
 		}
-		if countAfter != countBefore {
-			t.Errorf("Empty send appended a message: before=%d after=%d", countBefore, countAfter)
+		if countAfter != countBefore+1 {
+			t.Errorf("Empty send appended a message: before=%d after=%d (expected before+1=%d for guard only)", countBefore, countAfter, countBefore+1)
 		}
 	})
 
@@ -3020,22 +2984,13 @@ func TestLivePreview(t *testing.T) {
 	}
 
 	t.Run("Type_Updates_Preview_After_Debounce", func(t *testing.T) {
-		// 300ms debounce per client/constants.ts:DEFAULT_CHANGE_DEBOUNCE_MS.
-		// Use Sleep+Evaluate rather than WaitForText: chromedp's tight Go-
-		// side polling competes with the browser main thread for morphdom-
-		// application time, so a server-pushed render after debounce often
-		// doesn't surface in the DOM until polling stops. A wall-clock
-		// Sleep gives the browser uncontested time to apply the render.
-		var previewText string
+		// 300ms debounce per client/constants.ts:DEFAULT_CHANGE_DEBOUNCE_MS;
+		// 3s slack covers debounce + WS round-trip + render comfortably.
 		if err := chromedp.Run(ctx,
 			chromedp.SendKeys(`input[name="input"]`, "World", chromedp.ByQuery),
-			chromedp.Sleep(1500*time.Millisecond),
-			chromedp.Text(`#preview`, &previewText, chromedp.ByQuery),
+			e2etest.WaitForText(`#preview`, "Hello, World!", 3*time.Second),
 		); err != nil {
-			t.Fatalf("Failed reading preview text: %v", err)
-		}
-		if !strings.Contains(previewText, "Hello, World!") {
-			t.Errorf("Preview did not update after typing: got %q, want substring %q", previewText, "Hello, World!")
+			t.Fatalf("Preview did not update after typing: %v", err)
 		}
 	})
 

@@ -45,8 +45,12 @@ type ReconnectionState struct {
 type LivePreviewState struct {
 	Title    string
 	Category string
-	Input    string `lvt:"persist"`
-	Preview  string `lvt:"persist"`
+	// Input is persisted so a reconnect lands on the user's last-saved value;
+	// Preview is derived from Input by Change/Submit so it doesn't need to
+	// persist — leaving it unpersisted means a stale derived value can't
+	// briefly appear before the next render rebuilds it.
+	Input   string `lvt:"persist"`
+	Preview string
 }
 
 type ServerPushState struct {

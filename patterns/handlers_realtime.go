@@ -56,13 +56,16 @@ type BroadcastingController struct {
 	messages []BroadcastMessage
 }
 
-func (c *BroadcastingController) snapshot() []BroadcastMessage {
+// snapshotLocked returns a copy of c.messages. The Locked suffix signals
+// that the caller MUST hold c.mu (read or write) — without that, slices.Clone
+// reads c.messages concurrently with Send's append and races.
+func (c *BroadcastingController) snapshotLocked() []BroadcastMessage {
 	return slices.Clone(c.messages)
 }
 
 func (c *BroadcastingController) Mount(state BroadcastingState, ctx *livetemplate.Context) (BroadcastingState, error) {
 	c.mu.RLock()
-	state.Messages = c.snapshot()
+	state.Messages = c.snapshotLocked()
 	c.mu.RUnlock()
 	return state, nil
 }
@@ -87,7 +90,7 @@ func (c *BroadcastingController) Send(state BroadcastingState, ctx *livetemplate
 	c.mu.Lock()
 	c.nextID++
 	c.messages = append(c.messages, BroadcastMessage{ID: c.nextID, User: state.Username, Text: text})
-	state.Messages = c.snapshot()
+	state.Messages = c.snapshotLocked()
 	c.mu.Unlock()
 	// BroadcastAction must come after the lock release (CLAUDE.md: avoid
 	// holding a lock while queuing broadcasts). Peers receive "NewMessage"
@@ -98,7 +101,7 @@ func (c *BroadcastingController) Send(state BroadcastingState, ctx *livetemplate
 
 func (c *BroadcastingController) NewMessage(state BroadcastingState, ctx *livetemplate.Context) (BroadcastingState, error) {
 	c.mu.RLock()
-	state.Messages = c.snapshot()
+	state.Messages = c.snapshotLocked()
 	c.mu.RUnlock()
 	return state, nil
 }
