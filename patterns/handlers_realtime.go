@@ -13,7 +13,7 @@ import (
 // --- Pattern #26: Multi-User Sync ---
 
 type MultiUserSyncController struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	counter int
 }
 
@@ -23,9 +23,9 @@ type MultiUserSyncController struct {
 // arg is the peer's local state; we replace its Counter from the shared
 // controller value so all tabs converge.
 func (c *MultiUserSyncController) Sync(state MultiUserSyncState, ctx *livetemplate.Context) (MultiUserSyncState, error) {
-	c.mu.Lock()
+	c.mu.RLock()
 	state.Counter = c.counter
-	c.mu.Unlock()
+	c.mu.RUnlock()
 	return state, nil
 }
 

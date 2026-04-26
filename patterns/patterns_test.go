@@ -2936,15 +2936,27 @@ func TestPresence(t *testing.T) {
 		// guard's effect — if empty had been honored, OnlineCount
 		// would have ticked to 1 before the guard's Join fired and we'd
 		// never see exactly 1 user.
-		if err := chromedp.Run(ctx,
+		//
+		// Run on peerCtx (which is at the join form post-Peer_Leave) and
+		// have the guard user Leave at the end so ctx ends in the
+		// canonical "0 user(s) online + join form" state for
+		// runStandardSubtests' Visual_Check.
+		if err := chromedp.Run(peerCtx,
 			chromedp.Evaluate(`(() => {
 				window.liveTemplateClient.send({action: 'join', data: {username: ''}});
 				window.liveTemplateClient.send({action: 'join', data: {username: 'GuardX'}});
 			})()`, nil),
-			// Guard's Join lands → count becomes 1. Empty had no effect.
 			e2etest.WaitForText(`mark`, "1 user(s) online", 3*time.Second),
+			// Cleanup: peer leaves so ctx ends at "0 user(s) online".
+			chromedp.Click(`button[name="leave"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`mark`, "0 user(s) online", 3*time.Second),
 		); err != nil {
 			t.Fatalf("Empty/guard join sequence failed: %v", err)
+		}
+		if err := chromedp.Run(ctx,
+			e2etest.WaitForText(`mark`, "0 user(s) online", 3*time.Second),
+		); err != nil {
+			t.Fatalf("ctx did not see GuardX leave broadcast: %v", err)
 		}
 	})
 
