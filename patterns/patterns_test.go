@@ -2708,6 +2708,25 @@ func TestMultiUserSync(t *testing.T) {
 		}
 	})
 
+	t.Run("Late_Joiner_Sees_Current_Counter_On_Mount", func(t *testing.T) {
+		// Counter is at 2 from the prior subtests. A new tab opening
+		// AFTER the increments must see 2 immediately on its initial
+		// render — not 0 with a wait for the next peer action's Sync.
+		// This guards the MultiUserSyncController.Mount() call (without
+		// it, the late joiner would render Counter:0 from zero-value
+		// state until a peer action fired Sync).
+		lateCtx, lateCancel := chromedp.NewContext(ctx)
+		defer lateCancel()
+		if err := chromedp.Run(lateCtx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 2", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Late-joining tab did not see Counter: 2 on mount: %v", err)
+		}
+	})
+
 	runStandardSubtests(t, ctx, true, "Multi-User Sync pattern — heading, a paragraph 'Counter: 2', and an Increment button. Layout is centered with Pico styling.")
 }
 

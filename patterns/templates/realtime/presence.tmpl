@@ -3,7 +3,7 @@
     <h3>Presence Tracking</h3>
     <p><small>Explicit Join/Leave actions update a mutex-guarded user map on the controller. Each mutation broadcasts <code>PresenceChanged</code> to peers, who recompute their local <code>OnlineCount</code> from the shared map.</small></p>
 
-    <p><mark>{{.OnlineCount}} user(s) online</mark></p>
+    <p><mark aria-live="polite">{{.OnlineCount}} user(s) online</mark></p>
 
     {{if .Joined}}
     <p>Logged in as <strong>{{.Username}}</strong></p>

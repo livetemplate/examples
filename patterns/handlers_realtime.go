@@ -17,6 +17,16 @@ type MultiUserSyncController struct {
 	counter int
 }
 
+// Mount runs on every initial render. Without it, a tab that opens
+// AFTER other tabs have incremented would render Counter:0 and only
+// converge on the next peer action's Sync. Same fix as PresenceController.
+func (c *MultiUserSyncController) Mount(state MultiUserSyncState, ctx *livetemplate.Context) (MultiUserSyncState, error) {
+	c.mu.RLock()
+	state.Counter = c.counter
+	c.mu.RUnlock()
+	return state, nil
+}
+
 // Sync is a reserved method name (livetemplate/mount.go:114). The framework
 // auto-dispatches it to peer connections in the same session group after any
 // action completes — Increment doesn't need to call BroadcastAction. The state
@@ -200,6 +210,10 @@ func (c *ReconnectionController) Increment(state ReconnectionState, ctx *livetem
 }
 
 func (c *ReconnectionController) SaveNotes(state ReconnectionState, ctx *livetemplate.Context) (ReconnectionState, error) {
+	// Notes is a free-form textarea — leading/trailing whitespace AND
+	// internal newlines are deliberate user content. Unlike Send/Join
+	// inputs (which use TrimSpace to reject all-whitespace submissions),
+	// SaveNotes preserves whatever the user typed verbatim.
 	state.Notes = ctx.GetString("notes")
 	return state, nil
 }
