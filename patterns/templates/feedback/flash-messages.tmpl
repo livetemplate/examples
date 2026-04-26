@@ -12,8 +12,8 @@
 
     <form method="POST">
         <fieldset role="group">
-            <button name="notify" type="submit">Notify (persistent)</button>
-            <button name="dismissNotify" type="submit" class="compact secondary">Dismiss notify</button>
+            <button name="notify" type="submit">Notify</button>
+            <button name="dismissNotify" type="submit" class="compact secondary">Dismiss</button>
         </fieldset>
     </form>
 
@@ -21,6 +21,6 @@
     {{.lvt.FlashTag "error"}}
     {{.lvt.FlashTag "info"}}
 
-    <p><small><strong>Try:</strong> Submit empty → persistent error. Type a name + Save → success that auto-expires after 5s (next render prunes it). Click Notify → persistent info until you click Dismiss notify.</small></p>
+    <p><small><strong>Try:</strong> Submit empty → persistent error. Type a name + Save → success that auto-dismisses after 5s (a server-side goroutine fires <code>session.TriggerAction("refresh", nil)</code> at the deadline; the resulting render's <code>getMessages</code> prunes the expired flash). Click <strong>Notify</strong> → persistent info until you click <strong>Dismiss</strong>.</small></p>
 </article>
 {{end}}

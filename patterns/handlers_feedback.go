@@ -89,6 +89,8 @@ func highlightHandler(baseOpts []livetemplate.Option) http.Handler {
 
 type FlashMessagesController struct{}
 
+const flashSuccessExpiry = 5 * time.Second
+
 func (c *FlashMessagesController) Save(state FlashMessagesState, ctx *livetemplate.Context) (FlashMessagesState, error) {
 	name := strings.TrimSpace(ctx.GetString("name"))
 	if name == "" {
@@ -97,7 +99,26 @@ func (c *FlashMessagesController) Save(state FlashMessagesState, ctx *livetempla
 		return state, nil
 	}
 	ctx.ClearFlash("error")
-	ctx.SetFlash("success", "Saved: "+name, livetemplate.FlashExpiry(5*time.Second))
+	ctx.SetFlash("success", "Saved: "+name, livetemplate.FlashExpiry(flashSuccessExpiry))
+
+	// FlashExpiry is render-driven (no background timer), so without a
+	// nudge the success flash would only disappear when the user next
+	// interacts. Schedule a server-side wake-up that triggers a re-render
+	// at the deadline; getMessages prunes the expired entry before
+	// snapshotting and the client sees the flash disappear on its own.
+	if session := ctx.Session(); session != nil {
+		go func() {
+			time.Sleep(flashSuccessExpiry + 100*time.Millisecond)
+			_ = session.TriggerAction("refresh", nil)
+		}()
+	}
+	return state, nil
+}
+
+// Refresh is a no-op action whose only purpose is to trigger a re-render
+// (and therefore a getMessages snapshot, which prunes expired flash).
+// Invoked by the goroutine in Save after FlashExpiry elapses.
+func (c *FlashMessagesController) Refresh(state FlashMessagesState, ctx *livetemplate.Context) (FlashMessagesState, error) {
 	return state, nil
 }
 

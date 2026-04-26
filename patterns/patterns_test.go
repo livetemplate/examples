@@ -2427,7 +2427,7 @@ func TestLoadingStates(t *testing.T) {
 		err := chromedp.Run(ctx,
 			chromedp.Click(`section:nth-of-type(2) button[name="slowSave"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`section:nth-of-type(2) button[name="slowSave"]`, "Saving", 1*time.Second),
-			e2etest.WaitForText(`section:nth-of-type(2) button[name="slowSave"]`, "Save (2s)", 5*time.Second),
+			e2etest.WaitForText(`section:nth-of-type(2) button[name="slowSave"]`, "Save", 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("disable-with text replacement failed: %v", err)
@@ -2456,7 +2456,7 @@ func TestLoadingStates(t *testing.T) {
 		}
 	})
 
-	runStandardSubtests(t, ctx, true, "Loading States pattern — three sections (Tier 1 automatic, Tier 2 disable-with, Tier 2 setAttr) each with an input and Save (2s) button, plus a 'Last save:' timestamp below.")
+	runStandardSubtests(t, ctx, true, "Loading States pattern — three sections (Tier 1 automatic, Tier 2 disable-with, Tier 2 setAttr) each with an input and Save button, plus a 'Last save:' timestamp below.")
 }
 
 func TestHighlightOnChange(t *testing.T) {

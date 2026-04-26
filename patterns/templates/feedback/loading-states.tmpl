@@ -9,7 +9,7 @@
         <form method="POST">
             <fieldset role="group">
                 <input name="data" placeholder="Type something…" aria-label="Tier 1 input">
-                <button name="slowSave">Save (2s)</button>
+                <button name="slowSave">Save</button>
             </fieldset>
         </form>
     </section>
@@ -20,7 +20,7 @@
         <form method="POST">
             <fieldset role="group">
                 <input name="data" placeholder="Type something…" aria-label="Tier 2a input">
-                <button name="slowSave" lvt-form:disable-with="Saving…">Save (2s)</button>
+                <button name="slowSave" lvt-form:disable-with="Saving…">Save</button>
             </fieldset>
         </form>
     </section>
@@ -33,7 +33,7 @@
                 <input name="data" placeholder="Type something…" aria-label="Tier 2b input">
                 <button name="slowSave"
                     lvt-el:setAttr:on:pending="aria-busy:true"
-                    lvt-el:setAttr:on:done="aria-busy:false">Save (2s)</button>
+                    lvt-el:setAttr:on:done="aria-busy:false">Save</button>
             </fieldset>
         </form>
     </section>
