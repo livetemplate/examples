@@ -273,6 +273,8 @@ type ServerPushController struct{}
 const serverPushTickInterval = 1 * time.Second
 const serverPushTickCount = 10
 
+// StartTimer flips state.Running and spawns a 10×1s ticker goroutine.
+//
 // Running is intentionally NOT lvt:"persist". If the connection drops
 // mid-timer (browser refresh, network blip), the reconnected client
 // will see Running=false in its initial render — the goroutine on the
@@ -282,7 +284,6 @@ const serverPushTickCount = 10
 // reconnect, but a stale "Running=true" with no in-flight goroutine is
 // a worse failure mode (the UI would be stuck forever waiting for ticks
 // that aren't coming).
-
 func (c *ServerPushController) StartTimer(state ServerPushState, ctx *livetemplate.Context) (ServerPushState, error) {
 	if state.Running {
 		return state, nil
