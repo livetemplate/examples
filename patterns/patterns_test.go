@@ -3016,6 +3016,9 @@ func TestReconnection(t *testing.T) {
 		}
 	})
 
+	// pico=false: the page uses a vertical labeled <textarea> form, which
+	// doesn't fit Pico's input+button-in-fieldset[role=group] convention.
+	// runUIStandardsWithPico would flag the form as a Pico violation.
 	runStandardSubtests(t, ctx, false, "Reconnection Recovery pattern — heading, 'Counter: 3' display with persistence note, an Increment button, and a notes textarea pre-filled with 'persisted hello' plus a Save Notes button.")
 }
 
@@ -3150,5 +3153,9 @@ func TestServerPush(t *testing.T) {
 		}
 	})
 
+	// pico=false: the Start Timer button is a single-button form (no
+	// adjacent input), which doesn't trigger Pico's fieldset[role=group]
+	// rule but the validator's heuristic flags any non-grouped form as
+	// a Pico violation. runUIStandards (without Pico) covers the rest.
 	runStandardSubtests(t, ctx, false, "Server Push pattern — heading, a Start Timer button, and a 'Last completed: 10s' note shown below it.")
 }

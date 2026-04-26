@@ -30,5 +30,6 @@
     {{end}}
 
     <p><small><strong>Try:</strong> Open this page in a second tab and Join with a different name. Sending in either tab broadcasts to both. The shared log lives on the controller; each tab's <code>Username</code> is per-connection (not persisted) so two tabs in the same browser stay independent — see <a href="/patterns/realtime/reconnection">Reconnection Recovery</a> for the persist case.</small></p>
+    <p><small><strong>Limitation:</strong> The shared message log is in-memory and uncapped — production apps would ring-buffer, paginate, or persist to a TTL store. Kept simple here to focus on the broadcast mechanism itself.</small></p>
 </article>
 {{end}}
