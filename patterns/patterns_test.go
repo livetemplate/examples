@@ -2651,3 +2651,421 @@ func TestFlashMessages(t *testing.T) {
 	// IS the FlashTag demo, so the standard subtests use the non-Pico variant.
 	runStandardSubtests(t, ctx, false, "Flash Messages pattern — heading, two forms (one with a Name input + Save, one with Notify and Dismiss buttons), and an info flash 'Heads up — this stays until you dismiss it' visible.")
 }
+
+// --- Pattern #26: Multi-User Sync ---
+
+func TestMultiUserSync(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/realtime/multi-user-sync"
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`button[name="increment"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Tab 1 initial load failed: %v", err)
+	}
+
+	// chromedp.NewContext(parent) where parent is a chromedp context creates
+	// a NEW TAB in the same browser. Cookies and storage are shared, so both
+	// tabs land in the same session group — the prerequisite for Sync()
+	// auto-dispatch (mount.go:1466-1468) to fire across them.
+	peerCtx, peerCancel := chromedp.NewContext(ctx)
+	defer peerCancel()
+	if err := chromedp.Run(peerCtx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`button[name="increment"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Peer tab initial load failed: %v", err)
+	}
+
+	t.Run("Increment_Tab1_Updates_Both", func(t *testing.T) {
+		if err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 1", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 did not reflect Counter: 1: %v", err)
+		}
+		// Peer must see the same value via Sync auto-dispatch — Increment
+		// did NOT call BroadcastAction; Sync fires unconditionally because
+		// HasSync && !syncExplicitlyBroadcast at mount.go:1466.
+		if err := chromedp.Run(peerCtx,
+			e2etest.WaitForText(`article`, "Counter: 1", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Peer did not pick up Counter: 1 from Sync auto-dispatch: %v", err)
+		}
+	})
+
+	t.Run("Increment_Tab2_Updates_Both", func(t *testing.T) {
+		if err := chromedp.Run(peerCtx,
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 2", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Peer did not reflect Counter: 2 after its own click: %v", err)
+		}
+		if err := chromedp.Run(ctx,
+			e2etest.WaitForText(`article`, "Counter: 2", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 did not pick up Counter: 2 from peer Sync: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, true, "Multi-User Sync pattern — heading, a paragraph 'Counter: 2', and an Increment button. Layout is centered with Pico styling.")
+}
+
+// --- Pattern #27: Broadcasting ---
+
+func TestBroadcasting(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/realtime/broadcasting"
+
+	// Tab 1 Joins as Alice.
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name="username"]`, "Alice", chromedp.ByQuery),
+		chromedp.Click(`button[name="join"]`, chromedp.ByQuery),
+		chromedp.WaitVisible(`button[name="send"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Tab 1 join failed: %v", err)
+	}
+
+	// Peer tab Joins as Bob. Username is intentionally NOT lvt:"persist"
+	// (state_realtime.go) so the second tab gets its own join form even
+	// though it shares the session-group cookie with tab 1.
+	peerCtx, peerCancel := chromedp.NewContext(ctx)
+	defer peerCancel()
+	if err := chromedp.Run(peerCtx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name="username"]`, "Bob", chromedp.ByQuery),
+		chromedp.Click(`button[name="join"]`, chromedp.ByQuery),
+		chromedp.WaitVisible(`button[name="send"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Peer tab join failed: %v", err)
+	}
+
+	t.Run("Send_From_Tab1_Appears_In_Peer", func(t *testing.T) {
+		if err := chromedp.Run(ctx,
+			chromedp.SendKeys(`input[name="text"]`, "hi from Alice", chromedp.ByQuery),
+			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`div.messages`, "hi from Alice", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 did not see its own message: %v", err)
+		}
+		if err := chromedp.Run(peerCtx,
+			e2etest.WaitForText(`div.messages`, "hi from Alice", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Peer did not receive broadcast from tab 1: %v", err)
+		}
+	})
+
+	t.Run("Send_From_Peer_Appears_In_Tab1", func(t *testing.T) {
+		if err := chromedp.Run(peerCtx,
+			chromedp.SendKeys(`input[name="text"]`, "hi from Bob", chromedp.ByQuery),
+			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`div.messages`, "hi from Bob", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Peer did not see its own message: %v", err)
+		}
+		if err := chromedp.Run(ctx,
+			e2etest.WaitForText(`div.messages`, "hi from Bob", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 did not receive broadcast from peer: %v", err)
+		}
+	})
+
+	t.Run("Empty_Send_Appends_Nothing", func(t *testing.T) {
+		var countBefore int
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelectorAll('div.messages p[data-key]').length`, &countBefore),
+		); err != nil {
+			t.Fatalf("Could not count messages: %v", err)
+		}
+		// Submit empty: server's Send returns no-op state with no broadcast.
+		if err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="send"]`, chromedp.ByQuery),
+			chromedp.Sleep(500*time.Millisecond),
+		); err != nil {
+			t.Fatalf("Empty send click failed: %v", err)
+		}
+		var countAfter int
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelectorAll('div.messages p[data-key]').length`, &countAfter),
+		); err != nil {
+			t.Fatalf("Could not count messages after empty send: %v", err)
+		}
+		if countAfter != countBefore {
+			t.Errorf("Empty send appended a message: before=%d after=%d", countBefore, countAfter)
+		}
+	})
+
+	runStandardSubtests(t, ctx, true, "Broadcasting pattern — heading, 'Posting as Alice' label, message list with two entries from Alice and Bob, and a compose form with a text input + Send button.")
+}
+
+// --- Pattern #28: Presence Tracking ---
+
+func TestPresence(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/realtime/presence"
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name="username"]`, "Alice", chromedp.ByQuery),
+		chromedp.Click(`button[name="join"]`, chromedp.ByQuery),
+		e2etest.WaitForText(`mark`, "1 user(s) online", 3*time.Second),
+	); err != nil {
+		t.Fatalf("Tab 1 Alice join failed: %v", err)
+	}
+
+	peerCtx, peerCancel := chromedp.NewContext(ctx)
+	defer peerCancel()
+	if err := chromedp.Run(peerCtx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name="username"]`, "Bob", chromedp.ByQuery),
+		chromedp.Click(`button[name="join"]`, chromedp.ByQuery),
+		e2etest.WaitForText(`mark`, "2 user(s) online", 3*time.Second),
+	); err != nil {
+		t.Fatalf("Peer Bob join failed: %v", err)
+	}
+
+	t.Run("Tab1_Sees_Two_After_Peer_Joins", func(t *testing.T) {
+		if err := chromedp.Run(ctx,
+			e2etest.WaitForText(`mark`, "2 user(s) online", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 did not see updated count after peer joined: %v", err)
+		}
+	})
+
+	t.Run("Tab1_Leave_Decrements_Both", func(t *testing.T) {
+		if err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="leave"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`mark`, "1 user(s) online", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 leave did not decrement local count: %v", err)
+		}
+		if err := chromedp.Run(peerCtx,
+			e2etest.WaitForText(`mark`, "1 user(s) online", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Peer did not see decrement after tab 1 leave: %v", err)
+		}
+	})
+
+	t.Run("Peer_Leave_Goes_To_Zero", func(t *testing.T) {
+		if err := chromedp.Run(peerCtx,
+			chromedp.Click(`button[name="leave"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`mark`, "0 user(s) online", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Peer leave did not decrement local count: %v", err)
+		}
+		if err := chromedp.Run(ctx,
+			e2etest.WaitForText(`mark`, "0 user(s) online", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Tab 1 did not see final decrement after peer leave: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, true, "Presence Tracking pattern — heading, a highlighted '0 user(s) online' indicator, and a join form with a username input + Join button.")
+}
+
+// --- Pattern #29: Reconnection Recovery ---
+
+func TestReconnection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/realtime/reconnection"
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`button[name="increment"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Initial load failed: %v", err)
+	}
+
+	t.Run("Counter_And_Notes_Survive_Reload", func(t *testing.T) {
+		if err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 1", 3*time.Second),
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 2", 3*time.Second),
+			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 3", 3*time.Second),
+			chromedp.SendKeys(`textarea[name="notes"]`, "persisted hello", chromedp.ByQuery),
+			chromedp.Click(`button[name="saveNotes"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('textarea[name="notes"]').value === "persisted hello"`, 3*time.Second),
+		); err != nil {
+			t.Fatalf("Pre-reload setup failed: %v", err)
+		}
+
+		// Reload — fresh HTTP GET re-mounts via the session-group cookie;
+		// the framework restores Counter and Notes from the session store
+		// before the first render.
+		var notesValue string
+		if err := chromedp.Run(ctx,
+			chromedp.Reload(),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="increment"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Counter: 3", 3*time.Second),
+			chromedp.Evaluate(`document.querySelector('textarea[name="notes"]').value`, &notesValue),
+		); err != nil {
+			t.Fatalf("Reload + restore failed: %v", err)
+		}
+		if notesValue != "persisted hello" {
+			t.Errorf("Notes not restored after reload, got %q", notesValue)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Reconnection Recovery pattern — heading, 'Counter: 3' display with persistence note, an Increment button, and a notes textarea pre-filled with 'persisted hello' plus a Save Notes button.")
+}
+
+// --- Pattern #30: Live Preview ---
+
+func TestLivePreview(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/realtime/live-preview"
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`input[name="input"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Initial load failed: %v", err)
+	}
+
+	t.Run("Type_Updates_Preview_After_Debounce", func(t *testing.T) {
+		// 300ms debounce per client/constants.ts:DEFAULT_CHANGE_DEBOUNCE_MS.
+		// Use Sleep+Evaluate rather than WaitForText: chromedp's tight Go-
+		// side polling competes with the browser main thread for morphdom-
+		// application time, so a server-pushed render after debounce often
+		// doesn't surface in the DOM until polling stops. A wall-clock
+		// Sleep gives the browser uncontested time to apply the render.
+		var previewText string
+		if err := chromedp.Run(ctx,
+			chromedp.SendKeys(`input[name="input"]`, "World", chromedp.ByQuery),
+			chromedp.Sleep(1500*time.Millisecond),
+			chromedp.Text(`#preview`, &previewText, chromedp.ByQuery),
+		); err != nil {
+			t.Fatalf("Failed reading preview text: %v", err)
+		}
+		if !strings.Contains(previewText, "Hello, World!") {
+			t.Errorf("Preview did not update after typing: got %q, want substring %q", previewText, "Hello, World!")
+		}
+	})
+
+	t.Run("Submit_Commits_Input_To_State", func(t *testing.T) {
+		if err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="submit"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`#preview`, "Saved: World", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Submit did not commit input: %v", err)
+		}
+		var val string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`document.querySelector('input[name="input"]').value`, &val),
+		); err != nil {
+			t.Fatalf("Could not read input value: %v", err)
+		}
+		if val != "World" {
+			t.Errorf("input value after submit: want %q, got %q", "World", val)
+		}
+	})
+
+	runStandardSubtests(t, ctx, true, "Live Preview pattern — heading, a Name input pre-filled with 'World' + Save button, and a blockquote showing 'Saved: World'.")
+}
+
+// --- Pattern #31: Server Push ---
+
+func TestServerPush(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/realtime/server-push"
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(5*time.Second),
+		chromedp.WaitVisible(`button[name="startTimer"]`, chromedp.ByQuery),
+	); err != nil {
+		t.Fatalf("Initial load failed: %v", err)
+	}
+
+	t.Run("Start_Switches_To_Running_View", func(t *testing.T) {
+		// Click Start. The handler sets state.Running=true synchronously and
+		// spawns the timer goroutine; the response render swaps the page to
+		// the "Timer running" view immediately. Asserting only that view
+		// switch (not intermediate Elapsed values) is deliberate — see the
+		// next subtest's comment for why per-tick assertions are unreliable
+		// from this same chromedp ctx.
+		if err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="startTimer"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`article`, "Timer running", 3*time.Second),
+		); err != nil {
+			t.Fatalf("Start did not switch to running view: %v", err)
+		}
+	})
+
+	t.Run("Completes_With_Done_Message", func(t *testing.T) {
+		// "Last completed: 10s" requires state.Elapsed=10 (set by the 10th
+		// Tick action with elapsed=10) AND state.Running=false (set by
+		// TimerDone). The full goroutine cycle (10×1s ticks + TimerDone)
+		// takes ~10s of wall-clock; 14s gives comfortable slack.
+		//
+		// Why no per-tick assertion: chromedp's tight Go-side polling for
+		// intermediate values competes with the browser main thread for
+		// morphdom-application time. Server-side log probing has shown the
+		// goroutine fires all 10 ticks correctly at 1Hz, but pushed renders
+		// during a tight WaitFor poll often don't surface in the DOM until
+		// polling stops. Asserting the FINAL state proves the full cycle
+		// (every Tick was processed AND TimerDone fired) without depending
+		// on intermediate-value visibility.
+		if err := chromedp.Run(ctx,
+			e2etest.WaitForText(`article`, "Last completed: 10s", 14*time.Second),
+			chromedp.WaitVisible(`button[name="startTimer"]`, chromedp.ByQuery),
+		); err != nil {
+			t.Fatalf("Timer did not complete: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Server Push pattern — heading, a Start 10s Timer button, and a 'Last completed: 10s' note shown below it.")
+}

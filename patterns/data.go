@@ -285,12 +285,12 @@ func allPatterns() []PatternCategory {
 		{
 			Name: "Real-Time & Multi-User",
 			Patterns: []PatternLink{
-				{Name: "Multi-User Sync", Path: "/patterns/realtime/multi-user-sync", Description: "Auto-sync across tabs via Sync() handler"},
-				{Name: "Broadcasting", Path: "/patterns/realtime/broadcasting", Description: "Cross-connection updates via BroadcastAction"},
-				{Name: "Presence Tracking", Path: "/patterns/realtime/presence", Description: "Explicit join/leave with shared state"},
-				{Name: "Reconnection Recovery", Path: "/patterns/realtime/reconnection", Description: "State persistence across disconnects"},
-				{Name: "Live Preview", Path: "/patterns/realtime/live-preview", Description: "Real-time input preview via Change()"},
-				{Name: "Server Push", Path: "/patterns/realtime/server-push", Description: "Background goroutine pushing updates"},
+				{Name: "Multi-User Sync", Path: "/patterns/realtime/multi-user-sync", Description: "Auto-sync across tabs via Sync() handler", Implemented: true},
+				{Name: "Broadcasting", Path: "/patterns/realtime/broadcasting", Description: "Cross-connection updates via BroadcastAction", Implemented: true},
+				{Name: "Presence Tracking", Path: "/patterns/realtime/presence", Description: "Explicit join/leave with shared state", Implemented: true},
+				{Name: "Reconnection Recovery", Path: "/patterns/realtime/reconnection", Description: "State persistence across disconnects", Implemented: true},
+				{Name: "Live Preview", Path: "/patterns/realtime/live-preview", Description: "Real-time input preview via Change()", Implemented: true},
+				{Name: "Server Push", Path: "/patterns/realtime/server-push", Description: "Background goroutine pushing updates", Implemented: true},
 			},
 		},
 	}

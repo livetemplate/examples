@@ -1,0 +1,21 @@
+{{define "content"}}
+<article>
+    <h3>Reconnection Recovery</h3>
+    <p><small>State fields tagged <code>lvt:"persist"</code> survive WebSocket disconnects, server restarts, and full page reloads — the framework restores them from the session store via the group cookie before the first render after reconnect.</small></p>
+
+    <p>Counter: <strong>{{.Counter}}</strong> <small>(<code>lvt:"persist"</code>)</small></p>
+    <form method="POST">
+        <button name="increment">Increment</button>
+    </form>
+
+    <form method="POST" lvt-form:preserve>
+        <label>
+            Notes <small>(<code>lvt:"persist"</code> + <code>lvt-form:preserve</code>)</small>
+            <textarea name="notes" rows="3" placeholder="Type something…">{{.Notes}}</textarea>
+        </label>
+        <button name="saveNotes">Save Notes</button>
+    </form>
+
+    <p><small><strong>Try:</strong> Increment a few times and save some notes, then reload the page. State is restored before the first render. <strong>Why both tags on Notes?</strong> <code>lvt:"persist"</code> (server-side) survives reconnect. <code>lvt-form:preserve</code> (client-side) keeps your in-progress text in the DOM across re-renders that other actions trigger — without it, typing while the Counter is incrementing would lose the textarea draft.</small></p>
+</article>
+{{end}}

@@ -1,0 +1,14 @@
+{{define "content"}}
+<article>
+    <h3>Multi-User Sync</h3>
+    <p><small>The reserved <code>Sync()</code> method on a controller is auto-dispatched to peer connections in the same session group after any action completes — no explicit <code>BroadcastAction</code> call is needed. Both tabs read the same shared counter from the controller's mutex-protected state.</small></p>
+
+    <p>Counter: <strong>{{.Counter}}</strong></p>
+
+    <form method="POST">
+        <button name="increment">Increment</button>
+    </form>
+
+    <p><small><strong>Try:</strong> Open this page in a second tab. Click Increment in either tab — both stay in sync because the framework dispatches <code>Sync()</code> to peers on every action's render.</small></p>
+</article>
+{{end}}

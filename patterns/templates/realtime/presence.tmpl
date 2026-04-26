@@ -1,0 +1,24 @@
+{{define "content"}}
+<article>
+    <h3>Presence Tracking</h3>
+    <p><small>Explicit Join/Leave actions update a mutex-guarded user map on the controller. Each mutation broadcasts <code>PresenceChanged</code> to peers, who recompute their local <code>OnlineCount</code> from the shared map.</small></p>
+
+    <p><mark>{{.OnlineCount}} user(s) online</mark></p>
+
+    {{if .Joined}}
+    <p>Logged in as <strong>{{.Username}}</strong></p>
+    <form method="POST">
+        <button name="leave" class="secondary">Leave</button>
+    </form>
+    {{else}}
+    <form method="POST">
+        <fieldset role="group">
+            <input name="username" placeholder="Pick a name…" aria-label="Username" required>
+            <button name="join">Join</button>
+        </fieldset>
+    </form>
+    {{end}}
+
+    <p><small><strong>Limitation:</strong> Closing a tab without clicking Leave leaves the user in the online set — the framework's <code>OnDisconnect()</code> hook receives no state or context, so it can't identify which user disconnected. Production apps either track connections explicitly or run a heartbeat sweep. Two tabs joined with the same username register once (the map keys on username, not connection).</small></p>
+</article>
+{{end}}
