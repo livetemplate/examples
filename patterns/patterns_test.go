@@ -2514,22 +2514,52 @@ func TestHighlightOnChange(t *testing.T) {
 	// branch so downstream users get cleaner DOM.
 
 	t.Run("Increment_Flashes_Both_Highlight_Targets", func(t *testing.T) {
-		// directives.ts sets style.backgroundColor at T+0 then reverts at T+50ms,
-		// while style.transition stays set for the full --lvt-highlight-duration
-		// (500ms). The transition assertion has a much wider polling window
-		// than the bg-color one and is just as load-bearing — the transition
-		// IS the visual flash. Use Array.from + .filter to count only the
-		// inner highlight cards (page wrappers don't carry the directive).
-		err := chromedp.Run(ctx,
+		// directives.ts sets style.transition for ~550ms (50ms delay + 500ms
+		// duration) on each render-touch. That window is too narrow for
+		// chromedp's polled WaitFor to reliably catch in CDP-roundtrip terms,
+		// even with the lvt chrome-throttling fix in place. Solve it in-page:
+		// install a MutationObserver BEFORE the click that records whenever
+		// it sees the flash applied to BOTH targets. After the click + a
+		// short Sleep, read the recorded flag. This is robust to timing
+		// because the observer runs synchronously on the browser main thread
+		// the moment the directive sets the style.
+		var sawBothFlash bool
+		var debug string
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(`(() => {
+				window._lvtHighlightLog = [];
+				window._lvtHighlightSawBoth = false;
+				const start = performance.now();
+				const check = (records, kind) => {
+					const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
+					const all = els.length >= 2 && els.every(el => (el.style.transition || "").includes('background-color'));
+					window._lvtHighlightLog.push({
+						t: Math.round(performance.now() - start),
+						kind,
+						records: records ? records.length : 0,
+						els: els.length,
+						transitions: els.map(el => el.style.transition),
+						guards: els.map(el => !!el.__lvtHighlighting),
+						all,
+					});
+					if (all) window._lvtHighlightSawBoth = true;
+				};
+				check(null, 'init');
+				const obs = new MutationObserver((records) => check(records, 'mut'));
+				obs.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
+				// Also record state at multiple timed checkpoints (in case
+				// the observer misses a brief window).
+				[10, 30, 50, 100, 200, 400, 600].forEach(ms => setTimeout(() => check(null, 'ts' + ms), ms));
+			})()`, nil),
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`(() => {
-				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
-				if (els.length < 2) return false;
-				return els.every(el => (el.style.transition || "").includes('background-color'));
-			})()`, 5*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("Highlight transition not applied to both targets: %v", err)
+			chromedp.Sleep(700*time.Millisecond),
+			chromedp.Evaluate(`window._lvtHighlightSawBoth`, &sawBothFlash),
+			chromedp.Evaluate(`JSON.stringify(window._lvtHighlightLog)`, &debug),
+		); err != nil {
+			t.Fatalf("Failed reading highlight observation: %v", err)
+		}
+		if !sawBothFlash {
+			t.Errorf("MutationObserver did not see the highlight flash on both targets after Increment\nlog=%s", debug)
 		}
 	})
 
