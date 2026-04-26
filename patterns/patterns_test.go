@@ -2827,33 +2827,30 @@ func TestBroadcasting(t *testing.T) {
 	t.Run("Empty_Username_Join_Is_NoOp", func(t *testing.T) {
 		// Targeted protocol test for the Join handler's empty-username
 		// guard. The HTML `required` attribute on the username input
-		// stops empty submission via the UI, but the server-side guard
-		// is defense-in-depth — a future client refactor that drops
-		// `required` (or a malicious WS client) shouldn't be able to
-		// register an empty user. Send via liveTemplateClient.send to
-		// bypass the HTML5 validation.
-		var (
-			joinFormStillVisible bool
-			usernameValue        string
-		)
+		// stops empty submission via the UI; the server-side guard is
+		// defense-in-depth for protocol-level clients. Same guard-message
+		// idiom as Empty_Send_Appends_Nothing: fire empty + guard, wait
+		// for the guard's effect, conclude empty had no effect.
 		if err := chromedp.Run(peerCtx,
-			// Tab1 already joined as Alice (peer is fresh).
+			// Peer is fresh (no Join yet).
 			chromedp.Navigate(url),
 			e2etest.WaitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`input[name="username"]`, chromedp.ByQuery),
-			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'join', data: {username: ''}})`, nil),
-			// Server's Join no-ops on empty; the join form must still
-			// be visible (state.Username unchanged from "").
-			chromedp.Sleep(500*time.Millisecond),
-			chromedp.Evaluate(`!!document.querySelector('input[name="username"]')`, &joinFormStillVisible),
-			chromedp.Evaluate(`(() => { const el = document.querySelector('input[name="username"]'); return el ? el.value : null; })()`, &usernameValue),
+			chromedp.Evaluate(`(() => {
+				window.liveTemplateClient.send({action: 'join', data: {username: ''}});
+				window.liveTemplateClient.send({action: 'join', data: {username: 'GuardBob'}});
+			})()`, nil),
+			// Guard's Join sets state.Username, swapping the join form
+			// out for the compose form. If the empty-username send had
+			// gone through first and set state.Username = "", the swap
+			// would still happen on the guard — but if the empty had
+			// somehow set Username to "" AFTER the guard, we'd never
+			// see "Posting as GuardBob".
+			e2etest.WaitForText(`article`, "Posting as GuardBob", 3*time.Second),
+			chromedp.WaitVisible(`button[name="send"]`, chromedp.ByQuery),
 		); err != nil {
-			t.Fatalf("Empty username send failed: %v", err)
+			t.Fatalf("Empty/guard join sequence failed: %v", err)
 		}
-		if !joinFormStillVisible {
-			t.Error("Join form disappeared after empty-username send — guard didn't hold")
-		}
-		_ = usernameValue
 	})
 
 	runStandardSubtests(t, ctx, true, "Broadcasting pattern — heading, 'Posting as Alice' label, message list with three entries (one from Alice, one from Bob, and a 'guard message' from Alice), and a compose form with a text input + Send button.")
@@ -2934,19 +2931,20 @@ func TestPresence(t *testing.T) {
 	t.Run("Empty_Username_Join_Is_NoOp", func(t *testing.T) {
 		// Targeted protocol test for Join's empty-username guard. The
 		// HTML `required` attribute is the UI guard; this test covers
-		// the server-side defense-in-depth path. The OnlineCount must
-		// remain 0 (both tabs left in the prior subtests) after the
-		// empty-username send completes.
-		var onlineText string
+		// the server-side defense-in-depth path. Same guard-message
+		// idiom as Broadcasting: fire empty + guard, wait for the
+		// guard's effect — if empty had been honored, OnlineCount
+		// would have ticked to 1 before the guard's Join fired and we'd
+		// never see exactly 1 user.
 		if err := chromedp.Run(ctx,
-			chromedp.Evaluate(`window.liveTemplateClient.send({action: 'join', data: {username: ''}})`, nil),
-			chromedp.Sleep(500*time.Millisecond),
-			chromedp.Text(`mark`, &onlineText, chromedp.ByQuery),
+			chromedp.Evaluate(`(() => {
+				window.liveTemplateClient.send({action: 'join', data: {username: ''}});
+				window.liveTemplateClient.send({action: 'join', data: {username: 'GuardX'}});
+			})()`, nil),
+			// Guard's Join lands → count becomes 1. Empty had no effect.
+			e2etest.WaitForText(`mark`, "1 user(s) online", 3*time.Second),
 		); err != nil {
-			t.Fatalf("Empty username join send failed: %v", err)
-		}
-		if !strings.Contains(onlineText, "0 user(s) online") {
-			t.Errorf("OnlineCount changed after empty-username Join: got %q", onlineText)
+			t.Fatalf("Empty/guard join sequence failed: %v", err)
 		}
 	})
 
