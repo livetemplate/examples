@@ -248,6 +248,7 @@ func (c *ServerPushController) StartTimer(state ServerPushState, ctx *livetempla
 	}
 	state.Running = true
 	state.Elapsed = 0
+	state.Total = serverPushTickCount
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
@@ -266,6 +267,11 @@ func (c *ServerPushController) StartTimer(state ServerPushState, ctx *livetempla
 				return
 			}
 		}
+		// timerDone fires after the loop completes. We discard the error
+		// here (unlike the per-tick error check above): if the connection
+		// is gone by now, the goroutine exits anyway — no recovery action
+		// is meaningful, and propagating would force the caller of the
+		// goroutine to handle a context that's already finished.
 		_ = session.TriggerAction("timerDone", nil)
 	}()
 	return state, nil

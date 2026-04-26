@@ -2483,15 +2483,6 @@ func TestHighlightOnChange(t *testing.T) {
 	// branch so downstream users get cleaner DOM.
 
 	t.Run("Increment_Flashes_Both_Highlight_Targets", func(t *testing.T) {
-		// directives.ts sets style.transition for ~550ms (50ms delay + 500ms
-		// duration) on each render-touch. That window is too narrow for
-		// chromedp's polled WaitFor to reliably catch in CDP-roundtrip terms,
-		// even with the lvt chrome-throttling fix in place. Solve it in-page:
-		// install a MutationObserver BEFORE the click that records whenever
-		// it sees the flash applied to BOTH targets. After the click + a
-		// short Sleep, read the recorded flag. This is robust to timing
-		// because the observer runs synchronously on the browser main thread
-		// the moment the directive sets the style.
 		// directives.ts sets style.transition for ~550ms per render-touch.
 		// The transition assertion has a wider polling window than the
 		// bg-color one (which clears at 50ms) and is just as load-bearing
@@ -2807,13 +2798,17 @@ func TestBroadcasting(t *testing.T) {
 		}
 		const guardText = "guard message"
 		var countAfter int
-		// Send empty + guard via direct WS sends (same idiom as
-		// TestAsyncOperations.Concurrent_Fetch_Reaches_Single_Result on
-		// patterns_test.go around line 1750). Direct sends avoid the
-		// chromedp.Click → form-pending-state → "Element is not focusable"
-		// race that breaks SendKeys when the next click follows immediately.
-		// The guard's broadcast lands in div.messages; that's the sync
-		// point. If the empty Send had appended, count would be +2.
+		// Both sends go via liveTemplateClient.send rather than the form UI
+		// because the empty submit's transient pending state races with the
+		// next click's SendKeys ("Element is not focusable"). This is the
+		// same idiom TestAsyncOperations.Concurrent_Fetch_Reaches_Single_Result
+		// uses (patterns_test.go around line 1750) for the analogous
+		// "two-sends-in-a-row, observe one render" pattern. The behavior
+		// being tested is the empty-input branch of Send returning no-op
+		// state — that path is exercised identically whether the client
+		// fires it via form submit or via send(), and the protocol-level
+		// helper is the only way to avoid the focus race here without a
+		// wall-clock Sleep.
 		if err := chromedp.Run(ctx,
 			chromedp.Evaluate(fmt.Sprintf(`(() => {
 				window.liveTemplateClient.send({action: 'send', data: {text: ''}});
@@ -3072,5 +3067,5 @@ func TestServerPush(t *testing.T) {
 		}
 	})
 
-	runStandardSubtests(t, ctx, false, "Server Push pattern — heading, a Start 10s Timer button, and a 'Last completed: 10s' note shown below it.")
+	runStandardSubtests(t, ctx, false, "Server Push pattern — heading, a Start Timer button, and a 'Last completed: 10s' note shown below it.")
 }

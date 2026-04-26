@@ -58,4 +58,8 @@ type ServerPushState struct {
 	Category string
 	Running  bool
 	Elapsed  int
+	// Total is set in StartTimer to mirror the Go-side serverPushTickCount
+	// constant. Rendering it from state (rather than hardcoding "10s" in
+	// the template) keeps the template in sync if the constant changes.
+	Total int
 }
