@@ -218,6 +218,9 @@ func (c *ProgressBarController) spawnTicker(session livetemplate.Session) {
 func tickWithRetry(session livetemplate.Session, progress int) error {
 	var lastErr error
 	for attempt := 0; attempt < progressRetryAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(progressRetryDelay)
+		}
 		if err := session.TriggerAction("updateProgress", map[string]any{
 			"progress": progress,
 		}); err == nil {
@@ -225,7 +228,6 @@ func tickWithRetry(session livetemplate.Session, progress int) error {
 		} else {
 			lastErr = err
 		}
-		time.Sleep(progressRetryDelay)
 	}
 	return lastErr
 }
