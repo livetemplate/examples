@@ -9,7 +9,7 @@
             <tr data-key="{{.ID}}">
                 <td>{{.Name}}</td>
                 <td>{{.Email}}</td>
-                <td><input type="checkbox" name="active-{{.ID}}" {{if .Active}}checked{{end}}></td>
+                <td><input type="checkbox" name="active-{{.ID}}" aria-label="Active for {{.Name}}" {{if .Active}}checked{{end}}></td>
             </tr>
             {{end}}
             </tbody>

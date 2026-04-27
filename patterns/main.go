@@ -30,7 +30,6 @@ func indexHandler(baseOpts []livetemplate.Option) http.Handler {
 	)
 	tmpl := livetemplate.Must(livetemplate.New("layout", opts...))
 	return tmpl.Handle(&IndexController{}, livetemplate.AsState(&IndexState{
-		Title:      "LiveTemplate Patterns",
 		Categories: allPatterns(),
 	}))
 }

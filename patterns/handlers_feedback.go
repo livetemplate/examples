@@ -91,6 +91,24 @@ type FlashMessagesController struct{}
 
 const flashSuccessExpiry = 5 * time.Second
 
+// nudgeFlashExpiry triggers a re-render at FlashExpiry's deadline.
+// FlashExpiry is render-driven (no background timer), so without a nudge
+// the expired flash sits in the DOM until the user's next interaction.
+// The pruner runs on the next render and removes the expired entry.
+//
+// The "refresh" action it dispatches is registered as a no-op handler on
+// each controller that calls this helper.
+func nudgeFlashExpiry(ctx *livetemplate.Context, expiry time.Duration) {
+	session := ctx.Session()
+	if session == nil {
+		return
+	}
+	go func() {
+		time.Sleep(expiry + 100*time.Millisecond)
+		_ = session.TriggerAction("refresh", nil)
+	}()
+}
+
 func (c *FlashMessagesController) Save(state FlashMessagesState, ctx *livetemplate.Context) (FlashMessagesState, error) {
 	name := strings.TrimSpace(ctx.GetString("name"))
 	if name == "" {
@@ -100,18 +118,7 @@ func (c *FlashMessagesController) Save(state FlashMessagesState, ctx *livetempla
 	}
 	ctx.ClearFlash("error")
 	ctx.SetFlash("success", "Saved: "+name, livetemplate.FlashExpiry(flashSuccessExpiry))
-
-	// FlashExpiry is render-driven (no background timer), so without a
-	// nudge the success flash would only disappear when the user next
-	// interacts. Schedule a server-side wake-up that triggers a re-render
-	// at the deadline; getMessages prunes the expired entry before
-	// snapshotting and the client sees the flash disappear on its own.
-	if session := ctx.Session(); session != nil {
-		go func() {
-			time.Sleep(flashSuccessExpiry + 100*time.Millisecond)
-			_ = session.TriggerAction("refresh", nil)
-		}()
-	}
+	nudgeFlashExpiry(ctx, flashSuccessExpiry)
 	return state, nil
 }
 

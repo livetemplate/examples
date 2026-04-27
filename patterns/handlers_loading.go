@@ -129,38 +129,46 @@ func lazyLoadingHandler(baseOpts []livetemplate.Option) http.Handler {
 // --- Pattern #15: Progress Bar ---
 
 // ProgressBarController drives a bounded goroutine that ticks progress from
-// 10% to 100% in 10% increments every 500ms. The goroutine exits cleanly if
-// session.TriggerAction returns an error (session disconnected) — this is the
-// canonical cancellation pattern documented in the Server Push pattern (#31).
+// 10% to 100% in 10% increments every 500ms. session.TriggerAction is
+// retried for ~5 seconds per tick when the session group has zero
+// connections, so brief mobile backgrounding (iOS app-switch under the
+// client's 3s visibility-reconnect threshold) doesn't lose ticks. The
+// retry budget is per-tick — a tick that never succeeds blocks for ~5s,
+// so the goroutine's worst-case lifetime under a permanent disconnect is
+// (progressTickRate + progressRetryWindow) × ceil((100-Progress)/progressStep),
+// bounded at ~55s for the full 10-tick run. The next Mount returns non-Running
+// state (Running is intentionally not persisted) and the user sees a
+// clean Start Job button.
 //
-// Reconnect semantics — why no OnConnect:
-// ProgressBarState has no `lvt:"persist"` struct tags, so `h.persistable == nil`
-// in the framework and `restorePersistedState` returns (nil, false). On every
-// WebSocket connect (including reconnects after a network blip), mount.go falls
-// through to `cloneStateTyped()` and produces fresh zero-value state
-// (Running=false, Done=false, Progress=0). The "stuck Running=true with no
-// goroutine" scenario therefore cannot occur — reconnecting always shows the
-// Start button again. LazyLoadController needs OnConnect because the spinner
-// vs. data swap is the *whole point* of that pattern; here the pattern is the
-// goroutine ticking the bar, and a mid-run disconnect simply ends that demo
-// (the user clicks Start again on the next page load).
+// No Mount-driven revival: a second goroutine spawned by Mount while the
+// retrying goroutine was still alive caused racing UpdateProgress writes
+// (one goroutine sets Done=true, the trailing one overwrites Progress
+// with a mid-flight value, producing impossible "Run Again at 70%" UI).
+// Likewise no OnConnect: the framework's restorePersistedState already
+// loads Progress/Done from the session-group store on every reconnect,
+// so manual hydration would be redundant and would re-introduce the
+// same race window.
+//
+// UpdateProgress also guards on state.Done as defense in depth.
 type ProgressBarController struct{}
 
+// Retry attempt count derives from window/delay so the ~5s total stays
+// consistent if either is tuned later. Both Duration operands are
+// constants and Go allows int(typedConst), so the whole trio remains
+// const — keeps the values immutable from test code.
 const (
-	progressStep     = 10
-	progressTickRate = 500 * time.Millisecond
+	progressStep        = 10
+	progressTickRate    = 500 * time.Millisecond
+	progressRetryDelay  = 100 * time.Millisecond
+	progressRetryWindow = 5 * time.Second
+
+	progressRetryAttempts = int(progressRetryWindow / progressRetryDelay)
 )
 
 func (c *ProgressBarController) Start(state ProgressBarState, ctx *livetemplate.Context) (ProgressBarState, error) {
-	// Per-session guard against double-click stacking two goroutines.
 	if state.Running {
 		return state, nil
 	}
-	// Check session BEFORE setting Running=true. With livetemplate v0.8.18+
-	// this is always non-nil, but if it ever became nil the previous
-	// ordering (mutate first, check second) would leave Running=true
-	// permanently and the Running guard above would block all subsequent
-	// Start clicks. Checking first ensures the UI stays interactive.
 	session := ctx.Session()
 	if session == nil {
 		return state, nil
@@ -168,27 +176,62 @@ func (c *ProgressBarController) Start(state ProgressBarState, ctx *livetemplate.
 	state.Running = true
 	state.Done = false
 	state.Progress = 0
-	go func() {
-		for i := progressStep; i <= 100; i += progressStep {
-			time.Sleep(progressTickRate)
-			if err := session.TriggerAction("updateProgress", map[string]any{
-				"progress": i,
-			}); err != nil {
-				return // Session disconnected — stop cleanly.
-			}
-		}
-	}()
+	c.spawnTicker(session)
 	return state, nil
 }
 
 func (c *ProgressBarController) UpdateProgress(state ProgressBarState, ctx *livetemplate.Context) (ProgressBarState, error) {
+	// Guard against stale ticks from a goroutine that was overtaken by a
+	// faster one (e.g. multi-tab race). Without this, a trailing goroutine
+	// could overwrite Progress to a mid-flight value AFTER another goroutine
+	// already set Done=true, producing an impossible "Run Again at 70%" UI.
+	if state.Done {
+		return state, nil
+	}
 	state.Progress = ctx.GetInt("progress")
 	if state.Progress >= 100 {
 		state.Running = false
 		state.Done = true
-		ctx.SetFlash("success", "Job complete")
+		ctx.SetFlash("success", "Job complete", livetemplate.FlashExpiry(flashSuccessExpiry))
+		nudgeFlashExpiry(ctx, flashSuccessExpiry)
 	}
 	return state, nil
+}
+
+func (c *ProgressBarController) Refresh(state ProgressBarState, ctx *livetemplate.Context) (ProgressBarState, error) {
+	return state, nil
+}
+
+// spawnTicker drives state.Progress 10..100. tickWithRetry survives a
+// ~5s window of dead WebSocket so brief mobile backgrounds don't end
+// the run; if the connection comes back within that window the timer
+// resumes seamlessly.
+func (c *ProgressBarController) spawnTicker(session livetemplate.Session) {
+	go func() {
+		for i := progressStep; i <= 100; i += progressStep {
+			time.Sleep(progressTickRate)
+			if err := tickWithRetry(session, i); err != nil {
+				return
+			}
+		}
+	}()
+}
+
+func tickWithRetry(session livetemplate.Session, progress int) error {
+	var lastErr error
+	for attempt := 0; attempt < progressRetryAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(progressRetryDelay)
+		}
+		err := session.TriggerAction("updateProgress", map[string]any{
+			"progress": progress,
+		})
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+	}
+	return lastErr
 }
 
 func progressBarHandler(baseOpts []livetemplate.Option) http.Handler {
@@ -282,13 +325,18 @@ func (c *AsyncOpsController) FetchResult(state AsyncOpsState, ctx *livetemplate.
 		state.Status = "success"
 		state.Result = ctx.GetString("result")
 		state.Error = ""
-		ctx.SetFlash("success", "Fetch complete")
+		ctx.SetFlash("success", "Fetch complete", livetemplate.FlashExpiry(flashSuccessExpiry))
+		nudgeFlashExpiry(ctx, flashSuccessExpiry)
 	} else {
 		state.Status = "error"
 		state.Error = ctx.GetString("error")
 		state.Result = ""
 		ctx.SetFlash("error", "Fetch failed")
 	}
+	return state, nil
+}
+
+func (c *AsyncOpsController) Refresh(state AsyncOpsState, ctx *livetemplate.Context) (AsyncOpsState, error) {
 	return state, nil
 }
 
