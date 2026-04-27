@@ -32,11 +32,8 @@ func startNotepadServer(t *testing.T) (int, *e2etest.SafeBuffer) {
 
 	portStr := fmt.Sprintf("%d", port)
 	cmd := exec.Command("go", "run", "main.go")
-	cmd.Env = append([]string{
-		"PORT=" + portStr,
-		"LVT_DEV_MODE=true",
-		"GOWORK=off",
-	}, os.Environ()...)
+	// LVT_DEV_MODE=true so the spawned process uses the local client library
+	cmd.Env = append(os.Environ(), "PORT="+portStr, "LVT_DEV_MODE=true", "GOWORK=off")
 
 	logs := e2etest.NewSafeBuffer()
 	cmd.Stdout = logs

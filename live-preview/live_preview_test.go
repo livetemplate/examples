@@ -35,7 +35,7 @@ func startServer(t *testing.T) (int, *e2etest.SafeBuffer) {
 
 	portStr := fmt.Sprintf("%d", port)
 	cmd := exec.Command("go", "run", "main.go")
-	cmd.Env = append([]string{"PORT=" + portStr}, cmd.Environ()...)
+	cmd.Env = append(os.Environ(), "PORT="+portStr)
 
 	logs := e2etest.NewSafeBuffer()
 	cmd.Stdout = logs

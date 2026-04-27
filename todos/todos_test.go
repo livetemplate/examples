@@ -53,11 +53,8 @@ func TestTodosE2E(t *testing.T) {
 
 	t.Logf("Starting test server on port %s", portStr)
 	serverCmd := exec.Command("go", "run", ".")
-	serverCmd.Env = append([]string{
-		"PORT=" + portStr,
-		"TEST_MODE=1",
-		"LVT_DEV_MODE=true", // Use local client library in tests
-	}, serverCmd.Environ()...)
+	// LVT_DEV_MODE=true so the spawned process uses the local client library
+	serverCmd.Env = append(os.Environ(), "PORT="+portStr, "TEST_MODE=1", "LVT_DEV_MODE=true")
 
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
@@ -1196,7 +1193,7 @@ func TestWebSocketBasic(t *testing.T) {
 
 	// Start server on dynamic port
 	cmd := exec.Command("go", "run", ".")
-	cmd.Env = append([]string{"PORT=" + portStr, "TEST_MODE=1"}, cmd.Environ()...)
+	cmd.Env = append(os.Environ(), "PORT="+portStr, "TEST_MODE=1")
 
 	serverLogs := e2etest.NewSafeBuffer()
 	cmd.Stdout = serverLogs
