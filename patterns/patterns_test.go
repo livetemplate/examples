@@ -1716,15 +1716,29 @@ func TestProgressBar(t *testing.T) {
 			t.Fatalf("Could not start the timer: %v", err)
 		}
 
-		// Three disconnect/reconnect cycles, each ~700ms. Within retry
-		// budget so the goroutine stays alive across them.
+		// Three disconnect/reconnect cycles. Each cycle: capture progress
+		// before, fire disconnect+connect back-to-back, wait for the
+		// reconnect to land, then wait for the goroutine to make further
+		// progress (or for the run to complete) before the next cycle —
+		// avoids fixed-duration sleeps that flake on slow CI.
 		for i := 0; i < 3; i++ {
-			err := chromedp.Run(ctx,
-				chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
-				chromedp.Sleep(300*time.Millisecond),
-				chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
+			var beforeProgress int
+			err := chromedp.Run(ctx, chromedp.Evaluate(
+				`(()=>{const p=document.querySelector('progress');return p?Number(p.value):0;})()`,
+				&beforeProgress,
+			))
+			if err != nil {
+				t.Fatalf("Cycle %d: could not read pre-cycle progress: %v", i, err)
+			}
+			err = chromedp.Run(ctx,
+				chromedp.Evaluate(`window.liveTemplateClient.disconnect(); window.liveTemplateClient.connect()`, nil),
 				e2etest.WaitForWebSocketReady(3*time.Second),
-				chromedp.Sleep(400*time.Millisecond),
+				e2etest.WaitFor(fmt.Sprintf(`(() => {
+					const btn = document.querySelector('button[name="start"]');
+					if (btn && btn.textContent.includes('Run Again')) return true;
+					const p = document.querySelector('progress');
+					return p && Number(p.value) > %d;
+				})()`, beforeProgress), 5*time.Second),
 			)
 			if err != nil {
 				t.Fatalf("Disconnect cycle %d failed: %v", i, err)
@@ -1778,10 +1792,9 @@ func TestProgressBar(t *testing.T) {
 			chromedp.WaitVisible(`button[name="start"]`, chromedp.ByQuery),
 			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
 			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
-			// Disconnect/reconnect after completion.
-			chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
-			chromedp.Sleep(500*time.Millisecond),
-			chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
+			// Disconnect+reconnect back-to-back; WaitForWebSocketReady
+			// synchronises on the new connection rather than a fixed sleep.
+			chromedp.Evaluate(`window.liveTemplateClient.disconnect(); window.liveTemplateClient.connect()`, nil),
 			e2etest.WaitForWebSocketReady(5*time.Second),
 			// Run Again must still be there.
 			e2etest.WaitForText(`button`, "Run Again", 5*time.Second),

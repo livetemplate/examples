@@ -141,15 +141,24 @@ func lazyLoadingHandler(baseOpts []livetemplate.Option) http.Handler {
 // retrying goroutine was still alive caused racing UpdateProgress writes
 // (one goroutine sets Done=true, the trailing one overwrites Progress
 // with a mid-flight value, producing impossible "Run Again at 70%" UI).
+// Likewise no OnConnect: the framework's restorePersistedState already
+// loads Progress/Done from the session-group store on every reconnect,
+// so manual hydration would be redundant and would re-introduce the
+// same race window.
+//
 // UpdateProgress also guards on state.Done as defense in depth.
 type ProgressBarController struct{}
 
 const (
-	progressStep         = 10
-	progressTickRate     = 500 * time.Millisecond
-	progressRetryDelay   = 100 * time.Millisecond
-	progressRetryBudget  = 50 // 50 × 100ms = 5s
+	progressStep        = 10
+	progressTickRate    = 500 * time.Millisecond
+	progressRetryDelay  = 100 * time.Millisecond
+	progressRetryWindow = 5 * time.Second
 )
+
+// progressRetryAttempts derives directly from the window/delay so the
+// "5s total" promise stays consistent if either is tuned later.
+var progressRetryAttempts = int(progressRetryWindow / progressRetryDelay)
 
 func (c *ProgressBarController) Start(state ProgressBarState, ctx *livetemplate.Context) (ProgressBarState, error) {
 	if state.Running {
@@ -205,7 +214,7 @@ func (c *ProgressBarController) spawnTicker(session livetemplate.Session) {
 
 func tickWithRetry(session livetemplate.Session, progress int) error {
 	var lastErr error
-	for attempt := 0; attempt < progressRetryBudget; attempt++ {
+	for attempt := 0; attempt < progressRetryAttempts; attempt++ {
 		if err := session.TriggerAction("updateProgress", map[string]any{
 			"progress": progress,
 		}); err == nil {
