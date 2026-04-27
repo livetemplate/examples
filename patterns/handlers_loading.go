@@ -135,8 +135,8 @@ func lazyLoadingHandler(baseOpts []livetemplate.Option) http.Handler {
 // client's 3s visibility-reconnect threshold) doesn't lose ticks. The
 // retry budget is per-tick — a tick that never succeeds blocks for ~5s,
 // so the goroutine's worst-case lifetime under a permanent disconnect is
-// progressRetryWindow × ceil((100-Progress)/progressStep), bounded at
-// ~50s for the full 10-tick run. The next Mount returns non-Running
+// (progressTickRate + progressRetryWindow) × ceil((100-Progress)/progressStep),
+// bounded at ~55s for the full 10-tick run. The next Mount returns non-Running
 // state (Running is intentionally not persisted) and the user sees a
 // clean Start Job button.
 //
@@ -152,16 +152,18 @@ func lazyLoadingHandler(baseOpts []livetemplate.Option) http.Handler {
 // UpdateProgress also guards on state.Done as defense in depth.
 type ProgressBarController struct{}
 
+// Retry attempt count derives from window/delay so the ~5s total stays
+// consistent if either is tuned later. Both Duration operands are
+// constants and Go allows int(typedConst), so the whole trio remains
+// const — keeps the values immutable from test code.
 const (
 	progressStep        = 10
 	progressTickRate    = 500 * time.Millisecond
 	progressRetryDelay  = 100 * time.Millisecond
 	progressRetryWindow = 5 * time.Second
-)
 
-// progressRetryAttempts derives directly from the window/delay so the
-// "5s total" promise stays consistent if either is tuned later.
-var progressRetryAttempts = int(progressRetryWindow / progressRetryDelay)
+	progressRetryAttempts = int(progressRetryWindow / progressRetryDelay)
+)
 
 func (c *ProgressBarController) Start(state ProgressBarState, ctx *livetemplate.Context) (ProgressBarState, error) {
 	if state.Running {
@@ -221,13 +223,13 @@ func tickWithRetry(session livetemplate.Session, progress int) error {
 		if attempt > 0 {
 			time.Sleep(progressRetryDelay)
 		}
-		if err := session.TriggerAction("updateProgress", map[string]any{
+		err := session.TriggerAction("updateProgress", map[string]any{
 			"progress": progress,
-		}); err == nil {
+		})
+		if err == nil {
 			return nil
-		} else {
-			lastErr = err
 		}
+		lastErr = err
 	}
 	return lastErr
 }
