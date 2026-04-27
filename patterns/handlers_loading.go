@@ -130,12 +130,15 @@ func lazyLoadingHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // ProgressBarController drives a bounded goroutine that ticks progress from
 // 10% to 100% in 10% increments every 500ms. session.TriggerAction is
-// retried for ~5 seconds when the session group has zero connections, so
-// brief mobile backgrounding (iOS app-switch under the client's 3s
-// visibility-reconnect threshold) doesn't lose ticks. After the retry
-// window expires, the goroutine exits — the next Mount returns
-// non-Running state (Running is intentionally not persisted) and the
-// user sees a clean Start Job button.
+// retried for ~5 seconds per tick when the session group has zero
+// connections, so brief mobile backgrounding (iOS app-switch under the
+// client's 3s visibility-reconnect threshold) doesn't lose ticks. The
+// retry budget is per-tick — a tick that never succeeds blocks for ~5s,
+// so the goroutine's worst-case lifetime under a permanent disconnect is
+// progressRetryWindow × ceil((100-Progress)/progressStep), bounded at
+// ~50s for the full 10-tick run. The next Mount returns non-Running
+// state (Running is intentionally not persisted) and the user sees a
+// clean Start Job button.
 //
 // No Mount-driven revival: a second goroutine spawned by Mount while the
 // retrying goroutine was still alive caused racing UpdateProgress writes

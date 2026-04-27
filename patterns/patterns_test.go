@@ -1623,7 +1623,11 @@ func TestProgressBar(t *testing.T) {
 			// visibility-reconnect path uses, so the server treats it
 			// identically to an iOS-killed connection.
 			chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
-			// Reconnect within ~1s — well inside the 5s retry budget.
+			// Wall-clock sleep: we're deliberately leaving the connection
+			// down inside the goroutine's 5s retry window to verify it
+			// survives the gap. There's no client-observable signal
+			// during the retry loop (the goroutine's TriggerAction errors
+			// silently), so a condition-based wait wouldn't fit here.
 			chromedp.Sleep(1*time.Second),
 			chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
 			e2etest.WaitForWebSocketReady(5*time.Second),
