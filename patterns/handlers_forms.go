@@ -187,11 +187,16 @@ func (c *FileUploadController) Upload(state FileUploadState, ctx *livetemplate.C
 			entries := ctx.GetCompletedUploads(name)
 			if len(entries) > 0 {
 				ctx.SetFlash("success", "Uploaded: "+entries[0].ClientName, livetemplate.FlashExpiry(flashSuccessExpiry))
+				nudgeFlashExpiry(ctx, flashSuccessExpiry)
 				return state, nil
 			}
 		}
 	}
 	ctx.SetFlash("error", "No file selected")
+	return state, nil
+}
+
+func (c *FileUploadController) Refresh(state FileUploadState, ctx *livetemplate.Context) (FileUploadState, error) {
 	return state, nil
 }
 
@@ -226,6 +231,11 @@ func (c *PreserveInputsController) Submit(state PreserveInputsState, ctx *livete
 		return state, err
 	}
 	ctx.SetFlash("success", "Saved: "+state.Name, livetemplate.FlashExpiry(flashSuccessExpiry))
+	nudgeFlashExpiry(ctx, flashSuccessExpiry)
+	return state, nil
+}
+
+func (c *PreserveInputsController) Refresh(state PreserveInputsState, ctx *livetemplate.Context) (PreserveInputsState, error) {
 	return state, nil
 }
 

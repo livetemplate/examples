@@ -1607,6 +1607,190 @@ func TestProgressBar(t *testing.T) {
 		}
 	})
 
+	t.Run("Brief_Disconnect_Within_Retry_Window_Completes", func(t *testing.T) {
+		// Reload to clean state. Click Start. Once the timer is mid-flight,
+		// force-disconnect the WebSocket via the client's public API. The
+		// server-side ticker will retry session.TriggerAction for ~5s; if we
+		// reconnect within that window, the timer must continue and
+		// complete to 100%.
+		err := chromedp.Run(ctx,
+			chromedp.Reload(),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="start"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value >= 20`, 3*time.Second),
+			// Force-disconnect; this is the same disconnect() the
+			// visibility-reconnect path uses, so the server treats it
+			// identically to an iOS-killed connection.
+			chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
+			// Reconnect within ~1s — well inside the 5s retry budget.
+			chromedp.Sleep(1*time.Second),
+			chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			// Run continues. Wait for completion.
+			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Brief-disconnect run did not complete: %v", err)
+		}
+	})
+
+	t.Run("Long_Disconnect_Beyond_Retry_Window_Settles_Without_Impossible_State", func(t *testing.T) {
+		// Reload to clean state. Click Start. Mid-flight, disconnect for
+		// 7s — past the goroutine's 5s retry budget. The goroutine must
+		// give up; on reconnect the page must NOT display a corrupted
+		// state (Done=true with Progress<100, or Running=true with no
+		// goroutine to advance it). Acceptable settled states: clean
+		// "Start Job" button (Running=false, Done=false) OR completed
+		// "Run Again" with Progress=100.
+		err := chromedp.Run(ctx,
+			chromedp.Reload(),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="start"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value >= 20`, 3*time.Second),
+			chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
+			// chromedp.Sleep is intentional — we're waiting wall-clock
+			// for the goroutine's 5s retry budget to expire.
+			chromedp.Sleep(7*time.Second),
+			chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			// Wait for a stable settled state.
+			e2etest.WaitFor(`(() => {
+				const btn = document.querySelector('button[name="start"]');
+				if (!btn) return false;
+				return btn.textContent.includes('Start Job') || btn.textContent.includes('Run Again');
+			})()`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Long-disconnect run did not settle: %v", err)
+		}
+
+		// Invariant: if "Run Again" is shown (Done=true), progress must be 100.
+		// If "Start Job" is shown (Running=false, Done=false), no progress
+		// element should be present.
+		var settled struct {
+			HasRunAgain bool `json:"hasRunAgain"`
+			HasStartJob bool `json:"hasStartJob"`
+			HasProgress bool `json:"hasProgress"`
+			ProgressVal int  `json:"progressVal"`
+		}
+		err = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+			const btn = document.querySelector('button[name="start"]');
+			const p = document.querySelector('progress');
+			return {
+				hasRunAgain: btn && btn.textContent.includes('Run Again'),
+				hasStartJob: btn && btn.textContent.includes('Start Job'),
+				hasProgress: !!p,
+				progressVal: p ? Number(p.value) : 0,
+			};
+		})()`, &settled))
+		if err != nil {
+			t.Fatalf("Could not read settled state: %v", err)
+		}
+		if settled.HasRunAgain && settled.ProgressVal != 100 {
+			t.Errorf("Impossible state: Run Again button shown but progress=%d (must be 100)", settled.ProgressVal)
+		}
+		if settled.HasStartJob && settled.HasProgress {
+			t.Errorf("Impossible state: Start Job button shown but progress element still present")
+		}
+		if !settled.HasRunAgain && !settled.HasStartJob {
+			t.Error("Impossible state: neither Run Again nor Start Job button shown after long disconnect")
+		}
+	})
+
+	t.Run("Multiple_Disconnect_Cycles_Never_Produce_Impossible_State", func(t *testing.T) {
+		// Run Again, then disconnect/reconnect rapidly several times during
+		// the run. After settled, verify the same invariant: Done=true →
+		// Progress=100. This is the regression test for the bug where Mount
+		// revival spawned a competing goroutine that overwrote Progress with
+		// a stale value AFTER another goroutine had set Done=true.
+		err := chromedp.Run(ctx,
+			chromedp.Reload(),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="start"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('progress') && document.querySelector('progress').value >= 10`, 3*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Could not start the timer: %v", err)
+		}
+
+		// Three disconnect/reconnect cycles, each ~700ms. Within retry
+		// budget so the goroutine stays alive across them.
+		for i := 0; i < 3; i++ {
+			err := chromedp.Run(ctx,
+				chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
+				chromedp.Sleep(300*time.Millisecond),
+				chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
+				e2etest.WaitForWebSocketReady(3*time.Second),
+				chromedp.Sleep(400*time.Millisecond),
+			)
+			if err != nil {
+				t.Fatalf("Disconnect cycle %d failed: %v", i, err)
+			}
+		}
+
+		// Wait for a stable final state.
+		err = chromedp.Run(ctx,
+			e2etest.WaitFor(`(() => {
+				const btn = document.querySelector('button[name="start"]');
+				if (!btn) return false;
+				return btn.textContent.includes('Start Job') || btn.textContent.includes('Run Again');
+			})()`, 15*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Did not settle after disconnect cycles: %v", err)
+		}
+
+		var settled struct {
+			HasRunAgain bool `json:"hasRunAgain"`
+			HasStartJob bool `json:"hasStartJob"`
+			ProgressVal int  `json:"progressVal"`
+		}
+		err = chromedp.Run(ctx, chromedp.Evaluate(`(() => {
+			const btn = document.querySelector('button[name="start"]');
+			const p = document.querySelector('progress');
+			return {
+				hasRunAgain: btn && btn.textContent.includes('Run Again'),
+				hasStartJob: btn && btn.textContent.includes('Start Job'),
+				progressVal: p ? Number(p.value) : 0,
+			};
+		})()`, &settled))
+		if err != nil {
+			t.Fatalf("Could not read settled state: %v", err)
+		}
+		// The core invariant: if the UI advertises completion (Run Again
+		// button), progress must be a true 100. The screenshot reproducer
+		// for this bug showed Run Again next to a 70% bar.
+		if settled.HasRunAgain && settled.ProgressVal != 100 {
+			t.Errorf("Impossible state after disconnect cycles: Run Again button shown but progress=%d", settled.ProgressVal)
+		}
+	})
+
+	t.Run("Done_State_Survives_Reconnect_Via_Persist", func(t *testing.T) {
+		// Progress and Done are lvt:"persist" — a completed run must stay
+		// completed across a disconnect/reconnect cycle. The user keeps the
+		// "Run Again" button rather than snapping back to Start Job.
+		err := chromedp.Run(ctx,
+			chromedp.Reload(),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`button[name="start"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="start"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`button`, "Run Again", 10*time.Second),
+			// Disconnect/reconnect after completion.
+			chromedp.Evaluate(`window.liveTemplateClient.disconnect()`, nil),
+			chromedp.Sleep(500*time.Millisecond),
+			chromedp.Evaluate(`window.liveTemplateClient.connect()`, nil),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			// Run Again must still be there.
+			e2etest.WaitForText(`button`, "Run Again", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Done state did not persist across reconnect: %v", err)
+		}
+	})
+
 	runStandardSubtests(t, ctx, false, "Progress Bar — completed state showing a full progress bar, a 'Job complete' success flash below it, and a 'Run Again' button")
 }
 
