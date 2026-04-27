@@ -186,7 +186,7 @@ func (c *ProgressBarController) UpdateProgress(state ProgressBarState, ctx *live
 	if state.Progress >= 100 {
 		state.Running = false
 		state.Done = true
-		ctx.SetFlash("success", "Job complete")
+		ctx.SetFlash("success", "Job complete", livetemplate.FlashExpiry(flashSuccessExpiry))
 	}
 	return state, nil
 }
@@ -282,7 +282,7 @@ func (c *AsyncOpsController) FetchResult(state AsyncOpsState, ctx *livetemplate.
 		state.Status = "success"
 		state.Result = ctx.GetString("result")
 		state.Error = ""
-		ctx.SetFlash("success", "Fetch complete")
+		ctx.SetFlash("success", "Fetch complete", livetemplate.FlashExpiry(flashSuccessExpiry))
 	} else {
 		state.Status = "error"
 		state.Error = ctx.GetString("error")

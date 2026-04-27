@@ -186,7 +186,7 @@ func (c *FileUploadController) Upload(state FileUploadState, ctx *livetemplate.C
 		if ctx.HasUploads(name) {
 			entries := ctx.GetCompletedUploads(name)
 			if len(entries) > 0 {
-				ctx.SetFlash("success", "Uploaded: "+entries[0].ClientName)
+				ctx.SetFlash("success", "Uploaded: "+entries[0].ClientName, livetemplate.FlashExpiry(flashSuccessExpiry))
 				return state, nil
 			}
 		}
@@ -225,7 +225,7 @@ func (c *PreserveInputsController) Submit(state PreserveInputsState, ctx *livete
 	if err := ctx.ValidateForm(); err != nil {
 		return state, err
 	}
-	ctx.SetFlash("success", "Saved: "+state.Name)
+	ctx.SetFlash("success", "Saved: "+state.Name, livetemplate.FlashExpiry(flashSuccessExpiry))
 	return state, nil
 }
 
