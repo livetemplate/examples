@@ -275,7 +275,7 @@ func TestWebSocketBasic(t *testing.T) {
 
 	// Start server on dynamic port
 	cmd := exec.Command("go", "run", "main.go")
-	cmd.Env = append([]string{"PORT=" + portStr}, cmd.Environ()...)
+	cmd.Env = append(os.Environ(), "PORT="+portStr)
 
 	serverLogs := e2etest.NewSafeBuffer()
 	cmd.Stdout = serverLogs

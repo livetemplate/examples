@@ -263,10 +263,8 @@ func TestLoginHTTPCookie(t *testing.T) {
 	// Start server on dynamic port
 	cmd := exec.Command("go", "run", "main.go")
 	cmd.Dir = "."
-	cmd.Env = append([]string{
-		"PORT=" + portStr,
-		"LVT_DEV_MODE=true",
-	}, os.Environ()...)
+	// LVT_DEV_MODE=true so the spawned process uses the local client library
+	cmd.Env = append(os.Environ(), "PORT="+portStr, "LVT_DEV_MODE=true")
 
 	serverLogs := e2etest.NewSafeBuffer()
 	cmd.Stdout = serverLogs
