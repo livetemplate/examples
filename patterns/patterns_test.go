@@ -1137,6 +1137,199 @@ func TestValueSelect(t *testing.T) {
 	})
 }
 
+// --- Sortable List ---
+
+func TestSortable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/sortable"
+
+	// CDP Input.dispatchMouseEvent is unreliable for HTML5 DnD in headless
+	// Docker Chrome, so we dispatch real DragEvent objects with a shared
+	// DataTransfer instead. This still exercises the full client
+	// delegation pipeline — not a liveTemplateClient.send() shortcut.
+	simulateDrag := func(srcKey, tgtKey string) chromedp.Action {
+		js := fmt.Sprintf(`
+			(() => {
+				const src = document.querySelector('#sortable-list li[data-key=%q]');
+				const tgt = document.querySelector('#sortable-list li[data-key=%q]');
+				if (!src || !tgt) throw new Error('source or target not found');
+				const dt = new DataTransfer();
+				src.dispatchEvent(new DragEvent('dragstart', {bubbles:true, cancelable:true, dataTransfer:dt}));
+				tgt.dispatchEvent(new DragEvent('dragover',  {bubbles:true, cancelable:true, dataTransfer:dt}));
+				tgt.dispatchEvent(new DragEvent('drop',      {bubbles:true, cancelable:true, dataTransfer:dt}));
+			})()
+		`, srcKey, tgtKey)
+		return chromedp.Evaluate(js, nil)
+	}
+
+	// Reset the demo's shared in-memory order at the start. The controller's
+	// state is process-wide so other tests (or a previous run of this test
+	// in dev) could leave the list reordered.
+	t.Run("Initial_Reset", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`#sortable-list`, chromedp.ByQuery),
+			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
+			e2etest.WaitForCount(`#sortable-list li[data-key]`, 6, 5*time.Second),
+			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
+			e2etest.WaitFor(
+				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-1'`,
+				5*time.Second,
+			),
+		)
+		if err != nil {
+			t.Fatalf("Failed to load + reset: %v", err)
+		}
+	})
+
+	runStandardSubtests(t, ctx, false, "Sortable List — six task items each with a hamburger drag handle, in default order, plus a Reset Order button")
+
+	// resetToInitial restores the canonical task-1..task-6 order so each
+	// reorder subtest starts from a known state and doesn't depend on the
+	// previous one's outcome.
+	resetToInitial := chromedp.Tasks{
+		chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
+		e2etest.WaitFor(
+			`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-1' && document.querySelectorAll('#sortable-list li')[5].dataset.key === 'task-6'`,
+			5*time.Second,
+		),
+	}
+
+	t.Run("Reorder_DragForward", func(t *testing.T) {
+		// Initial: [task-1, task-2, task-3, task-4, task-5, task-6]
+		// Drag task-1 onto task-3 with insert-before-target semantics:
+		// task-1 is removed from index 0, the post-removal target index of
+		// task-3 is 1, and task-1 is inserted at index 1.
+		// Expected:  [task-2, task-1, task-3, task-4, task-5, task-6]
+		var order string
+		err := chromedp.Run(ctx,
+			resetToInitial,
+			simulateDrag("task-1", "task-3"),
+			e2etest.WaitFor(
+				`document.querySelectorAll('#sortable-list li')[1].dataset.key === 'task-1'`,
+				5*time.Second,
+			),
+			chromedp.Evaluate(
+				`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+				&order,
+			),
+		)
+		if err != nil {
+			t.Fatalf("Forward drag failed: %v", err)
+		}
+		want := "task-2,task-1,task-3,task-4,task-5,task-6"
+		if order != want {
+			t.Errorf("Order after forward drag: got %q, want %q", order, want)
+		}
+	})
+
+	t.Run("Reorder_DragBackward", func(t *testing.T) {
+		// Initial: [task-1, task-2, task-3, task-4, task-5, task-6]
+		// Drag task-6 onto task-2: task-6 is removed from index 5, no
+		// post-removal index adjustment (srcIdx > tgtIdx), task-6 inserted
+		// at task-2's index 1.
+		// Expected: [task-1, task-6, task-2, task-3, task-4, task-5]
+		var order string
+		err := chromedp.Run(ctx,
+			resetToInitial,
+			simulateDrag("task-6", "task-2"),
+			e2etest.WaitFor(
+				`document.querySelectorAll('#sortable-list li')[1].dataset.key === 'task-6'`,
+				5*time.Second,
+			),
+			chromedp.Evaluate(
+				`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+				&order,
+			),
+		)
+		if err != nil {
+			t.Fatalf("Backward drag failed: %v", err)
+		}
+		want := "task-1,task-6,task-2,task-3,task-4,task-5"
+		if order != want {
+			t.Errorf("Order after backward drag: got %q, want %q", order, want)
+		}
+	})
+
+	t.Run("SelfDrop_NoOp", func(t *testing.T) {
+		// The controller short-circuits when source == target, so no diff
+		// is emitted. We can't condition-wait on a state that should NOT
+		// change, so we wait long enough for any spurious server-side
+		// reorder to round-trip (~500ms) and assert order is unchanged.
+		var orderBefore string
+		if err := chromedp.Run(ctx,
+			resetToInitial,
+			chromedp.Evaluate(
+				`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+				&orderBefore,
+			),
+		); err != nil {
+			t.Fatalf("Failed to read order before self-drop: %v", err)
+		}
+
+		firstKey := strings.Split(orderBefore, ",")[0]
+		if err := chromedp.Run(ctx, simulateDrag(firstKey, firstKey)); err != nil {
+			t.Fatalf("Self-drop dispatch failed: %v", err)
+		}
+
+		// time.Sleep (Go-side) is fine for negative assertions — the
+		// CLAUDE.md "no chromedp.Sleep" rule is about browser-side waits
+		// that hide timing bugs in positive assertions. 1s gives loaded
+		// CI runners headroom for any spurious server-side reorder to
+		// round-trip and surface in the assertion below.
+		time.Sleep(1 * time.Second)
+
+		var orderAfter string
+		if err := chromedp.Run(ctx, chromedp.Evaluate(
+			`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+			&orderAfter,
+		)); err != nil {
+			t.Fatalf("Failed to read order after self-drop: %v", err)
+		}
+		if orderAfter != orderBefore {
+			t.Errorf("Self-drop changed order: was %q, now %q", orderBefore, orderAfter)
+		}
+	})
+
+	t.Run("Reset_RestoresInitialOrder", func(t *testing.T) {
+		// Scramble first so Reset has something to undo. Without this
+		// step the assertion would pass trivially when the list happened
+		// to already be in initial order.
+		var order string
+		err := chromedp.Run(ctx,
+			resetToInitial,
+			simulateDrag("task-3", "task-1"),
+			e2etest.WaitFor(
+				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-3'`,
+				5*time.Second,
+			),
+			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
+			e2etest.WaitFor(
+				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-1' && document.querySelectorAll('#sortable-list li')[5].dataset.key === 'task-6'`,
+				5*time.Second,
+			),
+			chromedp.Evaluate(
+				`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+				&order,
+			),
+		)
+		if err != nil {
+			t.Fatalf("Reset failed: %v", err)
+		}
+		want := "task-1,task-2,task-3,task-4,task-5,task-6"
+		if order != want {
+			t.Errorf("Order after reset: got %q, want %q", order, want)
+		}
+	})
+}
+
 // --- Pattern #12: Active Search ---
 
 func TestActiveSearch(t *testing.T) {

@@ -172,3 +172,86 @@ func infiniteScrollHandler(baseOpts []livetemplate.Option) http.Handler {
 		HasMore:     true,
 	}))
 }
+
+// --- Sortable List ---
+
+// SortableController holds the list ordering process-wide so it persists across reloads (live multi-tab sync would need Sync()).
+type SortableController struct {
+	mu    sync.Mutex
+	items []SortableItem
+}
+
+func newSortableController() *SortableController {
+	return &SortableController{items: initialSortableItems()}
+}
+
+func (c *SortableController) snapshot() []SortableItem {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.items)
+}
+
+func (c *SortableController) Mount(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
+	state.Items = c.snapshot()
+	return state, nil
+}
+
+// Reorder reads dragSourceKey / dragTargetKey (injected by livetemplate/client from the source/target data-key) and always repopulates state.Items from the locked snapshot — the framework-provided value is per-session and may lag the shared ordering.
+func (c *SortableController) Reorder(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
+	src := ctx.GetString("dragSourceKey")
+	tgt := ctx.GetString("dragTargetKey")
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if src == "" || tgt == "" || src == tgt {
+		state.Items = slices.Clone(c.items)
+		return state, nil
+	}
+
+	srcIdx, tgtIdx := -1, -1
+	for i, it := range c.items {
+		if it.Key == src {
+			srcIdx = i
+		}
+		if it.Key == tgt {
+			tgtIdx = i
+		}
+		if srcIdx >= 0 && tgtIdx >= 0 {
+			break
+		}
+	}
+	if srcIdx < 0 || tgtIdx < 0 {
+		state.Items = slices.Clone(c.items)
+		return state, nil
+	}
+
+	moved := c.items[srcIdx]
+	c.items = slices.Delete(c.items, srcIdx, srcIdx+1)
+	if srcIdx < tgtIdx {
+		tgtIdx--
+	}
+	c.items = slices.Insert(c.items, tgtIdx, moved)
+
+	state.Items = slices.Clone(c.items)
+	return state, nil
+}
+
+func (c *SortableController) Reset(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items = initialSortableItems()
+	state.Items = slices.Clone(c.items)
+	return state, nil
+}
+
+func sortableHandler(baseOpts []livetemplate.Option) http.Handler {
+	opts := append(slices.Clone(baseOpts),
+		livetemplate.WithParseFiles("templates/layout.tmpl", "templates/lists/sortable.tmpl"),
+	)
+	tmpl := livetemplate.Must(livetemplate.New("layout", opts...))
+	return tmpl.Handle(newSortableController(), livetemplate.AsState(&SortableState{
+		Title:    "Sortable List",
+		Category: "Lists & Data",
+	}))
+}

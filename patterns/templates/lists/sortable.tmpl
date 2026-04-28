@@ -1,0 +1,25 @@
+{{define "content"}}
+<article>
+    <hgroup>
+        <h3>Sortable List</h3>
+        <p><small>Drag any row to reorder (mouse only; no keyboard path or visual drop-zone highlighting in this demo). The new order persists across reloads. Use Reset Order to restore the initial sequence.</small></p>
+    </hgroup>
+    <p id="sortable-list-desc" class="visually-hidden">Use a mouse to drag items. Keyboard reordering is not supported in this demo.</p>
+    <ul id="sortable-list"
+        aria-label="Reorderable task list"
+        aria-describedby="sortable-list-desc">
+    {{range .Items}}
+        <li data-key="{{.Key}}"
+            draggable="true"
+            lvt-on:dragstart=""
+            lvt-on:dragover=""
+            lvt-on:drop="reorder">
+            <span aria-hidden="true">&#9776;</span> {{.Name}}
+        </li>
+    {{end}}
+    </ul>
+    <form method="POST">
+        <button name="reset" class="secondary outline">Reset Order</button>
+    </form>
+</article>
+{{end}}

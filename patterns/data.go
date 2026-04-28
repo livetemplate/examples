@@ -103,6 +103,17 @@ func pageSlice(dataset []Item, page, size int) []Item {
 	return slices.Clone(dataset[start:end])
 }
 
+func initialSortableItems() []SortableItem {
+	return []SortableItem{
+		{Key: "task-1", Name: "Design wireframes"},
+		{Key: "task-2", Name: "Write API spec"},
+		{Key: "task-3", Name: "Implement backend"},
+		{Key: "task-4", Name: "Build frontend"},
+		{Key: "task-5", Name: "Write tests"},
+		{Key: "task-6", Name: "Deploy to staging"},
+	}
+}
+
 // carMakes maps car makes to their model lists. Used by Value Select to
 // demonstrate cascading dependent selects.
 var carMakes = map[string][]string{
@@ -246,6 +257,7 @@ func allPatterns() []PatternCategory {
 				{Name: "Click To Load", Path: "/patterns/lists/click-to-load", Description: "Append-only pagination", Implemented: true},
 				{Name: "Infinite Scroll", Path: "/patterns/lists/infinite-scroll", Description: "Auto-load on scroll with IntersectionObserver", Implemented: true},
 				{Name: "Value Select", Path: "/patterns/lists/value-select", Description: "Cascading dependent selects", Implemented: true},
+				{Name: "Sortable List", Path: "/patterns/lists/sortable", Description: "Drag-and-drop reordering with native HTML5 drag events", Implemented: true},
 			},
 		},
 		{

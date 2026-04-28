@@ -34,3 +34,14 @@ type ValueSelectState struct {
 	Make     string
 	Model    string
 }
+
+type SortableState struct {
+	Title    string
+	Category string
+	Items    []SortableItem
+}
+
+type SortableItem struct {
+	Key  string
+	Name string
+}

@@ -74,11 +74,12 @@ func main() {
 	mux.Handle("/patterns/forms/file-upload", fileUploadHandler(baseOpts))
 	mux.Handle("/patterns/forms/preserve-inputs", preserveInputsHandler(baseOpts))
 
-	// Category: Lists & Data (#8–#11)
+	// Category: Lists & Data
 	mux.Handle("/patterns/lists/delete-row", deleteRowHandler(baseOpts))
 	mux.Handle("/patterns/lists/click-to-load", clickToLoadHandler(baseOpts))
 	mux.Handle("/patterns/lists/infinite-scroll", infiniteScrollHandler(baseOpts))
 	mux.Handle("/patterns/lists/value-select", valueSelectHandler(baseOpts))
+	mux.Handle("/patterns/lists/sortable", sortableHandler(baseOpts))
 
 	// Category: Search & Filtering (#12–#13)
 	mux.Handle("/patterns/search/active-search", activeSearchHandler(baseOpts))
