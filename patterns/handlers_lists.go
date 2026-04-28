@@ -172,3 +172,92 @@ func infiniteScrollHandler(baseOpts []livetemplate.Option) http.Handler {
 		HasMore:     true,
 	}))
 }
+
+// --- Pattern #12: Sortable List ---
+
+// SortableController shares an in-memory ordering across all sessions
+// (mirrors DeleteRowController's pattern) so reorders persist across
+// reloads and across browser tabs. This makes the "open two tabs and
+// drag in one" multi-user broadcast story work without any extra wiring.
+type SortableController struct {
+	mu    sync.Mutex
+	items []SortableItem
+}
+
+func newSortableController() *SortableController {
+	return &SortableController{items: initialSortableItems()}
+}
+
+func (c *SortableController) snapshot() []SortableItem {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.items)
+}
+
+func (c *SortableController) Mount(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
+	state.Items = c.snapshot()
+	return state, nil
+}
+
+// Reorder handles a drag-and-drop reorder. The client-side drag handler
+// puts the dragged item's data-key into ctx as "dragSourceKey" and the
+// drop target's data-key as "dragTargetKey".
+//
+// Algorithm: remove source by index, then insert before target's
+// (post-removal) index. Self-drop, missing keys, and unknown keys are
+// no-ops — important because cross-app drags or stale page state can
+// land here with values we don't recognize.
+func (c *SortableController) Reorder(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
+	src := ctx.GetString("dragSourceKey")
+	tgt := ctx.GetString("dragTargetKey")
+	if src == "" || tgt == "" || src == tgt {
+		return state, nil
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	srcIdx, tgtIdx := -1, -1
+	for i, it := range c.items {
+		if it.Key == src {
+			srcIdx = i
+		}
+		if it.Key == tgt {
+			tgtIdx = i
+		}
+	}
+	if srcIdx < 0 || tgtIdx < 0 {
+		return state, nil
+	}
+
+	moved := c.items[srcIdx]
+	c.items = slices.Delete(c.items, srcIdx, srcIdx+1)
+	if srcIdx < tgtIdx {
+		tgtIdx--
+	}
+	c.items = slices.Insert(c.items, tgtIdx, moved)
+
+	state.Items = slices.Clone(c.items)
+	return state, nil
+}
+
+// Reset restores the demo's initial ordering — wired to a button so
+// visitors can put the list back without restarting the server.
+func (c *SortableController) Reset(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
+	c.mu.Lock()
+	c.items = initialSortableItems()
+	c.mu.Unlock()
+	state.Items = c.snapshot()
+	return state, nil
+}
+
+func sortableHandler(baseOpts []livetemplate.Option) http.Handler {
+	opts := append(slices.Clone(baseOpts),
+		livetemplate.WithParseFiles("templates/layout.tmpl", "templates/lists/sortable.tmpl"),
+	)
+	tmpl := livetemplate.Must(livetemplate.New("layout", opts...))
+	return tmpl.Handle(newSortableController(), livetemplate.AsState(&SortableState{
+		Title:    "Sortable List",
+		Category: "Lists & Data",
+	}))
+}
