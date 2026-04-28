@@ -1281,8 +1281,10 @@ func TestSortable(t *testing.T) {
 
 		// time.Sleep (Go-side) is fine for negative assertions — the
 		// CLAUDE.md "no chromedp.Sleep" rule is about browser-side waits
-		// that hide timing bugs in positive assertions.
-		time.Sleep(500 * time.Millisecond)
+		// that hide timing bugs in positive assertions. 1s gives loaded
+		// CI runners headroom for any spurious server-side reorder to
+		// round-trip and surface in the assertion below.
+		time.Sleep(1 * time.Second)
 
 		var orderAfter string
 		if err := chromedp.Run(ctx, chromedp.Evaluate(

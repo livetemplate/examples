@@ -199,13 +199,11 @@ func (c *SortableController) Mount(state SortableState, ctx *livetemplate.Contex
 	return state, nil
 }
 
-// Reorder reads the drag pair from ctx — "dragSourceKey" and "dragTargetKey"
-// are injected by the client's drop handler from the dragged item's
-// data-key and the drop target's data-key, respectively. Missing/unknown/
-// equal keys are no-ops so cross-app drags and stale page state can't
-// corrupt the list. Every return path populates state.Items from the
-// authoritative snapshot — never the framework-provided value, which
-// could be stale relative to the live shared ordering.
+// Reorder reads the drag pair from ctx ("dragSourceKey", "dragTargetKey").
+// Every return path repopulates state.Items from the locked snapshot —
+// the framework-provided value is per-session and may lag the shared
+// ordering, so trusting it on early-exit paths could overwrite the
+// rendered list with stale data.
 func (c *SortableController) Reorder(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
 	src := ctx.GetString("dragSourceKey")
 	tgt := ctx.GetString("dragTargetKey")
