@@ -41,8 +41,6 @@ type SortableState struct {
 	Items    []SortableItem
 }
 
-// Key is wired to data-key in the template — the stable identity the
-// diff engine and the drag-and-drop client use to track which item moved.
 type SortableItem struct {
 	Key  string
 	Name string

@@ -1297,13 +1297,20 @@ func TestSortable(t *testing.T) {
 	})
 
 	t.Run("Reset_RestoresInitialOrder", func(t *testing.T) {
-		// After all the prior reorders, hit Reset and assert order is
-		// back to task-1..task-6.
+		// Scramble first so Reset has something to undo. Without this
+		// step the assertion would pass trivially when the list happened
+		// to already be in initial order.
 		var order string
 		err := chromedp.Run(ctx,
+			resetToInitial,
+			simulateDrag("task-3", "task-1"),
+			e2etest.WaitFor(
+				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-3'`,
+				5*time.Second,
+			),
 			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
 			e2etest.WaitFor(
-				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-1'`,
+				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-1' && document.querySelectorAll('#sortable-list li')[5].dataset.key === 'task-6'`,
 				5*time.Second,
 			),
 			chromedp.Evaluate(

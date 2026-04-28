@@ -203,16 +203,20 @@ func (c *SortableController) Mount(state SortableState, ctx *livetemplate.Contex
 // are injected by the client's drop handler from the dragged item's
 // data-key and the drop target's data-key, respectively. Missing/unknown/
 // equal keys are no-ops so cross-app drags and stale page state can't
-// corrupt the list.
+// corrupt the list. Every return path populates state.Items from the
+// authoritative snapshot — never the framework-provided value, which
+// could be stale relative to the live shared ordering.
 func (c *SortableController) Reorder(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
 	src := ctx.GetString("dragSourceKey")
 	tgt := ctx.GetString("dragTargetKey")
-	if src == "" || tgt == "" || src == tgt {
-		return state, nil
-	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if src == "" || tgt == "" || src == tgt {
+		state.Items = slices.Clone(c.items)
+		return state, nil
+	}
 
 	srcIdx, tgtIdx := -1, -1
 	for i, it := range c.items {
@@ -227,6 +231,7 @@ func (c *SortableController) Reorder(state SortableState, ctx *livetemplate.Cont
 		}
 	}
 	if srcIdx < 0 || tgtIdx < 0 {
+		state.Items = slices.Clone(c.items)
 		return state, nil
 	}
 
