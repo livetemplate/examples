@@ -8,8 +8,8 @@
     {{range .Items}}
         <li data-key="{{.Key}}"
             draggable="true"
-            lvt-on:dragstart="reorder"
-            lvt-on:dragover="reorder" lvt-mod:throttle="100"
+            lvt-on:dragstart=""
+            lvt-on:dragover=""
             lvt-on:drop="reorder">
             <span aria-hidden="true">&#9776;</span> {{.Name}}
         </li>
