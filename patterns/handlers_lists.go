@@ -175,10 +175,7 @@ func infiniteScrollHandler(baseOpts []livetemplate.Option) http.Handler {
 
 // --- Sortable List ---
 
-// SortableController shares the list ordering across all sessions via
-// a process-wide mutex-protected slice, so reorders persist across
-// reloads and across tabs on next refresh. (Live multi-tab sync would
-// require Sync() / BroadcastAction — out of scope for this demo.)
+// SortableController holds the list ordering process-wide so it persists across reloads (live multi-tab sync would need Sync()).
 type SortableController struct {
 	mu    sync.Mutex
 	items []SortableItem
@@ -199,13 +196,7 @@ func (c *SortableController) Mount(state SortableState, ctx *livetemplate.Contex
 	return state, nil
 }
 
-// Reorder reads the drag pair from ctx — dragSourceKey and dragTargetKey
-// are injected by the client (livetemplate/client) from the dragstart
-// element's data-key and the drop target's data-key, respectively.
-// Every return path repopulates state.Items from the locked snapshot —
-// the framework-provided value is per-session and may lag the shared
-// ordering, so trusting it on early-exit paths could overwrite the
-// rendered list with stale data.
+// Reorder reads dragSourceKey / dragTargetKey (injected by livetemplate/client from the source/target data-key) and always repopulates state.Items from the locked snapshot — the framework-provided value is per-session and may lag the shared ordering.
 func (c *SortableController) Reorder(state SortableState, ctx *livetemplate.Context) (SortableState, error) {
 	src := ctx.GetString("dragSourceKey")
 	tgt := ctx.GetString("dragTargetKey")
