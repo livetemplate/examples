@@ -199,7 +199,9 @@ func (c *SortableController) Mount(state SortableState, ctx *livetemplate.Contex
 	return state, nil
 }
 
-// Reorder reads the drag pair from ctx ("dragSourceKey", "dragTargetKey").
+// Reorder reads the drag pair from ctx — dragSourceKey and dragTargetKey
+// are injected by the client (livetemplate/client) from the dragstart
+// element's data-key and the drop target's data-key, respectively.
 // Every return path repopulates state.Items from the locked snapshot —
 // the framework-provided value is per-session and may lag the shared
 // ordering, so trusting it on early-exit paths could overwrite the

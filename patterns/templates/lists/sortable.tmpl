@@ -4,7 +4,9 @@
         <h3>Sortable List</h3>
         <p><small>Drag any row to reorder (mouse only; no keyboard path or visual drop-zone highlighting in this demo). The new order persists across reloads. Use Reset Order to restore the initial sequence.</small></p>
     </hgroup>
-    <ul id="sortable-list" aria-label="Reorderable task list">
+    <ul id="sortable-list"
+        aria-label="Reorderable task list"
+        aria-description="Use a mouse to drag items. Keyboard reordering is not supported in this demo.">
     {{range .Items}}
         <li data-key="{{.Key}}"
             draggable="true"
