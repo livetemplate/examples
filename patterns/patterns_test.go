@@ -2674,14 +2674,14 @@ func TestHighlightOnChange(t *testing.T) {
 	// UI_Standards is intentionally NOT run for this pattern. The highlight
 	// directive's whole job is to add an inline background-color and
 	// transition for the visual flash, which fires on every render walk that
-	// touches the subtree — including the first paint. After cleanup,
-	// directives.ts leaves an empty `style=""` attribute (animate's cleanup
-	// at directives.ts:230-232 calls `removeAttribute('style')`; highlight
-	// does not). The "no inline styles" rule isn't a meaningful guarantee
-	// for a pattern whose entire premise is inline styling — Visual_Check
-	// plus the interaction subtests below cover the right behavior.
-	// Follow-up: open an issue to mirror animate's cleanup in the highlight
-	// branch so downstream users get cleaner DOM.
+	// touches the subtree — including the first paint. Even with the
+	// post-cycle attribute cleanup landed in client v0.8.37
+	// (livetemplate/client#100), the in-flight state during the ~550ms cycle
+	// still has a non-empty `style` attribute that the [style] CSP rule would
+	// flag if UI_Standards happened to sample mid-cycle. The "no inline
+	// styles" rule isn't a meaningful guarantee for a pattern whose entire
+	// premise is inline styling — Visual_Check plus the interaction subtests
+	// below cover the right behavior.
 
 	t.Run("Increment_Flashes_Both_Highlight_Targets", func(t *testing.T) {
 		// directives.ts sets style.transition for ~550ms per render-touch.
