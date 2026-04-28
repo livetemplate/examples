@@ -103,9 +103,6 @@ func pageSlice(dataset []Item, page, size int) []Item {
 	return slices.Clone(dataset[start:end])
 }
 
-// initialSortableItems returns the starting task list for the Sortable
-// List pattern. Six items is enough to make reordering visibly obvious
-// without crowding the page.
 func initialSortableItems() []SortableItem {
 	return []SortableItem{
 		{Key: "task-1", Name: "Design wireframes"},

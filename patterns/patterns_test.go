@@ -1137,7 +1137,7 @@ func TestValueSelect(t *testing.T) {
 	})
 }
 
-// --- Pattern #12 (Lists): Sortable List ---
+// --- Sortable List ---
 
 func TestSortable(t *testing.T) {
 	if testing.Short() {
@@ -1191,13 +1191,26 @@ func TestSortable(t *testing.T) {
 
 	runStandardSubtests(t, ctx, false, "Sortable List — six task items each with a hamburger drag handle, in default order, plus a Reset Order button")
 
+	// resetToInitial restores the canonical task-1..task-6 order so each
+	// reorder subtest starts from a known state and doesn't depend on the
+	// previous one's outcome.
+	resetToInitial := chromedp.Tasks{
+		chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
+		e2etest.WaitFor(
+			`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-1' && document.querySelectorAll('#sortable-list li')[5].dataset.key === 'task-6'`,
+			5*time.Second,
+		),
+	}
+
 	t.Run("Reorder_DragForward", func(t *testing.T) {
-		// Drag task-1 onto task-3. Expected after-order:
-		//   task-2, task-3, task-1, task-4, task-5, task-6
-		// (task-1 removed from index 0, target task-3 at original index 2
-		// becomes index 1 after removal, task-1 inserted at index 1.)
+		// Initial: [task-1, task-2, task-3, task-4, task-5, task-6]
+		// Drag task-1 onto task-3 with insert-before-target semantics:
+		// task-1 is removed from index 0, the post-removal target index of
+		// task-3 is 1, and task-1 is inserted at index 1.
+		// Expected:  [task-2, task-1, task-3, task-4, task-5, task-6]
 		var order string
 		err := chromedp.Run(ctx,
+			resetToInitial,
 			simulateDrag("task-1", "task-3"),
 			e2etest.WaitFor(
 				`document.querySelectorAll('#sortable-list li')[1].dataset.key === 'task-1'`,
@@ -1218,14 +1231,17 @@ func TestSortable(t *testing.T) {
 	})
 
 	t.Run("Reorder_DragBackward", func(t *testing.T) {
-		// After forward: task-2, task-1, task-3, task-4, task-5, task-6
-		// Drag task-6 onto task-2. Expected after-order:
-		//   task-6, task-2, task-1, task-3, task-4, task-5
+		// Initial: [task-1, task-2, task-3, task-4, task-5, task-6]
+		// Drag task-6 onto task-2: task-6 is removed from index 5, no
+		// post-removal index adjustment (srcIdx > tgtIdx), task-6 inserted
+		// at task-2's index 1.
+		// Expected: [task-1, task-6, task-2, task-3, task-4, task-5]
 		var order string
 		err := chromedp.Run(ctx,
+			resetToInitial,
 			simulateDrag("task-6", "task-2"),
 			e2etest.WaitFor(
-				`document.querySelectorAll('#sortable-list li')[0].dataset.key === 'task-6'`,
+				`document.querySelectorAll('#sortable-list li')[1].dataset.key === 'task-6'`,
 				5*time.Second,
 			),
 			chromedp.Evaluate(
@@ -1236,43 +1252,47 @@ func TestSortable(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Backward drag failed: %v", err)
 		}
-		want := "task-6,task-2,task-1,task-3,task-4,task-5"
+		want := "task-1,task-6,task-2,task-3,task-4,task-5"
 		if order != want {
 			t.Errorf("Order after backward drag: got %q, want %q", order, want)
 		}
 	})
 
 	t.Run("SelfDrop_NoOp", func(t *testing.T) {
-		// No diff is emitted on self-drop, so we poll for 500ms and assert
-		// the order didn't change.
-		var firstBefore string
-		if err := chromedp.Run(ctx, chromedp.Evaluate(
-			`document.querySelectorAll('#sortable-list li')[0].dataset.key`,
-			&firstBefore,
-		)); err != nil {
-			t.Fatalf("Failed to read first key before self-drop: %v", err)
+		// The controller short-circuits when source == target, so no diff
+		// is emitted. We can't condition-wait on a state that should NOT
+		// change, so we wait long enough for any spurious server-side
+		// reorder to round-trip (~500ms) and assert order is unchanged.
+		var orderBefore string
+		if err := chromedp.Run(ctx,
+			resetToInitial,
+			chromedp.Evaluate(
+				`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+				&orderBefore,
+			),
+		); err != nil {
+			t.Fatalf("Failed to read order before self-drop: %v", err)
 		}
-		if err := chromedp.Run(ctx, simulateDrag(firstBefore, firstBefore)); err != nil {
+
+		firstKey := strings.Split(orderBefore, ",")[0]
+		if err := chromedp.Run(ctx, simulateDrag(firstKey, firstKey)); err != nil {
 			t.Fatalf("Self-drop dispatch failed: %v", err)
 		}
 
-		var orderChanged bool
-		_ = chromedp.Run(ctx,
-			chromedp.Evaluate(
-				`(async () => {
-					const start = Date.now();
-					while (Date.now() - start < 500) {
-						const first = document.querySelectorAll('#sortable-list li')[0].dataset.key;
-						if (first !== `+fmt.Sprintf("%q", firstBefore)+`) return true;
-						await new Promise(r => setTimeout(r, 50));
-					}
-					return false;
-				})()`,
-				&orderChanged,
-			),
-		)
-		if orderChanged {
-			t.Errorf("Self-drop changed order: first key was %s, then changed", firstBefore)
+		// time.Sleep (Go-side) is fine for negative assertions — the
+		// CLAUDE.md "no chromedp.Sleep" rule is about browser-side waits
+		// that hide timing bugs in positive assertions.
+		time.Sleep(500 * time.Millisecond)
+
+		var orderAfter string
+		if err := chromedp.Run(ctx, chromedp.Evaluate(
+			`Array.from(document.querySelectorAll('#sortable-list li')).map(el => el.dataset.key).join(',')`,
+			&orderAfter,
+		)); err != nil {
+			t.Fatalf("Failed to read order after self-drop: %v", err)
+		}
+		if orderAfter != orderBefore {
+			t.Errorf("Self-drop changed order: was %q, now %q", orderBefore, orderAfter)
 		}
 	})
 

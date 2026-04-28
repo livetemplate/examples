@@ -173,10 +173,12 @@ func infiniteScrollHandler(baseOpts []livetemplate.Option) http.Handler {
 	}))
 }
 
-// --- Pattern #12: Sortable List ---
+// --- Sortable List ---
 
-// SortableController shares ordering across all sessions, so reorders
-// persist across reloads and broadcast to other tabs.
+// SortableController shares the list ordering across all sessions via
+// a process-wide mutex-protected slice, so reorders persist across
+// reloads and across tabs on next refresh. (Live multi-tab sync would
+// require Sync() / BroadcastAction — out of scope for this demo.)
 type SortableController struct {
 	mu    sync.Mutex
 	items []SortableItem

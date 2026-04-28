@@ -35,16 +35,14 @@ type ValueSelectState struct {
 	Model    string
 }
 
-// SortableState holds the state for the Sortable List pattern (#12).
 type SortableState struct {
 	Title    string
 	Category string
 	Items    []SortableItem
 }
 
-// SortableItem is a keyed task in the Sortable List pattern. Key drives
-// data-key in the template, which is what the diff engine and the
-// drag-and-drop client use to identify which item moved.
+// Key is wired to data-key in the template — the stable identity the
+// diff engine and the drag-and-drop client use to track which item moved.
 type SortableItem struct {
 	Key  string
 	Name string

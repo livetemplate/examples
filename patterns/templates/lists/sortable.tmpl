@@ -2,9 +2,9 @@
 <article>
     <hgroup>
         <h3>Sortable List</h3>
-        <p><small>Drag any row to reorder. The diff engine sends only an <code>["o", newKeys]</code> reorder op — no full re-render. Reorders persist across reloads and tabs (in-memory shared state). Use Reset to restore the initial order.</small></p>
+        <p><small>Drag any row by its handle to reorder. The new order persists across reloads. Use Reset Order to restore the initial sequence.</small></p>
     </hgroup>
-    <ul id="sortable-list">
+    <ul id="sortable-list" aria-label="Reorderable task list">
     {{range .Items}}
         <li data-key="{{.Key}}"
             draggable="true"
