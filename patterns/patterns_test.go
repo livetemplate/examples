@@ -1149,14 +1149,10 @@ func TestSortable(t *testing.T) {
 
 	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/sortable"
 
-	// Helper: simulate a full HTML5 drag-and-drop gesture by dispatching
-	// real DragEvent objects with a shared DataTransfer. This exercises the
-	// production client delegation pipeline (Layer A side-effects + Layer B
-	// data injection + WebSocket send) — it does NOT bypass the client
-	// like liveTemplateClient.send() would. CDP Input.dispatchMouseEvent
-	// is unreliable for HTML5 DnD in headless Docker Chrome (drag
-	// thresholds, screen-coordinate quirks), so synthetic DragEvent
-	// dispatch is the standard workaround.
+	// CDP Input.dispatchMouseEvent is unreliable for HTML5 DnD in headless
+	// Docker Chrome, so we dispatch real DragEvent objects with a shared
+	// DataTransfer instead. This still exercises the full client
+	// delegation pipeline — not a liveTemplateClient.send() shortcut.
 	simulateDrag := func(srcKey, tgtKey string) chromedp.Action {
 		js := fmt.Sprintf(`
 			(() => {
@@ -1247,10 +1243,8 @@ func TestSortable(t *testing.T) {
 	})
 
 	t.Run("SelfDrop_NoOp", func(t *testing.T) {
-		// Self-drop must NOT change the order. Capture the current first
-		// key, simulate dragging that item onto itself, then assert
-		// (via a polling condition with a short timeout — not a Sleep)
-		// that the order remains stable.
+		// No diff is emitted on self-drop, so we poll for 500ms and assert
+		// the order didn't change.
 		var firstBefore string
 		if err := chromedp.Run(ctx, chromedp.Evaluate(
 			`document.querySelectorAll('#sortable-list li')[0].dataset.key`,
@@ -1258,20 +1252,10 @@ func TestSortable(t *testing.T) {
 		)); err != nil {
 			t.Fatalf("Failed to read first key before self-drop: %v", err)
 		}
-
-		// Run the drag. The Reorder controller short-circuits on src==tgt,
-		// so no diff is emitted — there's no positive condition to wait
-		// for. Instead we wait for a short period and assert no change
-		// occurred. The wait is long enough for any spurious server-side
-		// reorder to round-trip (~500ms), but short enough not to mask
-		// real bugs.
 		if err := chromedp.Run(ctx, simulateDrag(firstBefore, firstBefore)); err != nil {
 			t.Fatalf("Self-drop dispatch failed: %v", err)
 		}
 
-		// Poll for max 500ms checking that the order doesn't change.
-		// If it changes within the window, e2etest.WaitFor will exit
-		// early and this is the bug.
 		var orderChanged bool
 		_ = chromedp.Run(ctx,
 			chromedp.Evaluate(
