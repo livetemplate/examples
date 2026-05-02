@@ -85,6 +85,18 @@ Every E2E test must follow these rules. When generating tests for a new example,
 - lvt (testing): latest pseudo-version
 - Client library: served via `e2etest.ServeClientLibrary` (dev) or CDN (production)
 
+### Manual Testing on Mobile (iPhone via Tailscale)
+
+For touch / mobile-viewport / native-browser concerns that headless e2e can't cover, run the example on the dev box and reach it from the phone over Tailscale — replace `localhost` with the dev box's hostname:
+
+```bash
+PORT=8090 LVT_DEV_MODE=true \
+  LVT_LOCAL_CLIENT=/path/to/client/dist/livetemplate-client.browser.js \
+  go run .
+```
+
+Open `http://<devbox-hostname>:8090/...` on the phone. `LVT_LOCAL_CLIENT` lets you test in-flight client changes that aren't in `@latest` CDN yet — the template's `{{if .lvt.DevMode}}` branch picks it up.
+
 ### Reference Examples
 
 - `todos/` — Canonical Tier 1 example: CRUD, auth, pagination, modal + toast components

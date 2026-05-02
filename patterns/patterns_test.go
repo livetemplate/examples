@@ -1330,6 +1330,216 @@ func TestSortable(t *testing.T) {
 	})
 }
 
+// --- Large Table (10k-row streaming-range demo) ---
+
+func TestLargeTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping E2E test in short mode")
+	}
+
+	// CI uses a 200-row dataset; the demo defaults to 10k. The smaller
+	// dataset still exercises every controller path and every range op
+	// the streaming-range diff emits, while keeping subtest latency low.
+	t.Setenv("LARGE_TABLE_SIZE", "200")
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/large-table"
+
+	frames := e2etest.RecordWSFrames(ctx)
+
+	t.Run("Initial_Load_Renders_All_Rows", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(url),
+			e2etest.WaitForWebSocketReady(5*time.Second),
+			chromedp.WaitVisible(`#large-table-pattern`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 200, 30*time.Second),
+			e2etest.WaitForText(`#large-table-count`, "Showing 200 of 200 rows.", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Initial load failed: %v", err)
+		}
+	})
+
+	t.Run("UI_Standards", func(t *testing.T) {
+		runUIStandards(t, ctx)
+	})
+
+	t.Run("Filter_Reduces_Visible_Rows", func(t *testing.T) {
+		// "00099" matches User 00099 only (single row out of 200).
+		err := chromedp.Run(ctx,
+			chromedp.Focus(`input[name="filter"]`, chromedp.ByQuery),
+			chromedp.SendKeys(`input[name="filter"]`, "00099", chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 1, 5*time.Second),
+			e2etest.WaitForText(`#large-table-count`, "Showing 1 of 200 rows.", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Filter did not narrow rows: %v", err)
+		}
+	})
+
+	t.Run("Filter_Clear_Restores_All_Rows", func(t *testing.T) {
+		// chromedp.Clear doesn't fire the input event the auto-wirer needs;
+		// set value and dispatch input/change manually (mirrors the pattern
+		// in TestActiveSearch).
+		err := chromedp.Run(ctx,
+			chromedp.Focus(`input[name="filter"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`(() => {
+				const el = document.querySelector('input[name="filter"]');
+				el.value = '';
+				el.dispatchEvent(new Event('input', { bubbles: true }));
+				el.dispatchEvent(new Event('change', { bubbles: true }));
+				return el.value;
+			})()`, nil),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 200, 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Filter clear did not restore: %v", err)
+		}
+	})
+
+	t.Run("Update_Random_Row_Bounded_WS_Frame", func(t *testing.T) {
+		// Bounded-WS-size assertion (proposal §379, §386 OQ2): with no sort
+		// applied, a single-field change on a 5-field row must emit a small
+		// whole-item ["u"] op (~hundreds of bytes), NOT a full-tree
+		// replacement (KBs at this scale). 1.5KB is the test-tier ceiling —
+		// well above whole-item op size, well below full-tree size at N=200.
+		// Sort-active scenarios add a reorder op and are bounded separately
+		// in Update_With_Sort_Active_Bounded_WS_Frame below.
+		const wsFrameCeilingBytes = 1536
+
+		frames.Clear()
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="updateRandomRow"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Click failed: %v", err)
+		}
+		// Wait for any received frame from the server.
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			if frames.CountByDirection("received") > 0 {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		if frames.CountByDirection("received") == 0 {
+			t.Fatalf("No received frame after UpdateRandomRow click")
+		}
+
+		var maxBytes int
+		var maxMsg string
+		for _, msg := range frames.GetReceived() {
+			if len(msg.Data) > maxBytes {
+				maxBytes = len(msg.Data)
+				maxMsg = msg.Data
+			}
+		}
+		if maxBytes > wsFrameCeilingBytes {
+			head := maxMsg
+			if len(head) > 600 {
+				head = head[:600] + "...(truncated)"
+			}
+			t.Errorf("UpdateRandomRow WS frame exceeded streaming-range ceiling: got %d B, ceiling %d B\nFrame head: %s", maxBytes, wsFrameCeilingBytes, head)
+		}
+		t.Logf("UpdateRandomRow (no sort) max received frame: %d bytes (ceiling %d B)", maxBytes, wsFrameCeilingBytes)
+	})
+
+	t.Run("Sort_By_Score_Toggles_Direction", func(t *testing.T) {
+		var firstAsc, firstDesc string
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="sort"][value="score"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('button[name="sort"][value="score"]').textContent.includes('↑')`, 5*time.Second),
+			chromedp.Text(`tbody tr:first-child td:nth-child(4)`, &firstAsc, chromedp.ByQuery),
+			chromedp.Click(`button[name="sort"][value="score"]`, chromedp.ByQuery),
+			e2etest.WaitFor(`document.querySelector('button[name="sort"][value="score"]').textContent.includes('↓')`, 5*time.Second),
+			chromedp.Text(`tbody tr:first-child td:nth-child(4)`, &firstDesc, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Sort toggle failed: %v", err)
+		}
+		if firstAsc == firstDesc {
+			t.Errorf("Expected different first-row score after toggle, got %q both directions", firstAsc)
+		}
+	})
+
+	t.Run("Append_50_Grows_Total", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="appendN"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`#large-table-count`, "Showing 250 of 250 rows.", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Append failed: %v", err)
+		}
+	})
+
+	t.Run("Update_With_Sort_Active_Bounded_WS_Frame", func(t *testing.T) {
+		// With sort-by-score active and Append_50 having grown the table to
+		// 250 rows, an UpdateRandomRow shifts the changed row's rank in the
+		// sorted view, triggering an additional ["o", new-keys] reorder op.
+		// Reorder ops carry one key per row, so the ceiling scales linearly
+		// with N. At N=250 with ~12-char keys, expect ~3-4KB total.
+		const wsFrameCeilingBytes = 5120
+
+		frames.Clear()
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="updateRandomRow"]`, chromedp.ByQuery),
+		)
+		if err != nil {
+			t.Fatalf("Click failed: %v", err)
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			if frames.CountByDirection("received") > 0 {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		if frames.CountByDirection("received") == 0 {
+			t.Fatalf("No received frame after UpdateRandomRow click")
+		}
+
+		var maxBytes int
+		var maxMsg string
+		for _, msg := range frames.GetReceived() {
+			if len(msg.Data) > maxBytes {
+				maxBytes = len(msg.Data)
+				maxMsg = msg.Data
+			}
+		}
+		if maxBytes > wsFrameCeilingBytes {
+			head := maxMsg
+			if len(head) > 600 {
+				head = head[:600] + "...(truncated)"
+			}
+			t.Errorf("UpdateRandomRow with sort exceeded streaming-range+reorder ceiling: got %d B, ceiling %d B\nFrame head: %s", maxBytes, wsFrameCeilingBytes, head)
+		}
+		t.Logf("UpdateRandomRow (sort active) max received frame: %d bytes (ceiling %d B)", maxBytes, wsFrameCeilingBytes)
+	})
+
+	t.Run("Delete_Single_Row", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`tbody tr[data-key="row-00050"] button[name="delete"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`#large-table-count`, "Showing 249 of 249 rows.", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Delete failed: %v", err)
+		}
+	})
+
+	t.Run("Reset_Restores_Initial_Count", func(t *testing.T) {
+		err := chromedp.Run(ctx,
+			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
+			e2etest.WaitForCount(`tbody tr[data-key]`, 200, 10*time.Second),
+			e2etest.WaitForText(`#large-table-count`, "Showing 200 of 200 rows.", 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Reset failed: %v", err)
+		}
+	})
+}
+
 // --- Pattern #12: Active Search ---
 
 func TestActiveSearch(t *testing.T) {

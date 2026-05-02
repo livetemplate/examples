@@ -45,3 +45,17 @@ type SortableItem struct {
 	Key  string
 	Name string
 }
+
+// LargeTableState holds the per-session view of the Large Table demo.
+// Filter/SortKey/SortDir are session-local; the underlying row dataset
+// lives process-wide on the controller.
+type LargeTableState struct {
+	Title    string
+	Category string
+	Items    []LargeRow
+	Filter   string
+	SortKey  string
+	SortDir  string
+	Total    int
+	NextID   int
+}

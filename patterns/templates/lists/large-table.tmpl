@@ -1,0 +1,55 @@
+{{define "content"}}
+<article id="large-table-pattern">
+    <hgroup>
+        <h3>Large Table</h3>
+        <p><small>10,000 rows with stable keys. Filter, sort, append, update, and delete — every range op the streaming-range diff emits is reachable here. The server retains per-item hashes (~30 B/row) instead of full TreeNodes (~150 B/row), so 10k rows stay interactive at modest memory cost.</small></p>
+    </hgroup>
+
+    <form method="POST" class="inline">
+        <fieldset role="group">
+            <input type="search" name="filter" placeholder="Filter by name or email" value="{{.Filter}}" aria-label="Filter rows">
+        </fieldset>
+    </form>
+
+    <p><small id="large-table-count">Showing <strong>{{len .Items}}</strong> of <strong>{{.Total}}</strong> rows.</small></p>
+
+    <form method="POST" class="inline">
+        <fieldset role="group">
+            <button name="appendN" class="compact secondary">Append 50</button>
+            <button name="updateRandomRow" class="compact secondary">Update Random Row</button>
+            <button name="reset" class="compact contrast outline">Reset</button>
+        </fieldset>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th><form method="POST" class="inline"><button name="sort" value="name" class="compact outline">Name{{if eq .SortKey "name"}} {{if eq .SortDir "asc"}}↑{{else}}↓{{end}}{{end}}</button></form></th>
+                <th><form method="POST" class="inline"><button name="sort" value="email" class="compact outline">Email{{if eq .SortKey "email"}} {{if eq .SortDir "asc"}}↑{{else}}↓{{end}}{{end}}</button></form></th>
+                <th><form method="POST" class="inline"><button name="sort" value="status" class="compact outline">Status{{if eq .SortKey "status"}} {{if eq .SortDir "asc"}}↑{{else}}↓{{end}}{{end}}</button></form></th>
+                <th><form method="POST" class="inline"><button name="sort" value="score" class="compact outline">Score{{if eq .SortKey "score"}} {{if eq .SortDir "asc"}}↑{{else}}↓{{end}}{{end}}</button></form></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="large-table-body">
+        {{range .Items}}
+            <tr data-key="{{.ID}}">
+                <td>{{.Name}}</td>
+                <td>{{.Email}}</td>
+                <td>{{.Status}}</td>
+                <td>{{.Score}}</td>
+                <td>
+                    <form method="POST" class="inline">
+                        <button name="delete" value="{{.ID}}" class="compact contrast outline" aria-label="Delete row {{.ID}}">×</button>
+                    </form>
+                </td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+
+    {{if eq (len .Items) 0}}
+    <p id="large-table-empty"><small>No rows match the filter.</small></p>
+    {{end}}
+</article>
+{{end}}
