@@ -2333,9 +2333,22 @@ func TestAsyncOperations(t *testing.T) {
 				window.liveTemplateClient.send({action: 'fetch'});
 				window.liveTemplateClient.send({action: 'fetch'});
 			})()`, nil),
-			// Wait for the cycle to complete: button returns to "Fetch Data".
-			// Total time: ~2s for the goroutine sleep + WS roundtrip.
-			e2etest.WaitForText(`button[name="fetch"]`, "Fetch Data", 5*time.Second),
+			// Two-phase wait. We MUST observe the loading state first —
+			// otherwise polling can match the pre-Fetch "Fetch Data" state
+			// before the Fetch render arrives at the browser, the test
+			// "succeeds" instantly, and a microsecond later the Fetch
+			// render lands and clears the result element. Then Evaluate
+			// counts 0 even though the cycle is fine. By gating on
+			// "Fetching..." first, we prove the Fetch render landed.
+			// The completion gate then waits for both the button AND the
+			// result element atomically, so there's no window where one
+			// is true but the other isn't.
+			e2etest.WaitForText(`button[name="fetch"]`, "Fetching...", 3*time.Second),
+			e2etest.WaitFor(`(() => {
+				const btn = document.querySelector('button[name="fetch"]');
+				if (!btn || btn.textContent.trim() !== 'Fetch Data') return false;
+				return document.querySelectorAll('blockquote, mark').length >= 1;
+			})()`, 5*time.Second),
 			// Count result elements. Exactly one of (blockquote, mark) must
 			// be present. If two goroutines somehow corrupted the state
 			// machine, we might see zero, two of either, or both.
@@ -3100,7 +3113,20 @@ func TestHighlightOnChange(t *testing.T) {
 		// directive). The 5s WaitFor budget is generous; with the lvt
 		// chrome-throttling fix (livetemplate/lvt#314, v0.1.4) the polled
 		// approach reliably lands inside the directive's window.
+		//
+		// Wait for any pending highlight cycle from the initial page render
+		// to clear before clicking. The directive runs FIRE-ON-CHANGE on
+		// every render including the initial one, and the rate-limit guard
+		// (`__lvtHighlighting`) coalesces overlapping triggers — so a click
+		// landing inside the initial cycle gets silently skipped, leaving
+		// the test polling for a transition that never gets set. This is
+		// the documented coalesce behavior in directives.ts:162-164, not a
+		// bug; the test just has to wait it out.
 		err := chromedp.Run(ctx,
+			e2etest.WaitFor(`(() => {
+				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
+				return els.every(el => (el.style.transition || "") === '');
+			})()`, 2*time.Second),
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
 			e2etest.WaitFor(`(() => {
 				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
@@ -3115,13 +3141,14 @@ func TestHighlightOnChange(t *testing.T) {
 
 	t.Run("Highlight_Cleans_Up_After_Duration", func(t *testing.T) {
 		// directives.ts highlight cycle: 50ms delay + 500ms transition. The
-		// WaitFor polls until both bg + transition are clear, with a 2s
-		// budget that comfortably covers the 550ms cycle.
+		// WaitFor polls until both bg + transition are clear, with a 5s
+		// budget that comfortably covers the 550ms cycle plus any
+		// re-render flapping (e.g. flash-expiry nudges from prior subtests).
 		err := chromedp.Run(ctx,
 			e2etest.WaitFor(`(() => {
 				const els = Array.from(document.querySelectorAll('[lvt-fx\\:highlight]'));
 				return els.every(el => el.style.backgroundColor === '' && el.style.transition === '');
-			})()`, 2*time.Second),
+			})()`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Highlight did not clean up: %v", err)
