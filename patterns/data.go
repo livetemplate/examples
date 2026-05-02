@@ -114,6 +114,43 @@ func initialSortableItems() []SortableItem {
 	}
 }
 
+// LargeRow is a row in the Large Table demo. Five fields exercise the
+// multi-field volatile-field update workload that closes Open Question 2
+// of the streaming-range proposal: a single-field change still emits a
+// whole-item ["u"] op carrying all five.
+type LargeRow struct {
+	ID     string
+	Name   string
+	Email  string
+	Status string
+	Score  int
+}
+
+// largeTableDefaultSize is the demo's default row count. The e2e test
+// overrides it via LARGE_TABLE_SIZE so CI doesn't pay for 10k DOM rows
+// while still exercising every controller path.
+const largeTableDefaultSize = 10000
+
+var largeTableStatuses = []string{"active", "pending", "blocked", "archived"}
+
+// largeTableSeed builds the deterministic seed dataset. No rand: stable
+// hashes across renders are required for the streaming-range diff to
+// recognise unchanged items.
+func largeTableSeed(n int) []LargeRow {
+	rows := make([]LargeRow, n)
+	for i := range rows {
+		id := i + 1
+		rows[i] = LargeRow{
+			ID:     fmt.Sprintf("row-%05d", id),
+			Name:   fmt.Sprintf("User %05d", id),
+			Email:  fmt.Sprintf("user%05d@example.com", id),
+			Status: largeTableStatuses[id%len(largeTableStatuses)],
+			Score:  (id * 37) % 1000,
+		}
+	}
+	return rows
+}
+
 // carMakes maps car makes to their model lists. Used by Value Select to
 // demonstrate cascading dependent selects.
 var carMakes = map[string][]string{
@@ -258,6 +295,7 @@ func allPatterns() []PatternCategory {
 				{Name: "Infinite Scroll", Path: "/patterns/lists/infinite-scroll", Description: "Auto-load on scroll with IntersectionObserver", Implemented: true},
 				{Name: "Value Select", Path: "/patterns/lists/value-select", Description: "Cascading dependent selects", Implemented: true},
 				{Name: "Sortable List", Path: "/patterns/lists/sortable", Description: "Drag-and-drop reordering with native HTML5 drag events", Implemented: true},
+				{Name: "Large Table", Path: "/patterns/lists/large-table", Description: "10k-row table with filter, sort, append, update, delete, reset (streaming range)", Implemented: true},
 			},
 		},
 		{

@@ -80,6 +80,7 @@ func main() {
 	mux.Handle("/patterns/lists/infinite-scroll", infiniteScrollHandler(baseOpts))
 	mux.Handle("/patterns/lists/value-select", valueSelectHandler(baseOpts))
 	mux.Handle("/patterns/lists/sortable", sortableHandler(baseOpts))
+	mux.Handle("/patterns/lists/large-table", largeTableHandler(baseOpts))
 
 	// Category: Search & Filtering (#12–#13)
 	mux.Handle("/patterns/search/active-search", activeSearchHandler(baseOpts))
