@@ -1543,6 +1543,87 @@ func TestLargeTable(t *testing.T) {
 			t.Fatalf("Reset failed: %v", err)
 		}
 	})
+
+	t.Run("Delete_Targeted_Apply_Path_Taken", func(t *testing.T) {
+		// Verifies the client#107 targeted-apply path actually fires for
+		// the LargeTable template structure. A passing 10k stress test
+		// elsewhere proves wall-clock improved, but doesn't distinguish
+		// "targeted-apply works" from "targeted-apply rejects but the
+		// fallback also happens to be ~OK". This guards the predicate.
+		var hits int
+		err := chromedp.Run(ctx,
+			chromedp.Evaluate(`window.__lvtTargetedHits = 0`, nil),
+			chromedp.Click(`tbody tr[data-key="row-00100"] button[name="delete"]`, chromedp.ByQuery),
+			e2etest.WaitForText(`#large-table-count`, "Showing 199 of 199 rows.", 5*time.Second),
+			chromedp.Evaluate(`window.__lvtTargetedHits || 0`, &hits),
+		)
+		if err != nil {
+			t.Fatalf("Delete failed: %v", err)
+		}
+		if hits == 0 {
+			t.Errorf("Targeted-apply path did NOT fire — canApplyTargeted rejected the LargeTable structure and we hit the fallback (deepClone + reconstructFromTree + morphdom-over-whole-range) path.")
+		}
+		t.Logf("Delete (N=199): targeted-apply hits=%d", hits)
+	})
+}
+
+// TestLargeTable_DeleteLatency_10k stress-tests the client-side targeted DOM
+// mutation path at the demo's default scale (10,000 rows). This is the
+// scenario from livetemplate/client#107: pre-fix, single-row delete took 6–8s
+// in Chrome desktop because the client deep-cloned 10k items, rebuilt 5MB
+// of HTML, parsed it, and ran morphdom over the entire range. Post-fix, the
+// targeted-apply path mutates the live DOM directly and a sentinel attribute
+// tells morphdom to short-circuit the 10k-row subtree.
+//
+// The 3500 ms ceiling is intentionally generous: it catches catastrophic
+// regression (back to the 6-8s full-rebuild path) but accepts the residual
+// cost of post-morphdom side-effect rescans (handleScrollDirectives,
+// changeAutoWirer.wireElements, etc.) which still walk the wrapper at O(N).
+// Tightening that further is a follow-up. Skipped under -short.
+func TestLargeTable_DeleteLatency_10k(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping 10k-row latency test in short mode")
+	}
+
+	t.Setenv("LARGE_TABLE_SIZE", "10000")
+
+	ctx, cancel, serverPort := setupTest(t)
+	defer cancel()
+
+	url := e2etest.GetChromeTestURL(serverPort) + "/patterns/lists/large-table"
+
+	const ceilingMs = 2500
+	var elapsedMs float64
+	var targetedHits int
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		e2etest.WaitForWebSocketReady(15*time.Second),
+		chromedp.WaitVisible(`#large-table-pattern`, chromedp.ByQuery),
+		// 10k-row initial render needs a generous wait — the WS frame is
+		// multiple MB and morphdom on initial load walks every row once.
+		e2etest.WaitForCount(`tbody tr[data-key]`, 10000, 60*time.Second),
+		e2etest.WaitForText(`#large-table-count`, "Showing 10000 of 10000 rows.", 10*time.Second),
+		chromedp.Evaluate(`window.__lvtTargetedHits = 0`, nil),
+		// Bracket the click-to-DOM-removal interval. Wait specifically for
+		// the row's data-key to be gone from the DOM, not the count text —
+		// the count update is a sibling scalar that flows through morphdom
+		// and would conflate with the targeted-apply measurement.
+		chromedp.Evaluate(`window.__lvtT0 = performance.now()`, nil),
+		chromedp.Click(`tbody tr[data-key="row-05000"] button[name="delete"]`, chromedp.ByQuery),
+		e2etest.WaitFor(`document.querySelector('tbody tr[data-key="row-05000"]') === null`, 30*time.Second),
+		chromedp.Evaluate(`performance.now() - window.__lvtT0`, &elapsedMs),
+		chromedp.Evaluate(`window.__lvtTargetedHits || 0`, &targetedHits),
+	)
+	if err != nil {
+		t.Fatalf("10k delete flow failed: %v", err)
+	}
+	if targetedHits == 0 {
+		t.Errorf("Targeted-apply path did NOT fire — canApplyTargeted rejected the LargeTable structure and we hit the fallback (full rebuild) path. The fix is a no-op for this template.")
+	}
+	if elapsedMs > ceilingMs {
+		t.Errorf("Delete wall-clock %.1f ms exceeded ceiling %d ms at N=10000 — targeted DOM apply may have regressed", elapsedMs, ceilingMs)
+	}
+	t.Logf("Delete (N=10000) wall-clock: %.1f ms (ceiling %d ms), targeted-apply hits: %d", elapsedMs, ceilingMs, targetedHits)
 }
 
 // --- Pattern #12: Active Search ---
