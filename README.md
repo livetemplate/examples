@@ -83,7 +83,8 @@ The test script is also used in GitHub Actions. See `.github/workflows/test.yml`
 Examples are configured to use the CDN version of the client library:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@livetemplate/client@0.1.0/dist/livetemplate-client.browser.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+<script defer src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
 ```
 
 ### Development (Local)
