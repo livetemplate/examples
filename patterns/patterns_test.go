@@ -1383,6 +1383,7 @@ func TestLargeTable(t *testing.T) {
 		// chromedp.Clear doesn't fire the input event the auto-wirer needs;
 		// set value and dispatch input/change manually (mirrors the pattern
 		// in TestActiveSearch).
+		var filterValue string
 		err := chromedp.Run(ctx,
 			chromedp.Focus(`input[name="filter"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`(() => {
@@ -1393,9 +1394,13 @@ func TestLargeTable(t *testing.T) {
 				return el.value;
 			})()`, nil),
 			e2etest.WaitForCount(`tbody tr[data-key]`, 200, 10*time.Second),
+			chromedp.Value(`input[name="filter"]`, &filterValue, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("Filter clear did not restore: %v", err)
+		}
+		if filterValue != "" {
+			t.Errorf("Expected filter input to be cleared, got %q", filterValue)
 		}
 	})
 

@@ -90,6 +90,8 @@ Every E2E test must follow these rules. When generating tests for a new example,
 For touch / mobile-viewport / native-browser concerns that headless e2e can't cover, run the example on the dev box and reach it from the phone over Tailscale — replace `localhost` with the dev box's hostname:
 
 ```bash
+# LVT_LOCAL_CLIENT example path: ../../../client/dist/livetemplate-client.browser.js
+# (relative to the example directory, when client repo is sibling to examples).
 PORT=8090 LVT_DEV_MODE=true \
   LVT_LOCAL_CLIENT=/path/to/client/dist/livetemplate-client.browser.js \
   go run .

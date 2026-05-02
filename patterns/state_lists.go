@@ -57,5 +57,4 @@ type LargeTableState struct {
 	SortKey  string
 	SortDir  string
 	Total    int
-	NextID   int
 }

@@ -346,7 +346,6 @@ func (c *LargeTableController) applyView(rows []LargeRow, filter, sortKey, sortD
 func (c *LargeTableController) refreshView(state LargeTableState) LargeTableState {
 	snap := c.snapshot()
 	state.Total = len(snap)
-	state.NextID = c.nextID
 	state.Items = c.applyView(snap, state.Filter, state.SortKey, state.SortDir)
 	return state
 }
