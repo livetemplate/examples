@@ -5,7 +5,7 @@
 # Source is fetched at build time so the build context can be just the
 # patterns/ directory (makes flyctl deploys self-contained per app).
 
-ARG EXAMPLES_REF=docs/phase-1-patterns-deploy
+ARG EXAMPLES_REF=main
 
 # ---- Build stage ----
 FROM golang:1.26-alpine AS go-builder
