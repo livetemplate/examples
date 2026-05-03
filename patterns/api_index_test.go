@@ -130,6 +130,35 @@ func TestAPIIndex_RejectsNonGET(t *testing.T) {
 	}
 }
 
+// CORS preflight from cross-origin browsers (the docs site fetching
+// from lt-patterns.fly.dev) MUST succeed or the actual GET never
+// fires. Reviewer flagged this on the initial PR.
+func TestAPIIndex_OPTIONSPreflightSucceeds(t *testing.T) {
+	srv := httptest.NewServer(apiIndexHandler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodOptions, srv.URL, nil)
+	req.Header.Set("Origin", "https://livetemplate.fly.dev")
+	req.Header.Set("Access-Control-Request-Method", "GET")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("OPTIONS status = %d, want 204", resp.StatusCode)
+	}
+	if origin := resp.Header.Get("Access-Control-Allow-Origin"); origin != "*" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want *", origin)
+	}
+	allow := resp.Header.Get("Access-Control-Allow-Methods")
+	if !strings.Contains(allow, "GET") {
+		t.Errorf("Access-Control-Allow-Methods %q must include GET", allow)
+	}
+}
+
 // Catch the common drift case: a handler is registered in main.go but
 // never made it into allPatterns() (or vice versa). The API consumer
 // expects the catalog to mirror what's actually served.

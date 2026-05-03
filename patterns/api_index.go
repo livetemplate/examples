@@ -39,6 +39,18 @@ type apiPattern struct {
 // in a way that breaks existing consumers.
 func apiIndexHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// CORS preflight first: a browser fetch from the docs site will
+		// OPTIONS-preflight on any cross-origin request that the spec
+		// considers non-simple. Reply with the same Allow-Origin we'd
+		// send for the actual GET so the real request goes through.
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
