@@ -112,6 +112,10 @@ func main() {
 	mux.Handle("/patterns/realtime/live-preview", livePreviewHandler(baseOpts))
 	mux.Handle("/patterns/realtime/server-push", serverPushHandler(baseOpts))
 
+	// JSON catalog index — consumed by the LiveTemplate docs site to
+	// render its patterns landing page without scraping HTML.
+	mux.Handle("/api/index.json", apiIndexHandler())
+
 	// Client library and CSS (dev mode)
 	if localClient := os.Getenv("LVT_LOCAL_CLIENT"); localClient != "" {
 		mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {
