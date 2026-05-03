@@ -2,6 +2,8 @@
 
 Example applications demonstrating LiveTemplate usage with various features and patterns.
 
+📚 **Framework documentation:** **<https://livetemplate.fly.dev>** — guides, recipes, patterns catalog (with live demos), full reference. The `/examples` and `/patterns` sections of the docs site index every app in this repo.
+
 ## Showcase: Todo App
 
 The todo app demonstrates LiveTemplate's core features in ~150 lines of Go + ~80 lines of HTML:
