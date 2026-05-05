@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Counter — LiveTemplate</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {{if .lvt.DevMode}}
+    <link rel="stylesheet" href="/livetemplate.css">
+    <script defer src="/livetemplate-client.js"></script>
+    {{else}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
+    {{end}}
+</head>
+<body>
+    <main class="container">
+        <article>
+            <h1 class="visually-hidden">Live Counter</h1>
+            <p>Count: <output aria-live="polite"><strong>{{.Count}}</strong></output></p>
+            <form method="POST">
+                <fieldset role="group">
+                    <button name="decrement" class="secondary">−1</button>
+                    <button name="reset" class="contrast">Reset</button>
+                    <button name="increment">+1</button>
+                </fieldset>
+            </form>
+        </article>
+    </main>
+</body>
+</html>

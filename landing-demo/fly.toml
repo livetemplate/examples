@@ -1,0 +1,24 @@
+# Deployment of the LiveTemplate landing-demo.
+# Iframed by the docs site (livetemplate.fly.dev) on the landing page,
+# routed via tinkerdown's same-origin proxy at /demo/counter/.
+
+app = "lt-landing-demo"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # This app is iframed on the docs landing page. min_machines_running=1
+  # keeps a warm machine so the first visitor after idle doesn't see an
+  # empty iframe during a 10-25s machine wake-up.
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
