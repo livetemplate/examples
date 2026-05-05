@@ -66,7 +66,7 @@ func TestLandingDemoE2E(t *testing.T) {
 		t.Helper()
 		if err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 0')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '0'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("reset baseline: %v", err)
 		}
@@ -126,7 +126,7 @@ func TestLandingDemoE2E(t *testing.T) {
 		if err := chromedp.Run(ctx,
 			e2etest.WaitFor(`window.liveTemplateClient && window.liveTemplateClient.isReady()`, 5*time.Second),
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 1')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '1'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("increment: %v", err)
 		}
@@ -139,13 +139,13 @@ func TestLandingDemoE2E(t *testing.T) {
 		// off-by-one bugs in the clamp.
 		if err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 1')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '1'`, 5*time.Second),
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 2')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '2'`, 5*time.Second),
 			chromedp.Click(`button[name="decrement"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 1')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '1'`, 5*time.Second),
 			chromedp.Click(`button[name="decrement"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 0')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '0'`, 5*time.Second),
 			// One more decrement should NOT go negative.
 			chromedp.Click(`button[name="decrement"]`, chromedp.ByQuery),
 			chromedp.Sleep(300*time.Millisecond),
@@ -169,14 +169,14 @@ func TestLandingDemoE2E(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			if err := chromedp.Run(ctx,
 				chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-				e2etest.WaitFor(fmt.Sprintf(`document.body.innerText.includes('Count: %d')`, i+1), 5*time.Second),
+				e2etest.WaitFor(fmt.Sprintf(`document.querySelector('output strong')?.textContent === '%d'`, i+1), 5*time.Second),
 			); err != nil {
 				t.Fatalf("increment %d: %v", i+1, err)
 			}
 		}
 		if err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="reset"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 0')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '0'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("reset: %v", err)
 		}
@@ -185,11 +185,15 @@ func TestLandingDemoE2E(t *testing.T) {
 	t.Run("Sync_Propagates_To_Peer_Tab", func(t *testing.T) {
 		resetCounter(t)
 
-		// Open a second tab in the same browser context. Same allocator
-		// + parent context = shared cookie jar = same session group.
-		// The framework dispatches Sync() on this peer connection after
-		// every action in the original tab.
-		peerCtx, peerCancel := chromedp.NewContext(ctx, chromedp.WithLogf(t.Logf))
+		// Open a second tab in the same browser context. Same parent
+		// context = shared cookie jar = same session group. The framework
+		// dispatches Sync() on this peer connection after every action in
+		// the original tab.
+		//
+		// chromedp.WithLogf is intentionally omitted here — it can only
+		// be used when allocating a NEW browser, not when forking a tab
+		// off an existing one (chromedp panics otherwise).
+		peerCtx, peerCancel := chromedp.NewContext(ctx)
 		defer peerCancel()
 		peerCtx, peerTimeout := context.WithTimeout(peerCtx, 30*time.Second)
 		defer peerTimeout()
@@ -198,7 +202,7 @@ func TestLandingDemoE2E(t *testing.T) {
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)),
 			e2etest.WaitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`output[aria-live="polite"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 0')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '0'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("peer tab initial load: %v", err)
 		}
@@ -206,12 +210,12 @@ func TestLandingDemoE2E(t *testing.T) {
 		// Bump counter in the original tab; assert peer reflects it.
 		if err := chromedp.Run(ctx,
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 1')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '1'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("increment in original tab: %v", err)
 		}
 		if err := chromedp.Run(peerCtx,
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 1')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '1'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("peer tab did not reflect increment via Sync(): %v", err)
 		}
@@ -219,12 +223,12 @@ func TestLandingDemoE2E(t *testing.T) {
 		// And the other direction — bump in peer, assert original sees it.
 		if err := chromedp.Run(peerCtx,
 			chromedp.Click(`button[name="increment"]`, chromedp.ByQuery),
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 2')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '2'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("increment in peer tab: %v", err)
 		}
 		if err := chromedp.Run(ctx,
-			e2etest.WaitFor(`document.body.innerText.includes('Count: 2')`, 5*time.Second),
+			e2etest.WaitFor(`document.querySelector('output strong')?.textContent === '2'`, 5*time.Second),
 		); err != nil {
 			t.Fatalf("original tab did not reflect peer increment via Sync(): %v", err)
 		}
