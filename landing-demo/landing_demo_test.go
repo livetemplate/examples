@@ -233,7 +233,7 @@ func TestLandingDemoE2E(t *testing.T) {
 		// two tabs of the same browser and click +1 in either; both
 		// counters move. The cross-tab claim on the landing page holds.
 		// Tracking proper e2e coverage as a follow-up.
-		t.Skip("cross-tab Sync e2e: pending session-group propagation work in chromedp peer context; manual verification documented in test comment")
+		t.Skip("cross-tab Sync e2e: tracked at livetemplate/examples#94 — pending session-group propagation work in chromedp peer context; manual verification documented in test comment")
 	})
 
 	t.Run("HTTP_POST_Fallback_Without_JS", func(t *testing.T) {
