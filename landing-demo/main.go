@@ -21,17 +21,21 @@ type CounterState struct {
 	Count int `json:"count" lvt:"persist"`
 }
 
-func (c *CounterController) Increment(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
+func (c *CounterController) Increment(s CounterState, _ *livetemplate.Context) (CounterState, error) {
 	s.Count++
 	return s, nil
 }
 
-func (c *CounterController) Decrement(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
-	s.Count--
+func (c *CounterController) Decrement(s CounterState, _ *livetemplate.Context) (CounterState, error) {
+	// Clamp at zero — a public landing-page demo showing "Count: -7"
+	// reads as broken even though the math is fine.
+	if s.Count > 0 {
+		s.Count--
+	}
 	return s, nil
 }
 
-func (c *CounterController) Reset(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
+func (c *CounterController) Reset(s CounterState, _ *livetemplate.Context) (CounterState, error) {
 	s.Count = 0
 	return s, nil
 }
@@ -41,7 +45,7 @@ func (c *CounterController) Reset(s CounterState, ctx *livetemplate.Context) (Co
 // session group after every action. The body is a no-op return because Count
 // is `lvt:"persist"` — the framework reloads it from the SessionStore
 // before invoking Sync, so peer tabs see the latest persisted value.
-func (c *CounterController) Sync(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
+func (c *CounterController) Sync(s CounterState, _ *livetemplate.Context) (CounterState, error) {
 	return s, nil
 }
 
