@@ -11,6 +11,10 @@ RUN apk add --no-cache git ca-certificates
 ENV GOTOOLCHAIN=auto
 WORKDIR /src
 RUN git clone --depth=1 --branch=${EXAMPLES_REF} https://github.com/livetemplate/examples.git .
+# Fail fast (vs. silently shipping a stale build) if the requested ref
+# does not contain landing-demo. Common cause: deploying before this app
+# is merged to main without overriding --build-arg EXAMPLES_REF=<branch>.
+RUN test -d /src/landing-demo || (echo "ERROR: landing-demo/ not found at ref '${EXAMPLES_REF}'. If deploying from a branch, pass --build-arg EXAMPLES_REF=<branch-name>." && exit 1)
 WORKDIR /src/landing-demo
 RUN go mod download -C ..
 RUN CGO_ENABLED=0 GOOS=linux go build \

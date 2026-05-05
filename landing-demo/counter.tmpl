@@ -13,22 +13,19 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/livetemplate.css">
     <script defer src="https://cdn.jsdelivr.net/npm/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
     {{end}}
-    <style>
-        body { padding: 1.5rem; }
-        .count { font-size: 3.5rem; text-align: center; margin: 0.5rem 0 1rem; font-weight: 600; }
-        fieldset[role="group"] { max-width: 20rem; margin: 0 auto; }
-    </style>
 </head>
 <body>
     <main class="container">
-        <p class="count">{{.Count}}</p>
-        <form method="POST">
-            <fieldset role="group">
-                <button name="decrement" class="secondary">−1</button>
-                <button name="reset" class="contrast">Reset</button>
-                <button name="increment">+1</button>
-            </fieldset>
-        </form>
+        <article>
+            <p>Count: <output aria-live="polite"><strong>{{.Count}}</strong></output></p>
+            <form method="POST">
+                <fieldset role="group">
+                    <button name="decrement" class="secondary">−1</button>
+                    <button name="reset" class="contrast">Reset</button>
+                    <button name="increment">+1</button>
+                </fieldset>
+            </form>
+        </article>
     </main>
 </body>
 </html>

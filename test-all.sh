@@ -42,6 +42,7 @@ WORKING_EXAMPLES=(
     "progressive-enhancement"
     "dialog-patterns"
     "patterns"
+    "landing-demo"
 )
 
 # Disabled examples
