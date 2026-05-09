@@ -98,8 +98,11 @@ func dialWebSocket(t *testing.T, port int) *websocket.Conn {
 	return conn
 }
 
-// TestWebSocketCapabilities verifies the initial WebSocket render includes
-// "change" in the capabilities metadata.
+// TestWebSocketCapabilities verifies the initial WebSocket render advertises
+// "change" in the capabilities metadata. Other capabilities (e.g.,
+// "progressive_enhancement", "validate", "upload") may also be present
+// depending on controller methods and config (see livetemplate#252); the
+// test asserts presence of "change" without requiring exact equality.
 func TestWebSocketCapabilities(t *testing.T) {
 	port, _ := startServer(t)
 	conn := dialWebSocket(t, port)
@@ -128,8 +131,15 @@ func TestWebSocketCapabilities(t *testing.T) {
 		t.Skip("capabilities not present in meta — requires livetemplate#253")
 	}
 
-	if len(caps) != 1 || caps[0] != "change" {
-		t.Errorf("Expected capabilities=[\"change\"], got %v", caps)
+	hasChange := false
+	for _, c := range caps {
+		if c == "change" {
+			hasChange = true
+			break
+		}
+	}
+	if !hasChange {
+		t.Errorf("Expected capabilities to include \"change\", got %v", caps)
 	}
 }
 
