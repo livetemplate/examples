@@ -2,7 +2,7 @@
 
 Example applications demonstrating LiveTemplate usage with various features and patterns.
 
-📚 **Framework documentation:** **<https://livetemplate.fly.dev>** — guides, recipes, patterns catalog (with live demos), full reference. The `/examples` section of the docs site indexes every app in this repo. The `/patterns` catalog is served from the docs repo's own `content/recipes/patterns/_app/` package.
+📚 **Framework documentation:** **<https://livetemplate.fly.dev>** — guides, recipes, patterns catalog (with live demos), full reference. The `/examples` section of the docs site indexes every app in this repo. The `/patterns` catalog is served from the docs repo's [`content/recipes/patterns/_app/`](https://github.com/livetemplate/docs/tree/main/content/recipes/patterns/_app/) package.
 
 ## Showcase: Todo App
 
