@@ -41,7 +41,6 @@ WORKING_EXAMPLES=(
     "avatar-upload"
     "progressive-enhancement"
     "dialog-patterns"
-    "patterns"
     "landing-demo"
 )
 

@@ -1,7 +1,0 @@
-.git
-.github
-.worktrees
-.vscode
-.idea
-*.swp
-.DS_Store
