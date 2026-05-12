@@ -470,7 +470,7 @@ Add a showcase section at the top of `README.md`, before the Progressive Complex
 
 The todo app demonstrates LiveTemplate's core features in ~150 lines of Go + ~80 lines of HTML:
 
-- **Real-time sync** — open two tabs as the same user; changes appear instantly via `Sync()`
+- **Real-time sync** — open two tabs as the same user; changes appear instantly via explicit `BroadcastAction`
 - **Standard HTML forms** — `<form method="POST" name="add">` routes to `Add()` with zero configuration
 - **Live search & sort** — `Change()` auto-wires input events with 300ms debounce
 - **Validation** — `ErrorTag`, `AriaInvalid`, `AriaDisabled` template helpers
@@ -490,7 +490,7 @@ Record with screen capture (Kap, ffmpeg, or similar):
 1. Split screen: two browser windows side by side, both at `localhost:8080`
 2. Both logged in as `alice`
 3. Demo sequence:
-   - Tab A: Add "Buy groceries" → appears in Tab B via Sync(), fade animation
+   - Tab A: Add "Buy groceries" → appears in Tab B via BroadcastAction, fade animation
    - Tab B: Toggle complete → strikethrough appears in Tab A, highlight flash
    - Tab A: Search "buy" → filters in Tab A only (independent per-tab)
    - Tab B: Delete with modal confirmation → disappears from Tab A
