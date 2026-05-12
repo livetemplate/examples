@@ -45,6 +45,7 @@ func (c *NotepadController) Save(state NotepadState, ctx *livetemplate.Context) 
 	c.notes[ctx.UserID()] = state
 	c.mu.Unlock()
 
+	ctx.BroadcastAction("Refresh", nil)
 	return state, nil
 }
 
@@ -56,7 +57,7 @@ func (c *NotepadController) Change(state NotepadState, ctx *livetemplate.Context
 	return state, nil
 }
 
-func (c *NotepadController) Sync(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
+func (c *NotepadController) Refresh(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
 	c.mu.RLock()
 	if saved, ok := c.notes[ctx.UserID()]; ok {
 		state.Content = saved.Content

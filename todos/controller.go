@@ -28,7 +28,7 @@ func (c *TodoController) OnConnect(state TodoState, ctx *livetemplate.Context) (
 	return c.loadTodos(context.Background(), state, ctx.UserID())
 }
 
-func (c *TodoController) Sync(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+func (c *TodoController) RefreshTodos(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
 	state = initComponents(state)
 	return c.loadTodos(context.Background(), state, ctx.UserID())
 }
@@ -56,7 +56,12 @@ func (c *TodoController) Add(state TodoState, ctx *livetemplate.Context) (TodoSt
 
 	state.Toasts.AddSuccess("Added", fmt.Sprintf("%q added", input.Text))
 	state.LastUpdated = formatTime()
-	return c.loadTodos(dbCtx, state, ctx.UserID())
+	state, err = c.loadTodos(dbCtx, state, ctx.UserID())
+	if err != nil {
+		return state, err
+	}
+	ctx.BroadcastAction("RefreshTodos", nil)
+	return state, nil
 }
 
 func (c *TodoController) Toggle(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
@@ -90,7 +95,12 @@ func (c *TodoController) Toggle(state TodoState, ctx *livetemplate.Context) (Tod
 		state.Toasts.AddInfo("Reopened", "Todo marked as incomplete")
 	}
 	state.LastUpdated = formatTime()
-	return c.loadTodos(dbCtx, state, ctx.UserID())
+	state, err = c.loadTodos(dbCtx, state, ctx.UserID())
+	if err != nil {
+		return state, err
+	}
+	ctx.BroadcastAction("RefreshTodos", nil)
+	return state, nil
 }
 
 // ConfirmDelete shows the delete confirmation modal for the given todo ID.
@@ -120,7 +130,12 @@ func (c *TodoController) ConfirmDeleteConfirm(state TodoState, ctx *livetemplate
 	state.DeleteConfirm.Hide()
 	state.DeleteID = ""
 	state.LastUpdated = formatTime()
-	return c.loadTodos(dbCtx, state, ctx.UserID())
+	state, err = c.loadTodos(dbCtx, state, ctx.UserID())
+	if err != nil {
+		return state, err
+	}
+	ctx.BroadcastAction("RefreshTodos", nil)
+	return state, nil
 }
 
 // CancelDeleteConfirm dismisses the delete confirmation modal.
@@ -206,7 +221,12 @@ func (c *TodoController) ClearCompleted(state TodoState, ctx *livetemplate.Conte
 
 	state.Toasts.AddSuccess("Cleared", fmt.Sprintf("%d completed todo(s) removed", state.CompletedCount))
 	state.LastUpdated = formatTime()
-	return c.loadTodos(dbCtx, state, ctx.UserID())
+	state, err = c.loadTodos(dbCtx, state, ctx.UserID())
+	if err != nil {
+		return state, err
+	}
+	ctx.BroadcastAction("RefreshTodos", nil)
+	return state, nil
 }
 
 func (c *TodoController) loadTodos(ctx context.Context, state TodoState, userID string) (TodoState, error) {
