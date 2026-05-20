@@ -25,6 +25,11 @@ type NotepadState struct {
 }
 
 func (c *NotepadController) Mount(state NotepadState, ctx *livetemplate.Context) (NotepadState, error) {
+	// Subscribe the self-topic so peer tabs of the same user receive the
+	// Refresh dispatch from Save's Publish below — multi-device sync.
+	if err := ctx.Subscribe(ctx.SelfTopic()); err != nil {
+		return state, err
+	}
 	state.Username = ctx.UserID()
 	c.mu.RLock()
 	if saved, ok := c.notes[ctx.UserID()]; ok {
@@ -45,7 +50,9 @@ func (c *NotepadController) Save(state NotepadState, ctx *livetemplate.Context) 
 	c.notes[ctx.UserID()] = state
 	c.mu.Unlock()
 
-	ctx.BroadcastAction("Refresh", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "Refresh", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 

@@ -37,8 +37,12 @@ type Message struct {
 	Timestamp string `json:"timestamp"`
 }
 
-// Mount is called once per session group. Sets up initial empty state.
+// Mount runs once per session group. Subscribes the self-topic so peer tabs
+// receive the UserJoined / NewMessage / UserLeft dispatches Publish'd below.
 func (c *ChatController) Mount(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
+	if err := ctx.Subscribe(ctx.SelfTopic()); err != nil {
+		return state, err
+	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	state.Messages = c.copyMessages()
@@ -74,7 +78,9 @@ func (c *ChatController) Join(state ChatState, ctx *livetemplate.Context) (ChatS
 	c.mu.Unlock()
 
 	// Tell other tabs someone joined
-	ctx.BroadcastAction("UserJoined", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "UserJoined", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -109,7 +115,9 @@ func (c *ChatController) Send(state ChatState, ctx *livetemplate.Context) (ChatS
 	c.mu.Unlock()
 
 	// Tell other tabs about the new message
-	ctx.BroadcastAction("NewMessage", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "NewMessage", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -135,7 +143,9 @@ func (c *ChatController) Leave(state ChatState, ctx *livetemplate.Context) (Chat
 	state.OnlineCount = c.countOnline()
 	c.mu.Unlock()
 
-	ctx.BroadcastAction("UserLeft", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "UserLeft", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
