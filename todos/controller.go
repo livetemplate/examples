@@ -17,6 +17,11 @@ type TodoController struct {
 }
 
 func (c *TodoController) Mount(state TodoState, ctx *livetemplate.Context) (TodoState, error) {
+	// Subscribe self-topic so peer tabs of the same user receive the
+	// RefreshTodos dispatch from Publish calls in actions below.
+	if err := ctx.Subscribe(ctx.SelfTopic()); err != nil {
+		return state, err
+	}
 	state.Username = ctx.UserID()
 	state = initComponents(state)
 	return c.loadTodos(context.Background(), state, ctx.UserID())
@@ -60,7 +65,9 @@ func (c *TodoController) Add(state TodoState, ctx *livetemplate.Context) (TodoSt
 	if err != nil {
 		return state, err
 	}
-	ctx.BroadcastAction("RefreshTodos", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "RefreshTodos", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -99,7 +106,9 @@ func (c *TodoController) Toggle(state TodoState, ctx *livetemplate.Context) (Tod
 	if err != nil {
 		return state, err
 	}
-	ctx.BroadcastAction("RefreshTodos", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "RefreshTodos", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -134,7 +143,9 @@ func (c *TodoController) ConfirmDeleteConfirm(state TodoState, ctx *livetemplate
 	if err != nil {
 		return state, err
 	}
-	ctx.BroadcastAction("RefreshTodos", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "RefreshTodos", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -225,7 +236,9 @@ func (c *TodoController) ClearCompleted(state TodoState, ctx *livetemplate.Conte
 	if err != nil {
 		return state, err
 	}
-	ctx.BroadcastAction("RefreshTodos", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "RefreshTodos", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 

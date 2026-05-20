@@ -37,8 +37,12 @@ type Message struct {
 	Timestamp string `json:"timestamp"`
 }
 
-// Mount is called once per session group. Sets up initial empty state.
+// Mount runs once per session group. Subscribes the self-topic so peer tabs
+// receive the UserJoined / NewMessage / UserLeft dispatches Publish'd below.
 func (c *ChatController) Mount(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
+	if err := ctx.Subscribe(ctx.SelfTopic()); err != nil {
+		return state, err
+	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	state.Messages = c.copyMessages()
@@ -73,8 +77,14 @@ func (c *ChatController) Join(state ChatState, ctx *livetemplate.Context) (ChatS
 	state.OnlineCount = c.countOnline()
 	c.mu.Unlock()
 
-	// Tell other tabs someone joined
-	ctx.BroadcastAction("UserJoined", nil)
+	// Tell other tabs someone joined. We propagate Publish's error rather than
+	// log-and-swallow because the only errors it can return are programmer
+	// errors (empty SelfTopic from a misconfigured Authenticator, or the
+	// per-action publish cap exceeded). Surfacing them loudly is a feature.
+	// Same pattern applies to every Publish call site in this file.
+	if err := ctx.Publish(ctx.SelfTopic(), "UserJoined", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -109,7 +119,9 @@ func (c *ChatController) Send(state ChatState, ctx *livetemplate.Context) (ChatS
 	c.mu.Unlock()
 
 	// Tell other tabs about the new message
-	ctx.BroadcastAction("NewMessage", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "NewMessage", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 
@@ -135,7 +147,9 @@ func (c *ChatController) Leave(state ChatState, ctx *livetemplate.Context) (Chat
 	state.OnlineCount = c.countOnline()
 	c.mu.Unlock()
 
-	ctx.BroadcastAction("UserLeft", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "UserLeft", nil); err != nil {
+		return state, err
+	}
 	return state, nil
 }
 

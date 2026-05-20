@@ -213,19 +213,19 @@ func TestLandingDemoE2E(t *testing.T) {
 		}
 	})
 
-	t.Run("BroadcastAction_Propagates_To_Peer_Tab", func(t *testing.T) {
+	t.Run("Publish_Propagates_To_Peer_Tab", func(t *testing.T) {
 		// SKIP rationale: this scenario IS what the README and landing
 		// page describe — "open this page in another tab and watch them
-		// sync." The controller calls BroadcastAction after counter
-		// mutations to dispatch peer-tab updates. But
-		// reliably exercising that across two chromedp browser contexts
-		// turns out to need more work than fits this PR:
+		// sync." The controller Publishes to SelfTopic() after counter
+		// mutations to dispatch peer-tab updates. But reliably exercising
+		// that across two chromedp browser contexts turns out to need more
+		// work than fits this PR:
 		//   - chromedp.NewContext(parent) shares the browser allocator
 		//     but each new target gets its own request context, so the
 		//     session cookie may not propagate the way two real-world
 		//     tabs in the same browser would.
 		//   - Even when both tabs DO land in the same session group,
-		//     the peer-side broadcast round-trip wasn't observed within 10s
+		//     the peer-side publish round-trip wasn't observed within 10s
 		//     in this harness, suggesting either a session-group
 		//     mismatch or an artifact of how the docker-chrome target
 		//     attaches.
@@ -233,7 +233,7 @@ func TestLandingDemoE2E(t *testing.T) {
 		// two tabs of the same browser and click +1 in either; both
 		// counters move. The cross-tab claim on the landing page holds.
 		// Tracking proper e2e coverage as a follow-up.
-		t.Skip("cross-tab BroadcastAction e2e: tracked at livetemplate/examples#94 — pending session-group propagation work in chromedp peer context; manual verification documented in test comment")
+		t.Skip("cross-tab Publish e2e: tracked at livetemplate/examples#94 — pending session-group propagation work in chromedp peer context; manual verification documented in test comment")
 	})
 
 	t.Run("HTTP_POST_Fallback_Without_JS", func(t *testing.T) {

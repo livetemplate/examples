@@ -1,7 +1,7 @@
 // Minimal LiveTemplate counter, sized for a landing-page demo. The whole
 // app fits in this file; the template is a single counter.tmpl. Per-session
-// state means each visitor has their own counter; explicit BroadcastAction
-// calls keep their WebSocket-connected tabs in step.
+// state means each visitor has their own counter; explicit Publish-to-
+// SelfTopic calls keep their WebSocket-connected tabs in step.
 package main
 
 import (
@@ -19,9 +19,20 @@ type CounterState struct {
 	Count int `json:"count" lvt:"persist"`
 }
 
+// Mount subscribes the self-topic so peer tabs receive the Increment /
+// Decrement / Reset dispatches Publish'd from the actions below.
+func (c *CounterController) Mount(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
+	if err := ctx.Subscribe(ctx.SelfTopic()); err != nil {
+		return s, err
+	}
+	return s, nil
+}
+
 func (c *CounterController) Increment(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
 	s.Count++
-	ctx.BroadcastAction("Increment", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "Increment", nil); err != nil {
+		return s, err
+	}
 	return s, nil
 }
 
@@ -31,13 +42,17 @@ func (c *CounterController) Decrement(s CounterState, ctx *livetemplate.Context)
 	if s.Count > 0 {
 		s.Count--
 	}
-	ctx.BroadcastAction("Decrement", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "Decrement", nil); err != nil {
+		return s, err
+	}
 	return s, nil
 }
 
 func (c *CounterController) Reset(s CounterState, ctx *livetemplate.Context) (CounterState, error) {
 	s.Count = 0
-	ctx.BroadcastAction("Reset", nil)
+	if err := ctx.Publish(ctx.SelfTopic(), "Reset", nil); err != nil {
+		return s, err
+	}
 	return s, nil
 }
 
