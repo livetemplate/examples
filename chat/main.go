@@ -77,7 +77,11 @@ func (c *ChatController) Join(state ChatState, ctx *livetemplate.Context) (ChatS
 	state.OnlineCount = c.countOnline()
 	c.mu.Unlock()
 
-	// Tell other tabs someone joined
+	// Tell other tabs someone joined. We propagate Publish's error rather than
+	// log-and-swallow because the only errors it can return are programmer
+	// errors (empty SelfTopic from a misconfigured Authenticator, or the
+	// per-action publish cap exceeded). Surfacing them loudly is a feature.
+	// Same pattern applies to every Publish call site in this file.
 	if err := ctx.Publish(ctx.SelfTopic(), "UserJoined", nil); err != nil {
 		return state, err
 	}
