@@ -490,7 +490,7 @@ Record with screen capture (Kap, ffmpeg, or similar):
 1. Split screen: two browser windows side by side, both at `localhost:8080`
 2. Both logged in as `alice`
 3. Demo sequence:
-   - Tab A: Add "Buy groceries" → appears in Tab B via the Publish(SelfTopic(), "RefreshTodos", nil) fan-out, fade animation
+   - Tab A: Add "Buy groceries" → appears in Tab B via the `ctx.Publish(ctx.SelfTopic(), "RefreshTodos", nil)` fan-out, fade animation
    - Tab B: Toggle complete → strikethrough appears in Tab A, highlight flash
    - Tab A: Search "buy" → filters in Tab A only (independent per-tab)
    - Tab B: Delete with modal confirmation → disappears from Tab A
