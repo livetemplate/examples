@@ -8,7 +8,7 @@ Example applications demonstrating LiveTemplate usage with various features and 
 
 The todo app demonstrates LiveTemplate's core features in ~150 lines of Go + ~80 lines of HTML:
 
-- **Real-time sync** — open two tabs as the same user; changes appear instantly via explicit `BroadcastAction`
+- **Real-time sync** — open two tabs as the same user; changes appear instantly via an opt-in `ctx.Subscribe(ctx.SelfTopic())` in Mount plus an explicit `ctx.Publish(ctx.SelfTopic(), ...)` from each mutating action
 - **Standard HTML forms** — `<form method="POST" name="add">` routes to `Add()` with zero configuration
 - **Live search & sort** — `Change()` auto-wires input events with 300ms debounce
 - **Validation** — `ErrorTag`, `AriaInvalid`, `AriaDisabled` template helpers
