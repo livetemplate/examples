@@ -376,14 +376,15 @@ type ChatState struct {
     TypingUsers map[string]bool
 }
 
-// In Change()
+// In Mount() (prerequisite): ctx.Subscribe(ctx.SelfTopic())
+// In Change():
 case "typing":
     var data struct {
         Username string `json:"username"`
     }
     ctx.Bind(&data)
     s.TypingUsers[data.Username] = true
-    // Then publish to peer tabs: ctx.Publish(ctx.SelfTopic(), "UpdateTyping", nil)
+    ctx.Publish(ctx.SelfTopic(), "UpdateTyping", nil)
 ```
 
 ### Add Message Reactions
