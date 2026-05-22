@@ -4,7 +4,7 @@ A real-time counter application demonstrating LiveTemplate's reactive state mana
 
 ## Features
 
-- **Reactive state**: Changes to state automatically generate and broadcast updates
+- **Reactive state**: Changes to state automatically generate updates; multi-tab sync via opt-in pub/sub (`ctx.Subscribe` + `ctx.Publish`)
 - **Transport-agnostic**: Works over WebSocket or plain HTTP/AJAX
 - **Minimal bandwidth**: Only the changed values are transmitted, not the entire HTML
 - **No custom JavaScript**: Uses only the LiveTemplate client library
@@ -217,7 +217,7 @@ Browser                    WebSocket/HTTP              Go Server
 │ Button name     │        │ Auto-    │               │ - Clones state   │
 │ routing         │        │ detects  │               │ - Generates      │
 │ (Tier 1 HTML)   │        │ transport│               │   updates        │
-│                 │        │          │               │ - Broadcasts     │
+│                 │        │          │               │ - Publishes      │
 └─────────────────┘        └──────────┘               └──────────────────┘
 ```
 

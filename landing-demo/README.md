@@ -17,9 +17,9 @@ Same code, three transports:
 Two pieces enable it:
 
 - `Count int \`lvt:"persist"\`` makes the field session-store backed, so it survives reconnects and is visible to every connection in the same session group.
-- The controller explicitly calls `ctx.BroadcastAction(...)` after counter mutations so peer tabs receive the same counter action and re-render.
+- `Mount` opts this connection into peer fan-out via `ctx.Subscribe(ctx.SelfTopic())`, and each counter handler ends with `ctx.Publish(ctx.SelfTopic(), actionName, nil)` (e.g. `"Increment"` or `"Decrement"`) so peer tabs receive the same action and re-render.
 
-Without `BroadcastAction`, peer tabs would only see the latest value on their own next action or a full reload. Without `persist`, a full reload would not preserve the session count.
+Without the `Subscribe`/`Publish` pair, peer tabs would only see the latest value on their own next action or a full reload. Without `persist`, a full reload would not preserve the session count.
 
 ## Run locally
 
