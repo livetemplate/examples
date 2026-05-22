@@ -64,7 +64,7 @@ func (c *ChatController) OnConnect(state ChatState, ctx *livetemplate.Context) (
 }
 
 // Join handles the "join" action when a user joins in this tab.
-// Sets CurrentUser on this connection only, then broadcasts to other tabs.
+// Sets CurrentUser on this connection only, then publishes to peer tabs.
 func (c *ChatController) Join(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
 	username := ctx.GetString("username")
 	if username == "" {
@@ -98,7 +98,7 @@ func (c *ChatController) UserJoined(state ChatState, ctx *livetemplate.Context) 
 }
 
 // Send handles the "send" action to send a chat message.
-// Adds message to shared store, updates this tab, broadcasts to others.
+// Adds message to shared store, updates this tab, publishes to peer tabs.
 func (c *ChatController) Send(state ChatState, ctx *livetemplate.Context) (ChatState, error) {
 	text := ctx.GetString("message")
 	if text == "" || state.CurrentUser == "" {

@@ -13,7 +13,7 @@ A real-time todo application demonstrating LiveTemplate's controller pattern wit
 - **Sort** - Newest first, oldest first, alphabetical (A-Z / Z-A)
 - **Pagination** - 3 items per page with navigation controls
 - **Live statistics** - Real-time total, completed, and remaining counts
-- **Reactive updates** - Changes broadcast to all connected clients
+- **Reactive updates** - Changes publish to all subscribed peer tabs via `ctx.Publish(ctx.SelfTopic(), "RefreshTodos", nil)`
 - **SQLite persistence** - Todos survive server restarts
 
 ## Quick Start

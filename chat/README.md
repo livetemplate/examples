@@ -164,7 +164,7 @@ func (s *ChatState) updateOnlineCount() {
 
 - Actions route via `<form name="join">` and `<form name="send">` (button/form `name` routing)
 - `ctx.GetString("field")` extracts form data
-- Just modify state - broadcasting happens automatically!
+- Opt into peer fan-out in `Mount` with `ctx.Subscribe(ctx.SelfTopic())`, then call `ctx.Publish(ctx.SelfTopic(), "Action", nil)` from the action handler to reach the other tabs
 - No manual WebSocket code needed
 
 ### Step 4: Initialize and Run
@@ -203,7 +203,7 @@ func main() {
 
     log.Printf("🚀 Chat server starting on http://localhost:%s", port)
     log.Println("📝 Open multiple browser tabs to test multi-user chat")
-    log.Println("💬 Messages are broadcast to all connected users")
+    log.Println("💬 Messages publish to all connected users via ctx.Publish")
 
     http.ListenAndServe(":"+port, nil)
 }
@@ -312,7 +312,7 @@ Chrome Tab 1       Server (Go)        Chrome Tab 2
     |          [Same groupID: session-abc]    |
     |                   |                     |
     |--- send msg ----->|                     |
-    |         [Auto-broadcast to group]       |
+    |     [ctx.Publish fans out to group]     |
     |<---- update ------|------- update ----->|
     |                   |                     |
 ```
@@ -321,9 +321,9 @@ Chrome Tab 1       Server (Go)        Chrome Tab 2
 
 1. Each browser gets a unique session ID (stored in cookie)
 2. All tabs in the same browser share the session ID
-3. State changes automatically sync to all tabs in the same session
+3. Connections that subscribe via `ctx.Subscribe(ctx.SelfTopic())` receive `ctx.Publish` fan-outs from peer tabs in the same session
 4. Only changed HTML is sent (tree-diffing)
-5. Zero manual broadcasting code required!
+5. Peer fan-out is two lines (`Subscribe` + `Publish`) — no manual WebSocket plumbing
 
 ### Why So Simple?
 
@@ -341,7 +341,7 @@ Chrome Tab 1       Server (Go)        Chrome Tab 2
 
 - ✅ Just modify Go structs
 - ✅ 2 files total
-- ✅ Auto-broadcasting
+- ✅ Opt-in peer fan-out (`ctx.Subscribe` + `ctx.Publish`)
 - ✅ Auto-updates
 - ✅ Standard `html/template`
 - ✅ Standard `net/http`
@@ -383,7 +383,7 @@ case "typing":
     }
     ctx.Bind(&data)
     s.TypingUsers[data.Username] = true
-    // Auto-broadcast!
+    // Then publish to peer tabs: ctx.Publish(ctx.SelfTopic(), "UpdateTyping", nil)
 ```
 
 ### Add Message Reactions
@@ -502,7 +502,7 @@ The simple kit starts with a counter. Here's how we evolved it:
 |-----------------|--------------|
 | `AppState{Counter int}` | `ChatState{Messages []Message}` |
 | `increment/decrement` actions | `join/send` actions |
-| Single user | Multi-user with broadcasting |
+| Single user | Multi-user via `ctx.Publish` peer fan-out |
 | Simple int update | List of messages |
 
 Same pattern, different data!
@@ -516,6 +516,6 @@ Same pattern, different data!
 ## Related Documentation
 
 - [LiveTemplate Core Docs](../../README.md)
-- [Broadcasting Guide](../../docs/design/IMPLEMENTATION_STATUS.md)
+- [Pub/Sub Reference](https://github.com/livetemplate/livetemplate/blob/main/docs/references/pubsub.md)
 - [Template Syntax](https://pkg.go.dev/html/template)
 - [LiveTemplate API](https://pkg.go.dev/github.com/livetemplate/livetemplate)
