@@ -203,7 +203,7 @@ func main() {
 
     log.Printf("🚀 Chat server starting on http://localhost:%s", port)
     log.Println("📝 Open multiple browser tabs to test multi-user chat")
-    log.Println("💬 Messages publish to all connected users via ctx.Publish")
+    log.Println("💬 Messages sync across all connected browser tabs")
 
     http.ListenAndServe(":"+port, nil)
 }
